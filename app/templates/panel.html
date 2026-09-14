@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Oche - {{ panel.name }}{% endblock %}
+{% block content %}
+<section class="panel-view">
+  <a
+    class="glass-icon-btn panel-open-tab-btn"
+    href="{{ panel.url }}"
+    target="_blank"
+    rel="noopener noreferrer"
+    title="Open in a new tab"
+    aria-label="Open in a new tab"
+  >
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M7 17 17 7M9 7h8v8"></path>
+    </svg>
+  </a>
+  <iframe class="panel-frame" title="{{ panel.name }}" src="{{ panel.url }}" allowfullscreen></iframe>
+</section>
+{% endblock %}

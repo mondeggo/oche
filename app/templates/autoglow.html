@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Oche - AutoGlow{% endblock %}
+{% block content %}
+<h1>💡 AutoGlow</h1>
+<p class="subtitle">Control WLED-based board lighting connected over USB serial.</p>
+
+<div class="card status-card">
+  <div class="status-row">
+    <span>Hardware:</span>
+    <span id="ag-hw" class="badge {{ 'badge-green' if status.hardware_found else 'badge-yellow' }}">
+      {{ status.port if status.hardware_found else 'Not found' }}
+    </span>
+  </div>
+  <div class="status-row">
+    <span>Autodarts connection:</span>
+    <span id="ag-ws" class="badge {{ 'badge-green' if status.autodarts_connected else 'badge-yellow' }}">
+      {{ 'Connected' if status.autodarts_connected else 'Disconnected' }}
+    </span>
+  </div>
+</div>
+
+<div class="btn-row">
+  <button id="btn-test" class="btn-success" onclick="testAnimation()">✨ Test Animation</button>
+</div>
+
+<p class="hint">If no hardware is detected, make sure the ESP32/WLED device's serial port
+  (e.g. <code>/dev/ttyUSB0</code>) is passed to the container with <code>--device</code>.</p>
+
+<script>
+async function refresh() {
+  const res = await fetch('/autoglow/status');
+  const data = await res.json();
+  const hw = document.getElementById('ag-hw');
+  hw.textContent = data.hardware_found ? data.port : 'Not found';
+  hw.className = 'badge ' + (data.hardware_found ? 'badge-green' : 'badge-yellow');
+
+  const ws = document.getElementById('ag-ws');
+  ws.textContent = data.autodarts_connected ? 'Connected' : 'Disconnected';
+  ws.className = 'badge ' + (data.autodarts_connected ? 'badge-green' : 'badge-yellow');
+}
+
+async function testAnimation() {
+  const btn = document.getElementById('btn-test');
+  btn.disabled = true;
+  try {
+    const res = await fetch('/autoglow/test', { method: 'POST' });
+    if (!res.ok) {
+      const err = await res.json();
+      alert(err.detail || 'Test failed');
+    }
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+setInterval(refresh, 5000);
+</script>
+{% endblock %}
