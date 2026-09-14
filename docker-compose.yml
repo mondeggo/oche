@@ -7,6 +7,13 @@ services:
       - "3180:3180"   # Autodarts board manager UI - required, the Oche UI embeds it directly from this port
     volumes:
       - ./data:/app/data
+      # Use the Linux Docker host's timezone for local timestamps.
+      - type: bind
+        source: /etc/localtime
+        target: /etc/localtime
+        read_only: true
+        bind:
+          create_host_path: false
     # devices:
       # Dartboard camera(s) - adjust to match your host, see README.
       # - /dev/video0:/dev/video0

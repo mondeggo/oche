@@ -29,6 +29,12 @@ Open **http://localhost:8180**. From another device, use your Oche machine's IP 
 
 For USB lighting controllers, add your serial device using the example in `docker-compose.yml`. Your settings and board data stay in the installation's `data/` folder.
 
+Compose mounts the Linux Docker host's `/etc/localtime` read-only so Oche uses
+the host's timezone. Development inherits this mount. With Docker Desktop, the
+host is its Linux VM, whose timezone may differ from Windows. Existing installs
+keep their Compose file: add the `/etc/localtime` mount from this repository and
+run `sudo docker compose up -d` to apply it.
+
 ## Update
 
 From your installation folder:
