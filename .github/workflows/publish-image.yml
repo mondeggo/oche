@@ -1,0 +1,63 @@
+name: Publish Docker image
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-main-image
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate installer scripts
+        run: |
+          for script in scripts/*.sh; do bash -n "$script"; done
+      - name: Resolve image version
+        id: image
+        run: |
+          set -euo pipefail
+          for arch in amd64 arm64; do
+            version=$(curl -fsSL --retry 3 "https://get.autodarts.io/detection/latest/linux/$arch/RELEASES.json" | jq -er '.currentVersion')
+            version=${version#v}
+            [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Invalid Autodarts version: $version" >&2; exit 1; }
+            if [[ "$arch" == amd64 ]]; then
+              autodarts_version=$version
+            elif [[ "$version" != "$autodarts_version" ]]; then
+              echo "Autodarts versions differ across architectures; retry after both releases are available." >&2
+              exit 1
+            fi
+          done
+          echo "autodarts_version=$autodarts_version" >> "$GITHUB_OUTPUT"
+          echo "tag=v0.${GITHUB_RUN_NUMBER}_AD${autodarts_version}" >> "$GITHUB_OUTPUT"
+      - uses: docker/setup-qemu-action@v4
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Build and publish AMD64 and ARM64 images
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          build-args: |
+            AUTODARTS_VERSION=${{ steps.image.outputs.autodarts_version }}
+          tags: |
+            mondeggo/oche:${{ steps.image.outputs.tag }}
+            mondeggo/oche:latest
+          labels: |
+            org.opencontainers.image.version=${{ steps.image.outputs.tag }}
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
