@@ -228,7 +228,9 @@ echo "Camera mappings saved in $PWD/$override"
 echo "Explicit device mappings in the main Compose file remain in effect."
 )
 
-main() {
+# Keep terminal input and installer state isolated from the Bash process reading
+# a piped script. Otherwise it reads /dev/tty as more shell code after main ends.
+main() (
     repo="${1:-${OCHE_REPOSITORY:-mondeggo/oche}}"
     if [[ -n "$repo" && ! "$repo" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]]; then
         echo "Usage: bash install.sh [OWNER/REPO]" >&2
@@ -392,6 +394,6 @@ echo "Oche web UI: http://localhost:8180"
 echo "Autodarts board manager: http://localhost:3180"
 echo "Camera choices are saved in docker-compose.override.yml."
 echo "Configure any serial device in docker-compose.yml."
-}
+)
 
 main "$@"

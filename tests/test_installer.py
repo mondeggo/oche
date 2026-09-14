@@ -102,3 +102,24 @@ v4l2-ctl() {
     def test_shell_syntax(self):
         result = subprocess.run([BASH, "-n", "scripts/install.sh"], cwd=ROOT, capture_output=True)
         self.assertEqual(result.returncode, 0, result.stderr.decode())
+
+    def test_piped_entrypoint_restores_input_after_terminal_prompts(self):
+        # Exercise the real entrypoint wrapper and its stdin redirect without
+        # running installation. A file stands in for terminal input: the parent
+        # must continue reading the pipe, never execute the terminal's contents.
+        main = SCRIPT[SCRIPT.index('main() '):]
+        declaration = main.splitlines()[0]
+        closing_and_call = main[main.rindex('\necho "Configure any serial device'):].splitlines()[2:]
+        redirect = next(line for line in main.splitlines() if line.strip() == 'exec 0<&3')
+        with tempfile.TemporaryDirectory() as folder:
+            (Path(folder) / 'terminal-input').write_text('echo WRONG_INPUT\n')
+            source = '\n'.join([
+                declaration, 'exec 3<terminal-input', redirect,
+                'echo INSTALL_DONE', *closing_and_call, 'echo PIPE_FINISHED', '',
+            ])
+            result = subprocess.run(
+                [BASH], input=source.encode(), cwd=folder,
+                capture_output=True, timeout=10,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr.decode())
+            self.assertEqual(result.stdout.decode().splitlines(), ['INSTALL_DONE', 'PIPE_FINISHED'])
