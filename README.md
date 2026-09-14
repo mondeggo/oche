@@ -44,6 +44,22 @@ sudo docker compose pull
 sudo docker compose up -d --no-build
 ```
 
+The installer also places `oche.sh` next to Compose. It uses the image configured
+in `.env`/Compose and includes `docker-compose.override.yml` for camera mappings.
+Run it from the installation folder:
+
+```bash
+sudo ./oche.sh start    # Pull the latest image and start
+sudo ./oche.sh restart  # Pull the latest image and recreate the container
+sudo ./oche.sh pull     # Download an update; then run restart to apply it
+sudo ./oche.sh stop     # Remove containers and network, keeping persistent data
+```
+
+`build` requires a source checkout. If pulling fails, the helper uses an existing
+local image or tries building when sources are available. `push` publishes the
+configured local image and requires registry write access. Docker Compose v2 is
+required. Use `bash oche.sh` in a checkout if the file is not executable.
+
 ## Development
 
 With Docker running, run from a source checkout:

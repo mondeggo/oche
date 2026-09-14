@@ -303,6 +303,21 @@ if [[ ! -f "$install_dir/docker-compose.yml" ]]; then
     trap - EXIT
 fi
 project_dir="$install_dir"
+# Ship the helper alongside Compose, including for image-only installations.
+if [[ "$source_dir" != "$install_dir" || ! -f "$install_dir/oche.sh" ]]; then
+    helper_tmp=$(mktemp "$install_dir/.manage.XXXXXX")
+    trap 'rm -f -- "$helper_tmp"' EXIT
+    if [[ -n "$source_dir" && -f "$source_dir/oche.sh" ]]; then
+        cp -- "$source_dir/oche.sh" "$helper_tmp"
+    else
+        curl -fsSL --retry 3 "https://raw.githubusercontent.com/$repo/main/oche.sh" -o "$helper_tmp"
+    fi
+    bash -n "$helper_tmp"
+    chmod 755 "$helper_tmp"
+    mv -- "$helper_tmp" "$install_dir/oche.sh"
+    trap - EXIT
+fi
+chmod +x "$install_dir/oche.sh"
 cd -- "$install_dir"
 # Migrate the original local-image setting while preserving hardware edits.
 sed -i 's/^    image: oche:latest[[:space:]]*$/    image: "${OCHE_IMAGE:-oche:latest}"/' docker-compose.yml
@@ -393,6 +408,7 @@ echo "Oche containers started. The application may take a moment to initialize."
 echo "Oche web UI: http://localhost:8180"
 echo "Autodarts board manager: http://localhost:3180"
 echo "Camera choices are saved in docker-compose.override.yml."
+echo "Manage Oche from $install_dir with: sudo ./oche.sh {start|restart|pull|stop|build|push}"
 echo "Configure any serial device in docker-compose.yml."
 )
 

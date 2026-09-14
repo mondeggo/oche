@@ -103,6 +103,25 @@ v4l2-ctl() {
         result = subprocess.run([BASH, "-n", "scripts/install.sh"], cwd=ROOT, capture_output=True)
         self.assertEqual(result.returncode, 0, result.stderr.decode())
 
+    def test_installer_places_helper_for_local_and_remote_installs(self):
+        start = SCRIPT.index('# Ship the helper')
+        block = SCRIPT[start:SCRIPT.index('cd -- "$install_dir"', start)]
+        for local in (True, False):
+            with self.subTest(local=local), tempfile.TemporaryDirectory() as folder:
+                root = Path(folder)
+                (root / 'source').mkdir()
+                (root / 'install').mkdir()
+                helper = '#!/usr/bin/env bash\necho helper\n'
+                (root / 'source/oche.sh').write_text(helper, newline='\n')
+                setup = '''
+install_dir="$PWD/install"
+repo=mondeggo/oche
+curl() { cp source/oche.sh "${@: -1}"; }
+'''
+                setup += 'source_dir="$PWD/source"\n' if local else 'source_dir=""\n'
+                self.run_bash(setup + block, cwd=folder)
+                self.assertEqual((root / 'install/oche.sh').read_text(), helper)
+
     def test_piped_entrypoint_restores_input_after_terminal_prompts(self):
         # Exercise the real entrypoint wrapper and its stdin redirect without
         # running installation. A file stands in for terminal input: the parent
