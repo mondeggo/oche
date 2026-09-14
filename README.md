@@ -14,10 +14,16 @@ The image is Linux-based (AMD64 and ARM64, including 64-bit Raspberry Pi OS). It
 **The installer and commands below are for Linux-based systems.** Use a system with systemd and `curl`, then run this in a terminal as your normal user:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/mondeggo/oche/main/scripts/install.sh | bash -s -- mondeggo/oche
+curl -fsSL https://raw.githubusercontent.com/mondeggo/oche/main/scripts/install.sh | bash
 ```
 
 Follow the prompts to choose your installation folder, cameras, and startup preference. Docker is installed if needed.
+
+Camera setup probes `/dev/video*` with `v4l2-ctl` using the installer's sudo access.
+It selects capture nodes and excludes metadata nodes and Raspberry Pi video
+processors. On apt-based systems, it installs `v4l-utils` if needed. Select camera numbers, or
+choose `all` to mount the entire host `/dev` directory (including non-camera
+devices). The default `none` means no cameras are preselected.
 
 Open **http://localhost:8180**. From another device, use your Oche machine's IP address instead of `localhost`.
 
