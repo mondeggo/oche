@@ -1,0 +1,14 @@
+# Local development with live reload and separate persistent data.
+services:
+  oche:
+    build: .
+    image: oche:dev
+    container_name: oche-dev
+    restart: "no"
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8180 --reload --reload-dir /app/app
+    volumes:
+      - ./app:/app/app
+      - dev-data:/app/data
+
+volumes:
+  dev-data:

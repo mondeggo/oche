@@ -1,0 +1,16 @@
+services:
+  oche:
+    image: "${OCHE_IMAGE:-oche:latest}"
+    container_name: oche
+    ports:
+      - "8180:8180"   # Oche web UI
+      - "3180:3180"   # Autodarts board manager UI - required, the Oche UI embeds it directly from this port
+    volumes:
+      - ./data:/app/data
+    # devices:
+      # Dartboard camera(s) - adjust to match your host, see README.
+      # - /dev/video0:/dev/video0
+      # AutoGlow ESP32/WLED controller - prefer the stable /dev/serial/by-id/*
+      # path over /dev/ttyUSBx, which can shift between reboots.
+      # - /dev/ttyUSB0:/dev/ttyUSB0
+    restart: "${OCHE_RESTART_POLICY:-unless-stopped}"
