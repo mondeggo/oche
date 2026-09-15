@@ -103,6 +103,30 @@ v4l2-ctl() {
         result = subprocess.run([BASH, "-n", "scripts/install.sh"], cwd=ROOT, capture_output=True)
         self.assertEqual(result.returncode, 0, result.stderr.decode())
 
+    def test_existing_autodarts_configuration_mount(self):
+        function = SCRIPT[SCRIPT.index('autodarts_config_mount() ('):SCRIPT.index('configure_cameras() (')]
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            config_dir = root / "user's $home" / '.config' / 'autodarts'
+            config_dir.mkdir(parents=True)
+            config = config_dir / 'config.toml'
+            config.write_text('[cam]\ncams = []\n')
+            source = function + '\ninstall_home="$PWD/user\'s \\$home"\nautodarts_config_mount\n'
+            output = self.run_bash(source, cwd=folder)
+            self.assertIn("user''s $$home/.config/autodarts'", output)
+            self.assertIn('target: /app/data/autodarts', output)
+            self.assertIn('create_host_path: false', output)
+            self.assertNotIn('[cam]', output)
+            self.assertEqual(config.read_text(), '[cam]\ncams = []\n')
+
+    def test_missing_autodarts_configuration_uses_data_mount(self):
+        function = SCRIPT[SCRIPT.index('autodarts_config_mount() ('):SCRIPT.index('configure_cameras() (')]
+        with tempfile.TemporaryDirectory() as folder:
+            for directory_exists in (False, True):
+                if directory_exists:
+                    (Path(folder) / '.config' / 'autodarts').mkdir(parents=True)
+                self.assertEqual(self.run_bash(function + '\ninstall_home="$PWD"\nautodarts_config_mount\n', cwd=folder), '')
+
     def test_installer_places_helper_for_local_and_remote_installs(self):
         start = SCRIPT.index('# Ship the helper')
         block = SCRIPT[start:SCRIPT.index('cd -- "$install_dir"', start)]

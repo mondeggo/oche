@@ -11,6 +11,8 @@ services:
     volumes:
       - ./app:/app/app
       - dev-data:/app/data
+      - dev-autodarts:/app/data/autodarts
 
 volumes:
   dev-data:
+  dev-autodarts:

@@ -41,7 +41,9 @@ COPY app ./app
 
 RUN groupadd --gid 1000 oche \
   && useradd --uid 1000 --gid 1000 --create-home --shell /usr/sbin/nologin oche \
-  && mkdir -p /app/data \
+  && mkdir -p /app/data/autodarts /home/oche/.config \
+  && ln -s /app/data/autodarts /home/oche/.config/autodarts \
+  && chown -R oche:oche /home/oche/.config \
   && chown -R oche:oche /app /opt/autodarts
 # Host networking uses the host's privileged-port rules. Allow the non-root
 # Python server to bind OCHE_PORT=80 without running the application as root.
