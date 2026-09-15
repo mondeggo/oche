@@ -128,7 +128,7 @@ curl() { cp source/oche.sh "${@: -1}"; }
         # must continue reading the pipe, never execute the terminal's contents.
         main = SCRIPT[SCRIPT.index('main() '):]
         declaration = main.splitlines()[0]
-        closing_and_call = main[main.rindex('\necho "Configure any serial device'):].splitlines()[2:]
+        closing_and_call = main[main.rindex('\n)'):].splitlines()[1:]
         redirect = next(line for line in main.splitlines() if line.strip() == 'exec 0<&3')
         with tempfile.TemporaryDirectory() as folder:
             (Path(folder) / 'terminal-input').write_text('echo WRONG_INPUT\n')

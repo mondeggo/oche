@@ -23,11 +23,23 @@ Camera setup probes `/dev/video*` with `v4l2-ctl` using the installer's sudo acc
 It selects capture nodes and excludes metadata nodes and Raspberry Pi video
 processors. On apt-based systems, it installs `v4l-utils` if needed. Select camera numbers, or
 choose `all` to mount the entire host `/dev` directory (including non-camera
-devices). The default `none` means no cameras are preselected.
+devices) and grant device access, including devices connected later. Compose
+already mounts `/dev`; choose `all` for hot-plug support. Numbered selections
+grant access to those cameras. `none` adds no device permissions; it does not
+remove the base `/dev` mount.
 
-Open **http://localhost:8180**. From another device, use your Oche machine's IP address instead of `localhost`.
+Open **http://localhost**. From another device, use your Oche machine's IP address instead of `localhost`.
 
-For USB lighting controllers, add your serial device using the example in `docker-compose.yml`. Your settings and board data stay in the installation's `data/` folder.
+Compose uses host networking so Autodarts can access the host network directly.
+Oche listens on port `80`; set `OCHE_PORT=8180` in `.env` to use another port,
+then recreate the container. Autodarts still uses port `3180`. These ports must
+be available on the host. Existing Compose files without `OCHE_PORT` retain
+port `8180`.
+
+For USB lighting controllers, choose `all` during device setup, or configure an
+explicit `devices` mapping and the device's host group ID in `group_add` in
+`docker-compose.override.yml`. Mounting `/dev` alone does not grant the non-root
+application device access. Your settings and board data stay in the installation's `data/` folder.
 
 Compose mounts the Linux Docker host's `/etc/localtime` read-only so Oche uses
 the host's timezone. Development inherits this mount. With Docker Desktop, the
@@ -52,7 +64,7 @@ Run it from the installation folder:
 sudo ./oche.sh start    # Pull the latest image and start
 sudo ./oche.sh restart  # Pull the latest image and recreate the container
 sudo ./oche.sh pull     # Download an update; then run restart to apply it
-sudo ./oche.sh stop     # Remove containers and network, keeping persistent data
+sudo ./oche.sh stop     # Remove containers, keeping persistent data
 ```
 
 `build` requires a source checkout. If pulling fails, the helper uses an existing
@@ -68,7 +80,8 @@ With Docker running, run from a source checkout:
 bash dev.sh
 ```
 
-On Windows, run `.\dev.bat` instead. No local Python installation is needed to launch development.
+On Windows, run `.\dev.bat` instead. Docker Desktop must have host networking
+enabled; device mounts refer to its Linux VM. No local Python installation is needed to launch development.
 
 This builds and launches a local image, shows logs, and reloads Python changes automatically. Open **http://localhost:8180**; refresh the browser after editing templates or styles. Press **Ctrl+C** to stop.
 

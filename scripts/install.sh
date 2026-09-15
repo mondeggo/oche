@@ -225,7 +225,7 @@ trap 'rm -f "$temp_file"' EXIT
 } >"$temp_file"
 mv -- "$temp_file" "$override"
 echo "Camera mappings saved in $PWD/$override"
-echo "Explicit device mappings in the main Compose file remain in effect."
+echo "Device mounts in the main Compose file remain in effect."
 )
 
 # Keep terminal input and installer state isolated from the Bash process reading
@@ -405,11 +405,13 @@ else
     echo "Start on boot disabled. Start Oche manually with: sudo docker compose up -d"
 fi
 echo "Oche containers started. The application may take a moment to initialize."
-echo "Oche web UI: http://localhost:8180"
+web_port=$("${sudo_cmd[@]}" docker compose config | sed -n 's/^[[:space:]]*OCHE_PORT:[[:space:]]*["\x27]*\([0-9][0-9]*\).*/\1/p' | head -n 1)
+web_port="${web_port:-8180}"
+echo "Oche web UI: http://localhost:$web_port"
 echo "Autodarts board manager: http://localhost:3180"
 echo "Camera choices are saved in docker-compose.override.yml."
 echo "Manage Oche from $install_dir with: sudo ./oche.sh {start|restart|pull|stop|build|push}"
-echo "Configure any serial device in docker-compose.yml."
+echo "Use the 'all' device choice for hot-plug cameras and serial controllers."
 )
 
 main "$@"

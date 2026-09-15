@@ -2,22 +2,28 @@ services:
   oche:
     image: "${OCHE_IMAGE:-oche:latest}"
     container_name: oche
-    ports:
-      - "8180:8180"   # Oche web UI
-      - "3180:3180"   # Autodarts board manager UI - required, the Oche UI embeds it directly from this port
+
+    # Autodarts needs host network directly.
+    network_mode: host
+
+    environment:
+      OCHE_PORT: "${OCHE_PORT:-80}"
+
     volumes:
+      # Persistent application data
       - ./data:/app/data
-      # Use the Linux Docker host's timezone for local timestamps.
+
+      # Host timezone
       - type: bind
         source: /etc/localtime
         target: /etc/localtime
         read_only: true
         bind:
           create_host_path: false
-    # devices:
-      # Dartboard camera(s) - adjust to match your host, see README.
-      # - /dev/video0:/dev/video0
-      # AutoGlow ESP32/WLED controller - prefer the stable /dev/serial/by-id/*
-      # path over /dev/ttyUSBx, which can shift between reboots.
-      # - /dev/ttyUSB0:/dev/ttyUSB0
+
+      # Expose the host device tree so newly connected
+      # /dev/video* devices are visible inside the container.
+      - /dev:/dev
+
+    init: true
     restart: "${OCHE_RESTART_POLICY:-unless-stopped}"

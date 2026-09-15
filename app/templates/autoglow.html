@@ -24,7 +24,8 @@
 </div>
 
 <p class="hint">If no hardware is detected, make sure the ESP32/WLED device's serial port
-  (e.g. <code>/dev/ttyUSB0</code>) is passed to the container with <code>--device</code>.</p>
+  (e.g. <code>/dev/ttyUSB0</code>) is accessible to the container user. With the
+  installer's <code>all</code> device choice, host devices and their groups are configured automatically.</p>
 
 <script>
 async function refresh() {

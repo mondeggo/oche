@@ -8,7 +8,7 @@ ARG AUTODARTS_VERSION
 RUN apt-get update && apt-get install -y --no-install-recommends \
   curl ca-certificates \
   libgl1 libglib2.0-0 libusb-1.0-0 \
-  udev \
+  udev libcap2-bin \
   && rm -rf /var/lib/apt/lists/*
 
 # Fetch the pre-compiled Autodarts binary for the container's architecture,
@@ -43,8 +43,11 @@ RUN groupadd --gid 1000 oche \
   && useradd --uid 1000 --gid 1000 --create-home --shell /usr/sbin/nologin oche \
   && mkdir -p /app/data \
   && chown -R oche:oche /app /opt/autodarts
+# Host networking uses the host's privileged-port rules. Allow the non-root
+# Python server to bind OCHE_PORT=80 without running the application as root.
+RUN setcap 'cap_net_bind_service=+ep' "$(readlink -f /usr/local/bin/python)"
 USER oche
 
-EXPOSE 8180 3180
+EXPOSE 80 8180 3180
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8180"]
+CMD ["python", "-m", "app.server"]
