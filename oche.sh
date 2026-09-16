@@ -7,7 +7,7 @@ cd "$SCRIPT_DIR"
 
 usage() {
     cat <<EOF
-Usage: $0 {start|stop|restart|update|pull}
+Usage: $0 {start|stop|restart|update|pull|cameras}
        $0 -h | --help
 
 Manage Oche using the Compose files and .env beside this script.
@@ -17,6 +17,7 @@ Manage Oche using the Compose files and .env beside this script.
   restart  Pull the configured image and recreate Oche.
   update   Download and apply an update (same as restart).
   pull     Download the image without restarting Oche.
+  cameras  Select individual cameras, all /dev devices, or none; recreate Oche.
   -h, --help  Show this help without requiring Docker.
 
 If pulling fails, start/restart/update/pull reuse an existing local image
@@ -25,7 +26,7 @@ EOF
 }
 [[ $# -eq 1 ]] || { usage >&2; exit 1; }
 case "$1" in
-    start|restart|update|pull|stop) ;;
+    start|restart|update|pull|stop|cameras) ;;
     -h|--help) usage; exit 0 ;;
     *) usage >&2; exit 1 ;;
 esac
@@ -33,6 +34,14 @@ esac
 command -v docker >/dev/null || { echo "Docker is required." >&2; exit 1; }
 docker info >/dev/null
 docker compose version >/dev/null || { echo "Docker Compose v2 is required." >&2; exit 1; }
+if [[ "$1" == cameras ]]; then
+    if [[ ! -f "$SCRIPT_DIR/scripts/install.sh" ]]; then
+        echo "Camera setup is missing. Rerun the updated installer to install it." >&2
+        exit 1
+    fi
+    source "$SCRIPT_DIR/scripts/install.sh"
+    reconfigure_cameras
+fi
 COMPOSE_CMD=(docker compose --project-directory "$SCRIPT_DIR" -f "$SCRIPT_DIR/docker-compose.yml")
 if [[ -f "$SCRIPT_DIR/docker-compose.override.yml" ]]; then
     COMPOSE_CMD+=(-f "$SCRIPT_DIR/docker-compose.override.yml")
@@ -60,4 +69,8 @@ case "$1" in
     restart|update) ensure_image; compose up -d --no-build --pull never --force-recreate oche ;;
     pull) ensure_image ;;
     stop) compose down ;;
+    cameras)
+        compose config --quiet
+        compose up -d --no-build --pull never --force-recreate oche
+        ;;
 esac

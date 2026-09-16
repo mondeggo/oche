@@ -154,6 +154,39 @@ configure_cameras <<< none
             self.assertIn('devices: []', override)
             self.assertNotIn('device_cgroup_rules', override)
 
+    def test_switching_full_access_to_none_removes_broad_permissions(self):
+        helpers = SCRIPT[SCRIPT.index('autodarts_config_mount() ('):SCRIPT.index('reconfigure_cameras() (')]
+        with tempfile.TemporaryDirectory() as folder:
+            setup = helpers + '''
+install_home="$PWD"
+install_mode=detailed
+discover_cameras() { :; }
+find() { printf '44\\n'; }
+getent() { :; }
+'''
+            self.run_bash(setup + '\nconfigure_cameras <<< all\n', cwd=folder)
+            target = Path(folder) / 'docker-compose.override.yml'
+            self.assertIn("'a *:* rwm'", target.read_text())
+            self.run_bash(setup + '\nconfigure_cameras <<< none\n', cwd=folder)
+            self.assertNotIn('device_cgroup_rules', target.read_text())
+            self.assertNotIn('group_add', target.read_text())
+            self.assertIn('devices: []', target.read_text())
+
+    def test_custom_camera_override_is_preserved(self):
+        helpers = SCRIPT[SCRIPT.index('autodarts_config_mount() ('):SCRIPT.index('reconfigure_cameras() (')]
+        with tempfile.TemporaryDirectory() as folder:
+            target = Path(folder) / 'docker-compose.override.yml'
+            target.write_text('# Custom settings\nservices: {}\n')
+            self.run_bash(helpers + '''
+install_home="$PWD"
+if configure_cameras <<< all; then exit 1; fi
+''', cwd=folder)
+            self.assertEqual(target.read_text(), '# Custom settings\nservices: {}\n')
+
+    def test_sourcing_installer_does_not_start_installation(self):
+        output = self.run_bash('source scripts/install.sh\necho SOURCED', cwd=ROOT)
+        self.assertEqual(output.strip(), 'SOURCED')
+
     def test_existing_autodarts_configuration_mount(self):
         function = SCRIPT[SCRIPT.index('autodarts_config_mount() ('):SCRIPT.index('configure_cameras() (')]
         with tempfile.TemporaryDirectory() as folder:
@@ -196,6 +229,7 @@ curl() { cp source/oche.sh "${@: -1}"; }
                 setup += 'source_dir="$PWD/source"\n' if local else 'source_dir=""\n'
                 self.run_bash(setup + block, cwd=folder)
                 self.assertEqual((root / 'install/oche.sh').read_text(), helper)
+                self.assertEqual((root / 'install/scripts/install.sh').read_text(), helper)
 
     def test_piped_entrypoint_restores_input_after_terminal_prompts(self):
         # Exercise the real entrypoint wrapper and its stdin redirect without

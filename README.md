@@ -11,7 +11,16 @@ An all-in-one Docker app with one-line installation for a hassle-free darts setu
 
 The image is Linux-based (AMD64 and ARM64, including 64-bit Raspberry Pi OS). It can also run on Windows with [Docker Desktop and WSL 2](https://docs.docker.com/desktop/features/wsl/); camera and USB access need extra setup there.
 
-**The installer and commands below are for Linux-based systems.** Use a system with systemd and `curl`, then run this in a terminal as your normal user:
+**The installer and commands below are for Linux-based systems.** Use a system with systemd and `curl`.
+
+If `curl` is missing, install it on Debian, Ubuntu, or Raspberry Pi OS:
+
+```bash
+sudo apt update
+sudo apt install -y curl
+```
+
+Then run the installer in a terminal as your normal user:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/mondeggo/oche/main/scripts/install.sh | bash
@@ -87,7 +96,15 @@ Run it from the installation folder:
 ./oche.sh update        # Pull the latest image and recreate the container
 ./oche.sh restart       # Pull the latest image and recreate the container
 ./oche.sh pull          # Download the image without restarting
+./oche.sh cameras       # Change camera/device access and recreate the container
 ```
+
+Use `./oche.sh cameras` to switch between individual camera numbers, `all`
+(full `/dev` access, including hot-plug devices), and `none` (no added camera
+permissions). It reruns camera detection and applies the selection without
+downloading a new image. Camera probing may request administrator access.
+Custom override files are left untouched; edit those manually. Older
+installations need to rerun the updated installer once to install this command.
 
 GitHub Actions builds and publishes the images. If pulling fails, the helper
 uses an existing local image or reports an error if none is available.

@@ -11,11 +11,14 @@ BASH = r"C:\Program Files\Git\bin\bash.exe" if os.name == "nt" else shutil.which
 
 @unittest.skipUnless(BASH and Path(BASH).exists(), "Bash is required")
 class ManageTests(unittest.TestCase):
-    def run_helper(self, action, *, local=True, pull=True, sources=False):
+    def run_helper(self, action, *, local=True, pull=True, sources=False, camera_setup=None):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
             shutil.copyfile(ROOT / 'oche.sh', root / 'oche.sh')
             (root / 'docker-compose.override.yml').touch()
+            if camera_setup is not None:
+                (root / 'scripts').mkdir()
+                (root / 'scripts/install.sh').write_text(camera_setup, newline='\n')
             if sources:
                 (root / 'Dockerfile').touch()
                 (root / 'requirements.txt').touch()
@@ -92,7 +95,7 @@ source ./oche.sh "$1"
             result, calls = self.run_helper(action)
             self.assertEqual(result.returncode, 0, result.stderr.decode())
             self.assertEqual(calls, '')
-            for command in ('start', 'stop', 'restart', 'update', 'pull'):
+            for command in ('start', 'stop', 'restart', 'update', 'pull', 'cameras'):
                 self.assertIn(command, result.stdout.decode())
             self.assertNotIn('build', result.stdout.decode())
             self.assertNotIn('push', result.stdout.decode())
@@ -101,3 +104,19 @@ source ./oche.sh "$1"
         result, calls = self.run_helper('update')
         self.assertEqual(result.returncode, 0, result.stderr.decode())
         self.assertIn('--force-recreate oche', calls)
+
+    def test_camera_setup_applies_without_pulling(self):
+        result, calls = self.run_helper('cameras', camera_setup='''
+reconfigure_cameras() { echo camera-setup >> calls; }
+''')
+        self.assertEqual(result.returncode, 0, result.stderr.decode())
+        self.assertIn('camera-setup', calls)
+        self.assertIn('config --quiet', calls)
+        self.assertIn('up -d --no-build --pull never --force-recreate oche', calls)
+        self.assertNotIn('\npull ', calls)
+
+    def test_camera_setup_failure_does_not_recreate_container(self):
+        for setup in (None, 'reconfigure_cameras() { return 1; }\n'):
+            result, calls = self.run_helper('cameras', camera_setup=setup)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertNotIn('up -d', calls)

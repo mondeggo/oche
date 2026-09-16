@@ -276,6 +276,31 @@ echo "Camera mappings saved in $PWD/$override"
 echo "Device mounts in the main Compose file remain in effect."
 )
 
+reconfigure_cameras() (
+    [[ "$(uname -s)" == Linux ]] || { echo "Camera setup requires Linux." >&2; exit 1; }
+    [[ -f docker-compose.yml ]] || { echo "Run camera setup from the Oche installation folder." >&2; exit 1; }
+    install_mode=detailed
+    install_home="$HOME"
+    if [[ -n "${SUDO_USER:-}" && "$SUDO_USER" != root ]]; then
+        install_home=$(getent passwd "$SUDO_USER" | cut -d: -f6)
+        [[ -n "$install_home" ]] || { echo "Cannot determine your home directory." >&2; exit 1; }
+    fi
+    sudo_cmd=()
+    if (( EUID != 0 )); then
+        command -v sudo >/dev/null || { echo "Install sudo or run as root." >&2; exit 1; }
+        sudo_cmd=(sudo)
+        sudo -v
+    fi
+    section "Camera access"
+    if ! command -v v4l2-ctl >/dev/null && command -v apt-get >/dev/null; then
+        echo "Installing v4l-utils to identify camera capture nodes..."
+        if ! "${sudo_cmd[@]}" apt-get update || ! "${sudo_cmd[@]}" apt-get install -y v4l-utils; then
+            echo "Camera probing installation failed; the 'all' fallback remains available."
+        fi
+    fi
+    configure_cameras
+)
+
 # Keep terminal input and installer state isolated from the Bash process reading
 # a piped script. Otherwise it reads /dev/tty as more shell code after main ends.
 main() (
@@ -373,6 +398,20 @@ if [[ "$source_dir" != "$install_dir" || ! -f "$install_dir/oche.sh" ]]; then
     trap - EXIT
 fi
 chmod +x "$install_dir/oche.sh"
+# Keep camera setup available offline through the management helper.
+mkdir -p -- "$install_dir/scripts"
+if [[ "$source_dir" != "$install_dir" || ! -f "$install_dir/scripts/install.sh" ]]; then
+    setup_tmp=$(mktemp "$install_dir/scripts/.install.XXXXXX")
+    trap 'rm -f -- "$setup_tmp"' EXIT
+    if [[ -n "$source_dir" && -f "$source_dir/scripts/install.sh" ]]; then
+        cp -- "$source_dir/scripts/install.sh" "$setup_tmp"
+    else
+        curl -fsSL --retry 3 "https://raw.githubusercontent.com/$repo/main/scripts/install.sh" -o "$setup_tmp"
+    fi
+    bash -n "$setup_tmp"
+    mv -- "$setup_tmp" "$install_dir/scripts/install.sh"
+    trap - EXIT
+fi
 cd -- "$install_dir"
 # Migrate the original local-image setting while preserving hardware edits.
 sed -i 's/^    image: oche:latest[[:space:]]*$/    image: "${OCHE_IMAGE:-oche:latest}"/' docker-compose.yml
@@ -482,7 +521,7 @@ section "Starting Oche"
 if [[ "$restart_policy" == "unless-stopped" ]]; then
     echo "Start on boot enabled. Manually stopping Oche keeps it stopped across reboots."
 else
-    echo "Start on boot disabled. Start Oche manually with: sudo ./oche.sh start"
+    echo "Start on boot disabled. Start Oche manually with: ./oche.sh start"
 fi
 section "Installation complete"
 echo "Oche containers started. The application may take a moment to initialize."
@@ -492,9 +531,10 @@ echo "Oche web UI: http://localhost:$web_port"
 echo "Autodarts board manager: http://localhost:3180"
 echo "Camera choices are saved in docker-compose.override.yml."
 printf '\n'
-echo "Manage Oche from $install_dir with: sudo ./oche.sh {start|stop|restart|update|pull}"
+echo "Manage Oche from $install_dir with: ./oche.sh {start|stop|restart|update|pull|cameras}"
 echo "Show all commands with: ./oche.sh -h"
-echo "Use the 'all' device choice for hot-plug cameras and serial controllers."
 )
 
-main "$@"
+if [[ -z "${BASH_SOURCE[0]:-}" || "${BASH_SOURCE[0]}" == "$0" ]]; then
+    main "$@"
+fi
