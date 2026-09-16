@@ -2,6 +2,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import RedirectResponse
 
 from app.config import load_config
 from app.routers import autodarts, autoglow, config, panels, system
@@ -50,7 +51,12 @@ async def supervisor(request: Request):
     return await autodarts.page(request)
 
 
-@app.get("/board")
+@app.get("/board", include_in_schema=False)
+async def legacy_board():
+    return RedirectResponse("/autodarts", status_code=308)
+
+
+@app.get("/autodarts")
 async def board(request: Request):
     return templates.TemplateResponse(
         "board.html",

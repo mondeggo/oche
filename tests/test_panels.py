@@ -33,7 +33,7 @@ class PanelTests(unittest.TestCase):
         panel = response.json()["panels"][0]
         self.assertTrue(load_config()["autostart_autodarts"])
         path = f'/panels/{panel["id"]}'
-        for page in ("/config", "/play", "/board", "/autodarts", "/autoglow"):
+        for page in ("/config", "/play", "/autodarts", "/supervisor", "/autoglow"):
             response = self.client.get(page)
             self.assertEqual(response.status_code, 200)
             self.assertIn(path, response.text)
@@ -134,7 +134,7 @@ class PanelTests(unittest.TestCase):
         self.assertEqual(hidden_ids(page), {"nav-link-play", "nav-link-board"})
         # Hiding a nav item doesn't take down its page.
         self.assertEqual(self.client.get("/play").status_code, 200)
-        self.assertEqual(self.client.get("/board").status_code, 200)
+        self.assertEqual(self.client.get("/autodarts").status_code, 200)
 
 
 if __name__ == "__main__":

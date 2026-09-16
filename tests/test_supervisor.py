@@ -45,3 +45,12 @@ class SupervisorTests(unittest.TestCase):
         logs = {'autoglow-web': 'server output', 'autoglow-listener': 'listener output'}
         with patch('app.routers.autoglow.autoglow.logs', return_value=logs):
             self.assertEqual(self.client.get('/autoglow/logs').json(), logs)
+
+    def test_board_path_moved_to_autodarts(self):
+        response = self.client.get('/autodarts')
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('id="board-frame"', response.text)
+        self.assertNotIn('supervisor-selector', response.text)
+        redirect = self.client.get('/board', follow_redirects=False)
+        self.assertEqual(redirect.status_code, 308)
+        self.assertEqual(redirect.headers['location'], '/autodarts')

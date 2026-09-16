@@ -8,7 +8,6 @@ from app.services import autodarts, autoglow
 router = APIRouter(prefix="/autodarts", tags=["autodarts"])
 
 
-@router.get("")
 async def page(request: Request):
     service = "autoglow" if request.query_params.get("service") == "autoglow" else "autodarts"
     return templates.TemplateResponse(

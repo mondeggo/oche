@@ -78,34 +78,34 @@ class NavigationTests(unittest.TestCase):
         return frame
 
     def test_navigation_preserves_camera_documents(self):
-        self.page.goto('http://oche.test/board')
+        self.page.goto('http://oche.test/autodarts')
         board = self.board()
         board.evaluate('window.streamMarker = "original"')
         self.go('/config')
         self.go('/play')
-        self.go('/board')
+        self.go('/autodarts')
         self.assertEqual(self.board().evaluate('window.streamMarker'), 'original')
         self.assertEqual(self.board_loads, 1)
-        self.assertEqual(self.page.title(), 'Oche - Board')
+        self.assertEqual(self.page.title(), 'Oche - Autodarts')
         self.page.go_back()
         self.page.wait_for_url('http://oche.test/play')
         self.page.go_forward()
-        self.page.wait_for_url('http://oche.test/board')
+        self.page.wait_for_url('http://oche.test/autodarts')
         self.assertEqual(self.board().evaluate('window.streamMarker'), 'original')
-        self.go('/autodarts')
+        self.go('/supervisor')
         other = self.board()
         other.evaluate('window.streamMarker = "autodarts"')
         self.view().locator('#toggle-logs-btn').click()
         self.view().locator('#toggle-play-btn').click()
         self.view().locator('#toggle-board-btn').click()
         self.go('/config')
-        self.go('/autodarts')
+        self.go('/supervisor')
         self.assertEqual(self.board().evaluate('window.streamMarker'), 'autodarts')
         self.assertEqual(self.board_loads, 2)
         self.assertEqual(self.errors, [])
 
     def test_poll_failure_preserves_stream_but_restart_reloads(self):
-        for path in ('/board', '/autodarts'):
+        for path in ('/autodarts', '/supervisor'):
             with self.subTest(path=path):
                 self.page.goto('http://oche.test' + path)
                 board = self.board()
@@ -126,12 +126,12 @@ class NavigationTests(unittest.TestCase):
 
     def test_board_entered_from_settings_retains_stream_and_refreshes_nav(self):
         self.page.goto('http://oche.test/config')
-        self.go('/board')
+        self.go('/autodarts')
         self.board().evaluate('window.streamMarker = "retained"')
         self.go('/config')
         with self.page.expect_response('**/config/data'):
             self.view().locator('#cfg-show-play').uncheck()
-        self.go('/board')
+        self.go('/autodarts')
         self.view().locator('#nav-link-play').wait_for(state='hidden')
         self.assertEqual(self.board().evaluate('window.streamMarker'), 'retained')
         self.assertEqual(self.board_loads, 1)

@@ -1,7 +1,7 @@
 // Keep camera-bearing documents attached for the lifetime of this browser tab.
 // Moving an iframe between DOM parents also reloads it, so each view stays put.
 (() => {
-  const persistent = path => path === '/board' || path === '/autodarts';
+  const persistent = path => path === '/autodarts' || path === '/supervisor';
   const internal = url => url.origin === location.origin &&
     (/^\/(?:board|autodarts|supervisor|play|autoglow|config)?$/.test(url.pathname) ||
      /^\/panels\/[^/]+$/.test(url.pathname));
@@ -15,13 +15,13 @@
     const initialUrl = new URL(location.href);
     const views = new Map();
     let active = { element: original, url: initialUrl, original: true, title: document.title };
-    if (persistent(initialUrl.pathname)) views.set(initialUrl.pathname, active);
+    if (persistent(initialUrl.pathname)) views.set(initialUrl.pathname + initialUrl.search, active);
 
     function navigate(href, push = true) {
       const url = new URL(href, location.href);
       if (!internal(url)) return false;
       if (push && url.href === location.href) return true;
-      let next = views.get(url.pathname);
+      let next = views.get(url.pathname + url.search);
       const retained = Boolean(next);
       if (!next) {
         const frame = document.createElement('iframe');
@@ -35,7 +35,7 @@
           if (active === next) document.title = frame.contentDocument.title;
         });
         document.body.appendChild(frame);
-        if (persistent(url.pathname)) views.set(url.pathname, next);
+        if (persistent(url.pathname)) views.set(url.pathname + url.search, next);
       }
       active.element.hidden = true;
       if (!active.original && !persistent(active.url.pathname) && active !== next) {
