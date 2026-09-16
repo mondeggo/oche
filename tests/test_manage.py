@@ -40,7 +40,7 @@ source ./oche.sh "$1"
             return result, calls
 
     def test_start_and_restart_pull_before_starting_even_with_local_image(self):
-        for action in ('start', 'restart'):
+        for action in ('start', 'restart', 'update'):
             with self.subTest(action=action):
                 result, calls = self.run_helper(action)
                 self.assertEqual(result.returncode, 0, result.stderr.decode())
@@ -50,7 +50,7 @@ source ./oche.sh "$1"
                 self.assertLess(calls.index('pull registry.example/oche:custom'), calls.index('up -d'))
 
     def test_start_and_restart_use_local_image_when_registry_unavailable(self):
-        for action in ('start', 'restart'):
+        for action in ('start', 'restart', 'update'):
             with self.subTest(action=action):
                 result, calls = self.run_helper(action, pull=False)
                 self.assertEqual(result.returncode, 0, result.stderr.decode())
@@ -58,10 +58,10 @@ source ./oche.sh "$1"
                 self.assertIn('up -d', calls)
                 self.assertNotIn('\nbuild ', calls)
 
-    def test_failed_pull_without_image_or_sources_reports_error(self):
+    def test_failed_pull_without_image_reports_error(self):
         result, calls = self.run_helper('pull', local=False, pull=False)
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn('source checkout', result.stderr.decode())
+        self.assertIn('No local image available', result.stderr.decode())
         self.assertNotIn('\nbuild ', calls)
 
     def test_failed_pull_preserves_local_image(self):
@@ -69,22 +69,35 @@ source ./oche.sh "$1"
         self.assertEqual(result.returncode, 0)
         self.assertNotIn('up -d', calls)
 
-    def test_missing_image_falls_back_to_source_build(self):
+    def test_missing_image_never_builds_even_with_sources(self):
         result, calls = self.run_helper('restart', local=False, pull=False, sources=True)
-        self.assertEqual(result.returncode, 0, result.stderr.decode())
-        self.assertIn('build -t registry.example/oche:custom .', calls)
-        self.assertIn('--force-recreate oche', calls)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertNotIn('build -t', calls)
+        self.assertNotIn('up -d', calls)
 
-    def test_stop_keeps_volumes_and_push_uses_configured_image(self):
+    def test_stop_keeps_volumes(self):
         result, calls = self.run_helper('stop')
         self.assertEqual(result.returncode, 0)
         self.assertIn(' down\n', calls)
         self.assertNotIn('--volumes', calls)
-        result, calls = self.run_helper('push')
-        self.assertEqual(result.returncode, 0)
-        self.assertIn('push registry.example/oche:custom', calls)
 
     def test_invalid_action_does_not_call_docker(self):
-        result, calls = self.run_helper('unknown')
-        self.assertNotEqual(result.returncode, 0)
-        self.assertEqual(calls, '')
+        for action in ('unknown', 'build', 'push'):
+            result, calls = self.run_helper(action)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertEqual(calls, '')
+
+    def test_help_explains_commands_without_calling_docker(self):
+        for action in ('-h', '--help'):
+            result, calls = self.run_helper(action)
+            self.assertEqual(result.returncode, 0, result.stderr.decode())
+            self.assertEqual(calls, '')
+            for command in ('start', 'stop', 'restart', 'update', 'pull'):
+                self.assertIn(command, result.stdout.decode())
+            self.assertNotIn('build', result.stdout.decode())
+            self.assertNotIn('push', result.stdout.decode())
+
+    def test_update_recreates_container(self):
+        result, calls = self.run_helper('update')
+        self.assertEqual(result.returncode, 0, result.stderr.decode())
+        self.assertIn('--force-recreate oche', calls)

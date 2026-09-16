@@ -17,9 +17,16 @@ The image is Linux-based (AMD64 and ARM64, including 64-bit Raspberry Pi OS). It
 curl -fsSL https://raw.githubusercontent.com/mondeggo/oche/main/scripts/install.sh | bash
 ```
 
-Follow the prompts to choose your installation folder, cameras, and startup preference. Docker is installed if needed.
+The installer first offers two modes. Docker is installed if needed.
 
-Camera setup probes `/dev/video*` with `v4l2-ctl` using the installer's sudo access.
+- **Easy (default):** installs in `~/oche`, enables startup on boot, and mounts
+  the full host `/dev` directory with device permissions for cameras, serial
+  controllers, and devices connected later. Uses `mondeggo/oche:latest` unless
+  an image is already configured.
+- **Detailed:** lets you choose the installation folder, startup preference,
+  and camera access.
+
+Detailed camera setup probes `/dev/video*` with `v4l2-ctl` using administrator access.
 It selects capture nodes and excludes metadata nodes and Raspberry Pi video
 processors. On apt-based systems, it installs `v4l-utils` if needed. Select camera numbers, or
 choose `all` to mount the entire host `/dev` directory (including non-camera
@@ -41,40 +48,57 @@ explicit `devices` mapping and the device's host group ID in `group_add` in
 `docker-compose.override.yml`. Mounting `/dev` alone does not grant the non-root
 application device access. Your settings and board data stay in the installation's `data/` folder.
 
+If an existing Autodarts configuration is found at
+`~/.config/autodarts/config.toml`, the installer reuses it by default. This is a
+read/write mount of that directory, so changes in Oche also update the existing
+configuration. Stop the host's Autodarts service before starting Oche to free
+the cameras and port `3180`.
+
+To disable reuse and use Oche's separate configuration, add this to `.env` in
+the installation folder, then run `./oche.sh restart`:
+
+```dotenv
+OCHE_REUSE_AUTODARTS_CONFIG=false
+```
+
+Set it to `true` (the default) to reuse the detected host configuration again.
+The host directory stays mounted but is unused when the flag is `false`. Existing
+installations need to rerun the updated installer once to generate the
+configurable mount. If no existing setup is detected, Oche already uses
+`data/autodarts` by default.
+
 Compose mounts the Linux Docker host's `/etc/localtime` read-only so Oche uses
 the host's timezone. Development inherits this mount. With Docker Desktop, the
 host is its Linux VM, whose timezone may differ from Windows. Existing installs
 keep their Compose file: add the `/etc/localtime` mount from this repository and
-run `sudo docker compose up -d` to apply it.
+run `docker compose up -d` to apply it.
 
-## Update
+## Manage Oche
 
-From your installation folder:
-
-```bash
-sudo docker compose pull
-sudo docker compose up -d --no-build
-```
-
-The installer also places `oche.sh` next to Compose. It uses the image configured
+The installer includes `oche.sh` to start, stop, restart, and update the container.
+It uses the image configured
 in `.env`/Compose and includes `docker-compose.override.yml` for camera mappings.
 Run it from the installation folder:
 
 ```bash
-sudo ./oche.sh start    # Pull the latest image and start
-sudo ./oche.sh restart  # Pull the latest image and recreate the container
-sudo ./oche.sh pull     # Download an update; then run restart to apply it
-sudo ./oche.sh stop     # Remove containers, keeping persistent data
+./oche.sh -h            # Show all commands and help (also --help)
+./oche.sh start         # Pull the latest image and start
+./oche.sh stop          # Remove containers, keeping persistent data
+./oche.sh update        # Pull the latest image and recreate the container
+./oche.sh restart       # Pull the latest image and recreate the container
+./oche.sh pull          # Download the image without restarting
 ```
 
-`build` requires a source checkout. If pulling fails, the helper uses an existing
-local image or tries building when sources are available. `push` publishes the
-configured local image and requires registry write access. Docker Compose v2 is
-required. Use `bash oche.sh` in a checkout if the file is not executable.
+GitHub Actions builds and publishes the images. If pulling fails, the helper
+uses an existing local image or reports an error if none is available.
+Docker Compose v2 and permission to access Docker are required. If the installer
+added you to the Docker group, log out and back in before running these commands.
+If `./oche.sh` cannot run because the file lacks execute permission, use
+`bash oche.sh start` (or another command) from the folder containing the script.
 
 ## Development
 
-With Docker running, run from a source checkout:
+With Docker running, open a terminal in your local copy of this repository and run:
 
 ```bash
 bash dev.sh
@@ -84,12 +108,3 @@ On Windows, run `.\dev.bat` instead. Docker Desktop must have host networking
 enabled; device mounts refer to its Linux VM. No local Python installation is needed to launch development.
 
 This builds and launches a local image, shows logs, and reloads Python changes automatically. Open **http://localhost:8180**; refresh the browser after editing templates or styles. Press **Ctrl+C** to stop.
-
-Stop any other Oche container first to free ports `8180` and `3180`. Development uses a separate Docker volume for data and includes your local camera overrides when present.
-
-Application code is in `app/`. To run the checks locally:
-
-```bash
-python3 -m pip install -r requirements-dev.txt
-python3 -m unittest discover -s tests
-```

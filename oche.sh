@@ -5,10 +5,27 @@ set -euo pipefail
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
-usage() { echo "Usage: $0 {start|restart|pull|stop|build|push}"; }
+usage() {
+    cat <<EOF
+Usage: $0 {start|stop|restart|update|pull}
+       $0 -h | --help
+
+Manage Oche using the Compose files and .env beside this script.
+
+  start    Pull the configured image and start Oche.
+  stop     Remove containers, keeping persistent data.
+  restart  Pull the configured image and recreate Oche.
+  update   Download and apply an update (same as restart).
+  pull     Download the image without restarting Oche.
+  -h, --help  Show this help without requiring Docker.
+
+If pulling fails, start/restart/update/pull reuse an existing local image
+or report an error. Docker Compose v2 is required for management commands.
+EOF
+}
 [[ $# -eq 1 ]] || { usage >&2; exit 1; }
 case "$1" in
-    start|restart|pull|stop|build|push) ;;
+    start|restart|update|pull|stop) ;;
     -h|--help) usage; exit 0 ;;
     *) usage >&2; exit 1 ;;
 esac
@@ -26,33 +43,21 @@ compose() { "${COMPOSE_CMD[@]}" "$@"; }
 IMAGE=$(compose config --images oche)
 [[ -n "$IMAGE" && "$IMAGE" != *$'\n'* ]] || { echo "Expected one image for the oche service." >&2; exit 1; }
 
-build_image() {
-    if [[ ! -f Dockerfile || ! -f requirements.txt || ! -d app ]]; then
-        echo "Local builds need an Oche source checkout (Dockerfile, requirements.txt, and app/). This installation uses a published image." >&2
-        return 1
-    fi
-    docker build -t "$IMAGE" .
-}
-
 ensure_image() {
     if ! docker pull "$IMAGE"; then
-        echo "Pull failed; checking for a local image or source checkout." >&2
+        echo "Pull failed; checking for an existing local image." >&2
         if docker image inspect "$IMAGE" >/dev/null 2>&1; then
             echo "Using existing local image: $IMAGE"
         else
-            build_image
+            echo "No local image available for $IMAGE. Check registry access and retry." >&2
+            return 1
         fi
     fi
 }
 
 case "$1" in
     start) ensure_image; compose up -d --no-build --pull never oche ;;
-    restart) ensure_image; compose up -d --no-build --pull never --force-recreate oche ;;
+    restart|update) ensure_image; compose up -d --no-build --pull never --force-recreate oche ;;
     pull) ensure_image ;;
     stop) compose down ;;
-    build) build_image ;;
-    push)
-        docker image inspect "$IMAGE" >/dev/null || { echo "Build or pull $IMAGE before pushing." >&2; exit 1; }
-        docker push "$IMAGE"
-        ;;
 esac

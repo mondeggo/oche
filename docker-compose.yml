@@ -8,6 +8,7 @@ services:
 
     environment:
       OCHE_PORT: "${OCHE_PORT:-80}"
+      OCHE_REUSE_AUTODARTS_CONFIG: "${OCHE_REUSE_AUTODARTS_CONFIG:-true}"
 
     volumes:
       # Persistent application data

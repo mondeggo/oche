@@ -103,6 +103,57 @@ v4l2-ctl() {
         result = subprocess.run([BASH, "-n", "scripts/install.sh"], cwd=ROOT, capture_output=True)
         self.assertEqual(result.returncode, 0, result.stderr.decode())
 
+    def test_install_mode_default_detailed_and_invalid_retry(self):
+        helpers = SCRIPT[:SCRIPT.index('install_docker() (')]
+        for answer, expected in (('', 'easy'), ('1', 'easy'), ('2', 'detailed'),
+                                 ('wrong\\n2', 'detailed')):
+            with self.subTest(answer=answer):
+                output = self.run_bash(helpers +
+                    f"\nchoose_install_mode <<< $'{answer}'\nprintf 'MODE=%s' \"$install_mode\"")
+                self.assertTrue(output.endswith('MODE=' + expected), output)
+
+    def test_easy_defaults_and_full_device_access_without_prompts_or_probes(self):
+        helpers = SCRIPT[SCRIPT.index('autodarts_config_mount() ('):SCRIPT.index('main() (')]
+        folder_block = SCRIPT[SCRIPT.index('section "Installation folder"'):
+                              SCRIPT.index('mkdir -p -- "$install_dir"')]
+        startup_block = SCRIPT[SCRIPT.index('section "Startup"'):
+                               SCRIPT.index('section "Docker setup"')]
+        with tempfile.TemporaryDirectory() as folder:
+            source = helpers + '''
+section() { printf '\\n%s\\n\\n' "$1"; }
+install_mode=easy
+install_home="$PWD"
+read() {
+    if [[ " $* " == *' -p '* ]]; then echo UNEXPECTED_PROMPT >&2; return 1; fi
+    builtin read "$@"
+}
+discover_cameras() { echo UNEXPECTED_PROBE >&2; }
+find() { printf '44\\n20\\n'; }
+getent() { printf 'video:x:44:\\ndialout:x:20:\\n'; }
+''' + folder_block + startup_block + '''
+[[ "$install_dir" == "$install_home/oche" ]]
+[[ "$restart_policy" == unless-stopped ]]
+configure_cameras
+'''
+            self.run_bash(source, cwd=folder)
+            override = (Path(folder) / 'docker-compose.override.yml').read_text()
+            self.assertIn('"/dev:/dev"', override)
+            self.assertIn("'a *:* rwm'", override)
+            self.assertIn('      - "20"\n      - "44"', override)
+
+    def test_detailed_camera_selection_still_accepts_none(self):
+        helpers = SCRIPT[SCRIPT.index('autodarts_config_mount() ('):SCRIPT.index('main() (')]
+        with tempfile.TemporaryDirectory() as folder:
+            self.run_bash(helpers + '''
+install_mode=detailed
+install_home="$PWD"
+discover_cameras() { :; }
+configure_cameras <<< none
+''', cwd=folder)
+            override = (Path(folder) / 'docker-compose.override.yml').read_text()
+            self.assertIn('devices: []', override)
+            self.assertNotIn('device_cgroup_rules', override)
+
     def test_existing_autodarts_configuration_mount(self):
         function = SCRIPT[SCRIPT.index('autodarts_config_mount() ('):SCRIPT.index('configure_cameras() (')]
         with tempfile.TemporaryDirectory() as folder:
@@ -114,7 +165,7 @@ v4l2-ctl() {
             source = function + '\ninstall_home="$PWD/user\'s \\$home"\nautodarts_config_mount\n'
             output = self.run_bash(source, cwd=folder)
             self.assertIn("user''s $$home/.config/autodarts'", output)
-            self.assertIn('target: /app/data/autodarts', output)
+            self.assertIn('target: /app/host-autodarts', output)
             self.assertIn('create_host_path: false', output)
             self.assertNotIn('[cam]', output)
             self.assertEqual(config.read_text(), '[cam]\ncams = []\n')

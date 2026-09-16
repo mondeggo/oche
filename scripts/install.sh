@@ -3,6 +3,24 @@
 # Local:  bash scripts/install.sh [OWNER/REPO]
 set -euo pipefail
 
+section() { printf '\n%s\n\n' "$1"; }
+
+choose_install_mode() {
+    section "Oche installation"
+    echo "  1) Easy (default): ~/oche, start on boot, full /dev access."
+    echo "     Includes cameras, serial controllers, and devices connected later."
+    echo "  2) Detailed: choose the folder, startup preference, and camera access."
+    printf '\n'
+    while true; do
+        read -r -p "Choose [1/2] (default: 1): " mode_choice || mode_choice=""
+        case "$mode_choice" in
+            1|easy|"") install_mode=easy; break ;;
+            2|detailed) install_mode=detailed; break ;;
+            *) printf '\nPlease enter 1 or 2.\n\n' ;;
+        esac
+    done
+}
+
 # Subshells keep helper variables and cleanup traps isolated.
 install_docker() (
 if [[ "$(uname -s)" != "Linux" ]]; then
@@ -147,7 +165,7 @@ autodarts_config_mount() (
         config_dir="${config_dir//\'/\'\'}"
         printf '      - type: bind\n'
         printf "        source: '%s'\n" "$config_dir"
-        printf '        target: /app/data/autodarts\n'
+        printf '        target: /app/host-autodarts\n'
         printf '        bind:\n          create_host_path: false\n'
     fi
 )
@@ -160,6 +178,11 @@ if [[ -e "$override" ]] && [[ "$(head -n 1 "$override")" != "$marker" ]]; then
     exit 1
 fi
 
+selected=()
+if [[ "${install_mode:-detailed}" == easy ]]; then
+    choice=all
+    echo "Easy install: granting access to the full host /dev directory."
+else
 mapfile -t cameras < <(discover_cameras)
 
 defaults=()
@@ -211,10 +234,13 @@ while true; do
     echo "Choose valid numbers from the list, 'all', or 'none'."
 done
 
+fi
+
 temp_file=$(mktemp ./camera-config.XXXXXX)
 trap 'rm -f "$temp_file"' EXIT
 {
     printf '%s\nservices:\n  oche:\n' "$marker"
+    printf '    environment:\n      OCHE_REUSE_AUTODARTS_CONFIG: "${OCHE_REUSE_AUTODARTS_CONFIG:-true}"\n'
     if [[ "$choice" == all || -f "$install_home/.config/autodarts/config.toml" ]]; then
         printf '    volumes:\n'
         autodarts_config_mount
@@ -272,6 +298,7 @@ main() (
         return 1
     fi
     exec 0<&3
+    choose_install_mode
     if [[ -z "$source_dir" ]]; then
         export OCHE_IMAGE="${OCHE_IMAGE:-mondeggo/oche:latest}"
     fi
@@ -282,6 +309,11 @@ if [[ -n "${SUDO_USER:-}" && "$SUDO_USER" != root ]]; then
     [[ -n "$install_home" ]] || { echo "Cannot determine your home directory." >&2; exit 1; }
 fi
 
+section "Installation folder"
+if [[ "$install_mode" == easy ]]; then
+    install_dir="$install_home/oche"
+    echo "Using $install_dir"
+else
 echo "Where should Oche be installed?"
 echo "  1) $install_home/oche (default)"
 echo "  2) $invocation_dir/oche"
@@ -306,6 +338,7 @@ while true; do
         *) echo "Please enter 1, 2, or 3." ;;
     esac
 done
+fi
 
 mkdir -p -- "$install_dir"
 install_dir=$(cd -- "$install_dir" && pwd -P)
@@ -351,10 +384,21 @@ image_ref="${OCHE_IMAGE:-}"
 if [[ -z "$image_ref" && -f .env ]]; then
     image_ref=$(sed -n 's/^OCHE_IMAGE=//p' .env | tail -n 1)
 fi
+image_ref="${image_ref:-mondeggo/oche:latest}"
 while [[ ! "$image_ref" =~ ^[a-z0-9._-]+(/[a-z0-9._-]+)+:[a-zA-Z0-9_][a-zA-Z0-9._-]*$ ]]; do
+    if [[ "$install_mode" == easy ]]; then
+        echo "Invalid configured image: $image_ref. Correct OCHE_IMAGE or use Detailed installation." >&2
+        exit 1
+    fi
     read -r -p "Published image (mondeggo/oche:latest): " image_ref || exit 1
+    image_ref="${image_ref:-mondeggo/oche:latest}"
 done
 
+section "Startup"
+if [[ "$install_mode" == easy ]]; then
+    restart_policy=unless-stopped
+    echo "Start on boot enabled."
+else
 while true; do
     boot_choice=""
     if ! read -r -p "Start Oche on boot? [Y/n] (recommended: Yes): " boot_choice; then
@@ -367,7 +411,9 @@ while true; do
         *) echo "Please enter yes or no." ;;
     esac
 done
+fi
 
+section "Docker setup"
 sudo_cmd=()
 if (( EUID != 0 )); then
     command -v sudo >/dev/null || { echo "Install sudo or run as root." >&2; exit 1; }
@@ -386,13 +432,15 @@ if ! "${sudo_cmd[@]}" docker compose version; then
     exit 1
 fi
 
-if ! command -v v4l2-ctl >/dev/null && command -v apt-get >/dev/null; then
+section "Device access"
+if [[ "$install_mode" == detailed ]] && ! command -v v4l2-ctl >/dev/null && command -v apt-get >/dev/null; then
     echo "Installing v4l-utils to identify camera capture nodes..."
     if ! "${sudo_cmd[@]}" apt-get update || ! "${sudo_cmd[@]}" apt-get install -y v4l-utils; then
         echo "Camera probing installation failed; the 'all' fallback remains available."
     fi
 fi
 configure_cameras
+printf '\n'
 if [[ -f "$install_home/.config/autodarts/config.toml" ]]; then
     echo "Autodarts configuration: $install_home/.config/autodarts (mounted read/write)."
     echo "This directory must be writable by the container's UID 1000."
@@ -418,27 +466,34 @@ export OCHE_IMAGE="$image_ref"
 "${sudo_cmd[@]}" systemctl enable --now docker
 "${sudo_cmd[@]}" docker info >/dev/null
 
-echo "Downloading the published Oche image..."
+section "Downloading the published Oche image"
 "${sudo_cmd[@]}" docker compose pull
 # The image's oche user has UID/GID 1000. Create writable persistent storage.
 if [[ ! -e data ]]; then
     "${sudo_cmd[@]}" install -d -o 1000 -g 1000 -m 0755 data
 fi
-echo "Starting Oche..."
+# Keep separate storage ready when host configuration reuse is disabled in .env.
+if [[ ! -e data/autodarts ]]; then
+    "${sudo_cmd[@]}" install -d -o 1000 -g 1000 -m 0755 data/autodarts
+fi
+section "Starting Oche"
 "${sudo_cmd[@]}" docker compose up -d --no-build
 "${sudo_cmd[@]}" docker compose ps
 if [[ "$restart_policy" == "unless-stopped" ]]; then
     echo "Start on boot enabled. Manually stopping Oche keeps it stopped across reboots."
 else
-    echo "Start on boot disabled. Start Oche manually with: sudo docker compose up -d"
+    echo "Start on boot disabled. Start Oche manually with: sudo ./oche.sh start"
 fi
+section "Installation complete"
 echo "Oche containers started. The application may take a moment to initialize."
 web_port=$("${sudo_cmd[@]}" docker compose config | sed -n 's/^[[:space:]]*OCHE_PORT:[[:space:]]*["\x27]*\([0-9][0-9]*\).*/\1/p' | head -n 1)
 web_port="${web_port:-8180}"
 echo "Oche web UI: http://localhost:$web_port"
 echo "Autodarts board manager: http://localhost:3180"
 echo "Camera choices are saved in docker-compose.override.yml."
-echo "Manage Oche from $install_dir with: sudo ./oche.sh {start|restart|pull|stop|build|push}"
+printf '\n'
+echo "Manage Oche from $install_dir with: sudo ./oche.sh {start|stop|restart|update|pull}"
+echo "Show all commands with: ./oche.sh -h"
 echo "Use the 'all' device choice for hot-plug cameras and serial controllers."
 )
 
