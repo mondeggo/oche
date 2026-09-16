@@ -1,11 +1,13 @@
 // Close the panels dropdown when leaving it or pressing Escape.
 (() => {
-  const menu = document.querySelector('.panels-menu');
-  if (!menu) return;
   document.addEventListener('click', (event) => {
+    const menu = document.querySelector('.panels-menu');
+    if (!menu) return;
     if (!menu.contains(event.target)) menu.open = false;
   });
   document.addEventListener('keydown', (event) => {
+    const menu = document.querySelector('.panels-menu');
+    if (!menu) return;
     if (event.key === 'Escape' && menu.open) {
       menu.open = false;
       menu.querySelector('summary').focus();

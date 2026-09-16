@@ -46,6 +46,22 @@ body {
   transition: padding 0.2s ease, border-width 0.2s ease;
 }
 
+#oche-page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  height: 100%;
+}
+#oche-page[hidden], .oche-page-frame[hidden] { display: none; }
+.oche-page-frame {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: var(--bg);
+}
+
 .brand {
   font-size: 1.75rem;
   font-weight: bold;

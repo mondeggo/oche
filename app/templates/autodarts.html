@@ -204,26 +204,28 @@ block content %}
   const boardUrl = `${location.protocol}//${location.hostname}:3180/`;
   const boardFrame = document.getElementById("board-frame");
   const boardDisconnected = document.getElementById("board-disconnected");
+  let boardPid = null;
+  let boardLoaded = false;
 
   function showBoardOffline() {
     boardFrame.hidden = true;
-    boardFrame.removeAttribute("src");
     boardDisconnected.hidden = false;
   }
 
   function showBoardOnline() {
-    if (!boardFrame.src) {
+    if (!boardLoaded) {
       // Keep the iframe hidden until its document actually finishes loading -
       // an iframe paints white the instant navigation starts, before its own
       // stylesheet applies, so revealing it early causes a white flash.
       boardFrame.addEventListener(
         "load",
         () => {
-          boardFrame.hidden = false;
+          boardFrame.hidden = currentView !== "board";
         },
         { once: true },
       );
       boardFrame.src = boardUrl;
+      boardLoaded = true;
     } else {
       boardFrame.hidden = false;
     }
@@ -243,9 +245,14 @@ block content %}
     if (currentView !== "board") return;
     const res = await fetch("/autodarts/status").catch(() => null);
     const data = res ? await res.json().catch(() => null) : null;
-    if (!data || data.status !== "running" || !(await isBoardReachable())) {
+    const reachable = data && data.status === "running" && await isBoardReachable();
+    // A tab switch may happen while the health requests are in flight.
+    if (currentView !== "board") return;
+    if (!reachable) {
       showBoardOffline();
     } else {
+      if (boardPid !== null && data.pid !== boardPid) boardLoaded = false;
+      boardPid = data.pid;
       showBoardOnline();
     }
   }

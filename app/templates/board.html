@@ -20,12 +20,11 @@ const boardTitle = document.getElementById('board-placeholder-title');
 const boardText = document.getElementById('board-placeholder-text');
 const boardStartBtn = document.getElementById('board-start-btn');
 let boardLoaded = false;
+let boardPid = null;
 let starting = false;
 
 function showOffline() {
   boardFrame.hidden = true;
-  boardFrame.removeAttribute('src');
-  boardLoaded = false;
   boardDisconnected.hidden = false;
   boardTitle.textContent = 'Autodarts is offline';
   boardText.textContent = 'Start the board manager to bring your board online.';
@@ -77,6 +76,8 @@ async function pollBoardStatus() {
     return;
   }
   if (await isBoardReachable()) {
+    if (boardPid !== null && data.pid !== boardPid) boardLoaded = false;
+    boardPid = data.pid;
     showOnline();
   } else {
     showOffline();
@@ -105,7 +106,7 @@ async function startAutodarts() {
   while (Date.now() < deadline) {
     if (await isBoardReachable()) {
       starting = false;
-      showOnline();
+      await pollBoardStatus();
       return;
     }
     await new Promise(r => setTimeout(r, 1500));
