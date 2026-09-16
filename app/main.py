@@ -45,6 +45,11 @@ async def index(request: Request):
     )
 
 
+@app.get("/supervisor")
+async def supervisor(request: Request):
+    return await autodarts.page(request)
+
+
 @app.get("/board")
 async def board(request: Request):
     return templates.TemplateResponse(

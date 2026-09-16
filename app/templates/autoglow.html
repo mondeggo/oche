@@ -36,7 +36,7 @@
       const response = await fetch('/autoglow/status');
       if (!response.ok) throw new Error('Could not read AutoGlow status.');
       const status = await response.json();
-      if (status.status === 'running') {
+      if (status.processes['autoglow-web'] === 'running') {
         const url = new URL(location.href);
         url.port = status.web_port;
         url.pathname = '/'; url.search = ''; url.hash = '';

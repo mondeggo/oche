@@ -76,7 +76,7 @@ block content %}
 
 <h2 class="section-title">Services</h2>
 <div class="grid services-grid">
-  <a class="card" href="/autodarts">
+  <a class="card" href="/supervisor?service=autodarts">
     <div class="card-head">
       <h2 class="card-title">
         <img
@@ -96,7 +96,7 @@ block content %}
     </div>
     <p>Board manager status &amp; controls.</p>
   </a>
-  <a class="card" href="/autoglow">
+  <a class="card" href="/supervisor?service=autoglow">
     <div class="card-head">
       <h2>💡 AutoGlow 2</h2>
       {% set ag_ok = (autoglow_status.status == 'running') and

@@ -125,3 +125,13 @@ On Windows, run `.\dev.bat` instead. Docker Desktop must have host networking
 enabled; device mounts refer to its Linux VM. No local Python installation is needed to launch development.
 
 This builds and launches a local image, shows logs, and reloads Python changes automatically. Open **http://localhost:8180**; refresh the browser after editing templates or styles. Press **Ctrl+C** to stop.
+
+
+### Supervisor
+
+Open **Supervisor** to start, stop, or restart Autodarts and AutoGlow 2 and
+view their logs. AutoGlow's configuration server and lighting listener have
+separate log views and independent Start/Stop/Restart controls, each showing its PID. **Autodarts** in the navigation
+opens the full board interface; **AutoGlow 2** opens its lighting configuration.
+The Supervisor page is at `/supervisor`; the old `/autodarts` management URL
+remains available for existing bookmarks. The board interface stays at `/board`.

@@ -26,13 +26,6 @@
           href="/board"
           class="{{ 'active' if active_nav == 'board' }}"
           {{ 'hidden' if not nav_visibility.board }}
-          >Board</a
-        >
-        <a
-          id="nav-link-autodarts"
-          href="/autodarts"
-          class="{{ 'active' if active_nav == 'autodarts' }}"
-          {{ 'hidden' if not nav_visibility.autodarts }}
           >Autodarts</a
         >
         <a
@@ -93,6 +86,13 @@
           </div>
         </details>
         {% endif %}
+        <a
+          id="nav-link-autodarts"
+          href="/supervisor"
+          class="{{ 'active' if active_nav == 'autodarts' }}"
+          {{ 'hidden' if not nav_visibility.autodarts }}
+          >Supervisor</a
+        >
         <a
           href="/config"
           class="nav-icon {{ 'active' if active_nav == 'config' }}"

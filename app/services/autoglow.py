@@ -45,7 +45,9 @@ def stop() -> None:
 
 
 def get_status() -> dict:
-    running = all(p.status == "running" for p in _processes)
+    states = {p.name: p.status for p in _processes}
+    running = all(state == "running" for state in states.values())
+    partial = any(state == "running" for state in states.values())
     sync = {}
     if running:
         try:
@@ -54,12 +56,28 @@ def get_status() -> dict:
             pass
     return {
         "installed": installed(),
-        "status": "running" if running else "stopped",
+        "status": "running" if running else ("partial" if partial else "stopped"),
         "web_port": PORT,
         "autodarts_connected": bool(sync.get("local") or sync.get("online")),
-        "processes": {p.name: p.status for p in _processes},
+        "processes": states,
+        "pids": {p.name: p.pid for p in _processes},
     }
 
 
 def logs() -> dict:
     return {p.name: p.tail_log() for p in _processes}
+
+
+def restart() -> bool:
+    stop()
+    return start()
+
+
+def control_process(role: str, action: str) -> None:
+    process = _processes[{"web": 0, "listener": 1}[role]]
+    if action in ("stop", "restart"):
+        process.stop()
+    if action in ("start", "restart"):
+        if role == "listener" and process.status != "running":
+            (DATA_DIR / "autoglow" / ".sync_status.json").unlink(missing_ok=True)
+        process.start()

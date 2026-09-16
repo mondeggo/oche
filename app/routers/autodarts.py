@@ -3,18 +3,20 @@ from fastapi.responses import PlainTextResponse
 from app.templating import templates
 
 from app.config import load_config
-from app.services import autodarts
+from app.services import autodarts, autoglow
 
 router = APIRouter(prefix="/autodarts", tags=["autodarts"])
 
 
 @router.get("")
 async def page(request: Request):
+    service = "autoglow" if request.query_params.get("service") == "autoglow" else "autodarts"
     return templates.TemplateResponse(
         "autodarts.html",
         {
             "request": request,
-            "status": autodarts.get_status(),
+            "service": service,
+            "status": autoglow.get_status() if service == "autoglow" else autodarts.get_status(),
             "active_nav": "autodarts",
             "allow_header_autohide": True,
             "autohide_navbar_default": load_config().get("autohide_navbar_on_autodarts", False),

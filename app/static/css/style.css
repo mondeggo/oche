@@ -719,3 +719,15 @@ button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
   min-width: 0;
   min-height: 0;
 }
+
+.supervisor-selector { margin-bottom: 24px; }
+.supervisor-selector a { text-decoration: none; }
+
+.autoglow-controls-stack { display: grid; gap: 20px; min-width: 0; }
+.autoglow-controls-stack h2 { margin: 0; font-size: 1rem; }
+.autoglow-controls-stack .btn-row { flex-wrap: wrap; }
+.autoglow-community-links { display: grid; grid-template-rows: repeat(3, 1fr); gap: 12px; }
+.community-tile { flex-direction: column; justify-content: center; gap: 10px; padding: 14px 12px; min-height: 100px; }
+.community-logo { width: 140px; max-width: 75%; height: 34px; object-fit: contain; }
+.community-tile:first-child .community-logo { width: 150px; max-width: 90%; height: 35px; }
+.community-tile .play-tile-label { font-size: 0.75rem; white-space: nowrap; }

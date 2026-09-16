@@ -31,9 +31,8 @@ def main():
         sys.argv = [sys.argv[0], "--port", os.environ.get("OCHE_AUTOGLOW_PORT", "8080")]
         web.main()
     else:
-        import time
-        while not (data / "config.json").exists():
-            time.sleep(0.2)
+        if not (data / "config.json").exists():
+            web.init_config()
         listener = importlib.import_module("autodarts_wled_mini")
         listener.PROJECT_DIR = str(data)
         listener.CONFIG_FILE = web.CONFIG_FILE

@@ -53,3 +53,17 @@ class AutoGlowTests(unittest.TestCase):
         self.assertTrue(autoglow.get_status()["autodarts_connected"])
         self.processes[1].status = "stopped"
         self.assertFalse(autoglow.get_status()["autodarts_connected"])
+        self.assertEqual(autoglow.get_status()["status"], "partial")
+
+    def test_independent_controls_leave_other_process_alone(self):
+        for role, selected in (("web", 0), ("listener", 1)):
+            for action in ("start", "stop", "restart"):
+                for process in self.processes:
+                    process.reset_mock()
+                autoglow.control_process(role, action)
+                chosen = self.processes[selected]
+                other = self.processes[1 - selected]
+                self.assertEqual(chosen.start.call_count, int(action in ("start", "restart")))
+                self.assertEqual(chosen.stop.call_count, int(action in ("stop", "restart")))
+                other.start.assert_not_called()
+                other.stop.assert_not_called()

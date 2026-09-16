@@ -3,7 +3,7 @@
 (() => {
   const persistent = path => path === '/board' || path === '/autodarts';
   const internal = url => url.origin === location.origin &&
-    (/^\/(?:board|autodarts|play|autoglow|config)?$/.test(url.pathname) ||
+    (/^\/(?:board|autodarts|supervisor|play|autoglow|config)?$/.test(url.pathname) ||
      /^\/panels\/[^/]+$/.test(url.pathname));
   let shell = window;
   try {

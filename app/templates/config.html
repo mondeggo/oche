@@ -30,30 +30,6 @@
 </div>
 
 <div class="card">
-  <h2>Board</h2>
-  <div class="toggle-row">
-    <div class="toggle-label">
-      <span>Show in navbar</span>
-      <p class="hint">Show the Board tab in the top navigation.</p>
-    </div>
-    <label class="toggle">
-      <input type="checkbox" aria-label="Show Board in navbar" id="cfg-show-board" {{ 'checked' if config.show_board_in_navbar }}>
-      <span class="toggle-track"><span class="toggle-thumb"></span></span>
-    </label>
-  </div>
-  <div class="toggle-row">
-    <div class="toggle-label">
-      <span>Auto-hide navbar</span>
-      <p class="hint">Default the Board page's header to hidden. Can still be toggled per-browser from that page.</p>
-    </div>
-    <label class="toggle">
-      <input type="checkbox" aria-label="Auto-hide navbar on Board" id="cfg-autohide-navbar" {{ 'checked' if config.autohide_navbar_on_board }}>
-      <span class="toggle-track"><span class="toggle-thumb"></span></span>
-    </label>
-  </div>
-</div>
-
-<div class="card">
   <h2>Autodarts</h2>
   <div class="toggle-row">
     <div class="toggle-label">
@@ -61,7 +37,31 @@
       <p class="hint">Show the Autodarts tab in the top navigation.</p>
     </div>
     <label class="toggle">
-      <input type="checkbox" aria-label="Show Autodarts in navbar" id="cfg-show-autodarts" {{ 'checked' if config.show_autodarts_in_navbar }}>
+      <input type="checkbox" aria-label="Show Autodarts in navbar" id="cfg-show-board" {{ 'checked' if config.show_board_in_navbar }}>
+      <span class="toggle-track"><span class="toggle-thumb"></span></span>
+    </label>
+  </div>
+  <div class="toggle-row">
+    <div class="toggle-label">
+      <span>Auto-hide navbar</span>
+      <p class="hint">Default the Autodarts page's header to hidden. Can still be toggled per-browser from that page.</p>
+    </div>
+    <label class="toggle">
+      <input type="checkbox" aria-label="Auto-hide navbar on Autodarts" id="cfg-autohide-navbar" {{ 'checked' if config.autohide_navbar_on_board }}>
+      <span class="toggle-track"><span class="toggle-thumb"></span></span>
+    </label>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Supervisor</h2>
+  <div class="toggle-row">
+    <div class="toggle-label">
+      <span>Show in navbar</span>
+      <p class="hint">Show the Supervisor tab in the top navigation.</p>
+    </div>
+    <label class="toggle">
+      <input type="checkbox" aria-label="Show Supervisor in navbar" id="cfg-show-autodarts" {{ 'checked' if config.show_autodarts_in_navbar }}>
       <span class="toggle-track"><span class="toggle-thumb"></span></span>
     </label>
   </div>
@@ -78,10 +78,10 @@
   <div class="toggle-row">
     <div class="toggle-label">
       <span>Auto-hide navbar</span>
-      <p class="hint">Default the Autodarts page's header to hidden. Can still be toggled per-browser from that page.</p>
+      <p class="hint">Default the Supervisor page's header to hidden. Can still be toggled per-browser from that page.</p>
     </div>
     <label class="toggle">
-      <input type="checkbox" aria-label="Auto-hide navbar on Autodarts" id="cfg-autohide-navbar-autodarts" {{ 'checked' if config.autohide_navbar_on_autodarts }}>
+      <input type="checkbox" aria-label="Auto-hide navbar on Supervisor" id="cfg-autohide-navbar-autodarts" {{ 'checked' if config.autohide_navbar_on_autodarts }}>
       <span class="toggle-track"><span class="toggle-thumb"></span></span>
     </label>
   </div>

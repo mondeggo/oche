@@ -1,3 +1,4 @@
+from typing import Literal
 from fastapi import APIRouter, HTTPException, Request
 from app.templating import templates
 
@@ -41,3 +42,31 @@ def start():
 @router.get("/logs")
 def logs():
     return autoglow.logs()
+
+
+@router.post("/stop")
+def stop():
+    autoglow.stop()
+    return autoglow.get_status()
+
+
+@router.post("/restart")
+def restart():
+    if not autoglow.installed():
+        raise HTTPException(status_code=503, detail="AutoGlow 2 is not installed in this image.")
+    try:
+        autoglow.restart()
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    return autoglow.get_status()
+
+
+@router.post("/process/{role}/{action}")
+def control_process(role: Literal["web", "listener"], action: Literal["start", "stop", "restart"]):
+    if action != "stop" and not autoglow.installed():
+        raise HTTPException(status_code=503, detail="AutoGlow 2 is not installed in this image.")
+    try:
+        autoglow.control_process(role, action)
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    return autoglow.get_status()
