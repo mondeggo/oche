@@ -1,51 +1,65 @@
 import json
-import socket
-import time
-from typing import Optional
+import os
+from pathlib import Path
+import sys
 
-import serial
-import serial.tools.list_ports
+from app.config import DATA_DIR
+from app.services.process_manager import ManagedProcess, registry
 
-from app.config import load_config
+SOURCE = Path(os.environ.get("OCHE_AUTOGLOW_SOURCE", "/opt/autoglow"))
+PORT = int(os.environ.get("OCHE_AUTOGLOW_PORT", "8080"))
+ROOT = Path(__file__).resolve().parents[2]
+_processes = [
+    registry.register(ManagedProcess(
+        name=f"autoglow-{role}",
+        command=[sys.executable, "-u", "-m", "app.autoglow_runner", role],
+        cwd=ROOT,
+    )) for role in ("web", "listener")
+]
 
-KNOWN_VID_PIDS = [(0x10C4, 0xEA60), (0x1A86, 0x7523), (0x0403, 0x6001), (0x303A, 0x1001)]
+
+def installed() -> bool:
+    return all((SOURCE / name).is_file() for name in
+               ("web_server.py", "autodarts_wled_mini.py"))
 
 
-def find_esp32_port() -> Optional[str]:
-    for port in serial.tools.list_ports.comports():
-        if (port.vid, port.pid) in KNOWN_VID_PIDS:
-            return port.device
-    return None
-
-
-def check_autodarts_connection() -> bool:
-    cfg = load_config()["autoglow"]
-    try:
-        with socket.create_connection((cfg["ws_host"], cfg["ws_port"]), timeout=0.5):
-            return True
-    except OSError:
+def start() -> bool:
+    if not installed():
         return False
+    # Discard connection state left by a previous listener.
+    if _processes[1].status != "running":
+        (DATA_DIR / "autoglow" / ".sync_status.json").unlink(missing_ok=True)
+    started = False
+    try:
+        for process in _processes:
+            started = process.start() or started
+    except RuntimeError:
+        stop()
+        raise
+    return started
+
+
+def stop() -> None:
+    for process in reversed(_processes):
+        process.stop()
 
 
 def get_status() -> dict:
-    port = find_esp32_port()
+    running = all(p.status == "running" for p in _processes)
+    sync = {}
+    if running:
+        try:
+            sync = json.loads((DATA_DIR / "autoglow" / ".sync_status.json").read_text())
+        except (OSError, ValueError):
+            pass
     return {
-        "hardware_found": port is not None,
-        "port": port,
-        "autodarts_connected": check_autodarts_connection(),
+        "installed": installed(),
+        "status": "running" if running else "stopped",
+        "web_port": PORT,
+        "autodarts_connected": bool(sync.get("local") or sync.get("online")),
+        "processes": {p.name: p.status for p in _processes},
     }
 
 
-def test_animation(port: Optional[str] = None) -> None:
-    """Sends a brief rainbow test animation, then settles to green ('Throw')."""
-    port = port or find_esp32_port()
-    if not port:
-        raise RuntimeError("No ESP32 detected")
-
-    with serial.Serial(port, 115200, timeout=1) as ser:
-        time.sleep(1.5)  # let the serial connection settle
-        rainbow = {"on": True, "bri": 255, "seg": {"fx": 9, "sx": 128, "ix": 128}}
-        ser.write((json.dumps(rainbow) + "\n").encode())
-        time.sleep(3)
-        throw = {"on": True, "bri": 255, "seg": {"fx": 0, "col": [[0, 255, 0]]}}
-        ser.write((json.dumps(throw) + "\n").encode())
+def logs() -> dict:
+    return {p.name: p.tail_log() for p in _processes}

@@ -1,59 +1,80 @@
 {% extends "base.html" %}
-{% block title %}Oche - AutoGlow{% endblock %}
+{% block title %}Oche - AutoGlow 2{% endblock %}
 {% block content %}
-<h1>💡 AutoGlow</h1>
-<p class="subtitle">Control WLED-based board lighting connected over USB serial.</p>
-
-<div class="card status-card">
-  <div class="status-row">
-    <span>Hardware:</span>
-    <span id="ag-hw" class="badge {{ 'badge-green' if status.hardware_found else 'badge-yellow' }}">
-      {{ status.port if status.hardware_found else 'Not found' }}
-    </span>
-  </div>
-  <div class="status-row">
-    <span>Autodarts connection:</span>
-    <span id="ag-ws" class="badge {{ 'badge-green' if status.autodarts_connected else 'badge-yellow' }}">
-      {{ 'Connected' if status.autodarts_connected else 'Disconnected' }}
-    </span>
+<div class="autoglow-viewport">
+<div id="ag-placeholder" class="board-placeholder">
+  <div class="board-placeholder-inner">
+    <h1>AutoGlow 2</h1>
+    <p id="ag-message">Loading lighting controls…</p>
+    <button id="ag-start" hidden>Start AutoGlow 2</button>
   </div>
 </div>
-
-<div class="btn-row">
-  <button id="btn-test" class="btn-success" onclick="testAnimation()">✨ Test Animation</button>
+<iframe id="ag-frame" class="board-frame" title="AutoGlow 2 configuration" hidden></iframe>
 </div>
-
-<p class="hint">If no hardware is detected, make sure the ESP32/WLED device's serial port
-  (e.g. <code>/dev/ttyUSB0</code>) is accessible to the container user. With the
-  installer's <code>all</code> device choice, host devices and their groups are configured automatically.</p>
-
 <script>
-async function refresh() {
-  const res = await fetch('/autoglow/status');
-  const data = await res.json();
-  const hw = document.getElementById('ag-hw');
-  hw.textContent = data.hardware_found ? data.port : 'Not found';
-  hw.className = 'badge ' + (data.hardware_found ? 'badge-green' : 'badge-yellow');
-
-  const ws = document.getElementById('ag-ws');
-  ws.textContent = data.autodarts_connected ? 'Connected' : 'Disconnected';
-  ws.className = 'badge ' + (data.autodarts_connected ? 'badge-green' : 'badge-yellow');
-}
-
-async function testAnimation() {
-  const btn = document.getElementById('btn-test');
-  btn.disabled = true;
-  try {
-    const res = await fetch('/autoglow/test', { method: 'POST' });
-    if (!res.ok) {
-      const err = await res.json();
-      alert(err.detail || 'Test failed');
+(() => {
+  const frame = document.getElementById('ag-frame');
+  const placeholder = document.getElementById('ag-placeholder');
+  const message = document.getElementById('ag-message');
+  const button = document.getElementById('ag-start');
+  let loaded = false;
+  let ready = false;
+  let online = false;
+  let refreshing = false;
+  frame.addEventListener('load', () => {
+    if (!loaded) return;
+    ready = true;
+    if (online) {
+      frame.hidden = false;
+      placeholder.hidden = true;
     }
-  } finally {
-    btn.disabled = false;
+  });
+  async function refresh() {
+    if (refreshing) return;
+    refreshing = true;
+    try {
+      const response = await fetch('/autoglow/status');
+      if (!response.ok) throw new Error('Could not read AutoGlow status.');
+      const status = await response.json();
+      if (status.status === 'running') {
+        const url = new URL(location.href);
+        url.port = status.web_port;
+        url.pathname = '/'; url.search = ''; url.hash = '';
+        await fetch(url, {mode: 'no-cors', cache: 'no-store'});
+        online = true;
+        if (!loaded) {
+          ready = false;
+          loaded = true;
+          frame.src = url.href;
+        }
+        frame.hidden = !ready;
+        placeholder.hidden = ready;
+        button.hidden = true;
+        message.textContent = 'Loading lighting controls?';
+      } else {
+        online = false; ready = false;
+        frame.hidden = true; placeholder.hidden = false; loaded = false;
+        message.textContent = status.installed ? 'AutoGlow 2 is stopped.' :
+          'AutoGlow 2 is not installed. Rebuild the Oche image to include it.';
+        button.hidden = !status.installed;
+      }
+    } catch (error) {
+      online = false;
+      frame.hidden = true; placeholder.hidden = false;
+      message.textContent = 'Waiting for AutoGlow 2. Check its service logs if this persists.';
+    } finally {
+      refreshing = false;
+    }
   }
-}
-
-setInterval(refresh, 5000);
+  button.addEventListener('click', async () => {
+    button.disabled = true;
+    try {
+      const response = await fetch('/autoglow/start', {method: 'POST'});
+      if (!response.ok) { message.textContent = (await response.json()).detail; return; }
+      await refresh();
+    } finally { button.disabled = false; }
+  });
+  refresh(); setInterval(refresh, 5000);
+})();
 </script>
 {% endblock %}

@@ -98,14 +98,14 @@ block content %}
   </a>
   <a class="card" href="/autoglow">
     <div class="card-head">
-      <h2>💡 AutoGlow</h2>
-      {% set ag_ok = autoglow_status.hardware_found and
+      <h2>💡 AutoGlow 2</h2>
+      {% set ag_ok = (autoglow_status.status == 'running') and
       autoglow_status.autodarts_connected %}
       <span
         id="svc-autoglow-badge"
-        class="badge {{ 'badge-green' if ag_ok else ('badge-yellow' if autoglow_status.hardware_found else 'badge-red') }}"
+        class="badge {{ 'badge-green' if ag_ok else ('badge-yellow' if (autoglow_status.status == 'running') else 'badge-red') }}"
       >
-        {{ 'connected' if ag_ok else ('idle' if autoglow_status.hardware_found
+        {{ 'connected' if ag_ok else ('idle' if (autoglow_status.status == 'running')
         else 'not found') }}
       </span>
     </div>
@@ -173,18 +173,18 @@ block content %}
           ? "not installed"
           : "stopped";
 
-      const agOk = ag.hardware_found && ag.autodarts_connected;
+      const agOk = (ag.status === "running") && ag.autodarts_connected;
       const agBadge = document.getElementById("svc-autoglow-badge");
       agBadge.className =
         "badge " +
         (agOk
           ? "badge-green"
-          : ag.hardware_found
+          : (ag.status === "running")
             ? "badge-yellow"
             : "badge-red");
       agBadge.textContent = agOk
         ? "connected"
-        : ag.hardware_found
+        : (ag.status === "running")
           ? "idle"
           : "not found";
     } catch (e) {

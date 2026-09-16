@@ -1,3 +1,5 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 
@@ -8,7 +10,18 @@ from app.services import autoglow as autoglow_service
 from app.services import system_metrics
 from app.templating import templates
 
-app = FastAPI(title="Oche")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    try:
+        autoglow_service.start()
+        if load_config().get("autostart_autodarts"):
+            autodarts_service.start()
+        yield
+    finally:
+        autoglow_service.stop()
+
+
+app = FastAPI(title="Oche", lifespan=lifespan)
 
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
@@ -17,12 +30,6 @@ app.include_router(autoglow.router)
 app.include_router(config.router)
 app.include_router(panels.router)
 app.include_router(system.router)
-
-
-@app.on_event("startup")
-async def startup_autostart():
-    if load_config().get("autostart_autodarts"):
-        autodarts_service.start()
 
 
 @app.get("/")

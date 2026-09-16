@@ -2,6 +2,7 @@ FROM python:3.12-slim
 
 ARG TARGETARCH
 ARG AUTODARTS_VERSION
+ARG AUTOGLOW_VERSION
 
 # Runtime libs Autodarts' bundled browser/vision stack needs, plus udev for
 # serial/camera device enumeration.
@@ -32,6 +33,22 @@ RUN set -eux; \
   | tar -xz -C /opt/autodarts; \
   chmod +x /opt/autodarts/autodarts
 
+# Remote ADD is revalidated on rebuild so upstream changes invalidate the cache.
+# CI supplies the resolved SHA to keep both architectures and the image tag aligned.
+ADD https://api.github.com/repos/IteraThor/Autoglow-2/git/ref/heads/main /tmp/autoglow-ref.json
+RUN set -eu; \
+  AG_VERSION="${AUTOGLOW_VERSION:-}"; \
+  if [ -z "$AG_VERSION" ]; then \
+    AG_VERSION=$(python -c 'import json; print(json.load(open("/tmp/autoglow-ref.json"))["object"]["sha"])'); \
+  fi; \
+  echo "$AG_VERSION" | grep -Eq '^[0-9a-f]{40}$'; \
+  mkdir -p /opt/autoglow; \
+  curl -fsSL --retry 3 "https://codeload.github.com/IteraThor/Autoglow-2/tar.gz/${AG_VERSION}" \
+  -o /tmp/autoglow.tar.gz; \
+  tar -xzf /tmp/autoglow.tar.gz --strip-components=1 -C /opt/autoglow; \
+  echo "$AG_VERSION" > /opt/autoglow/REVISION; \
+  rm /tmp/autoglow.tar.gz /tmp/autoglow-ref.json
+
 WORKDIR /app
 
 COPY requirements.txt .
@@ -50,6 +67,6 @@ RUN groupadd --gid 1000 oche \
 RUN setcap 'cap_net_bind_service=+ep' "$(readlink -f /usr/local/bin/python)"
 USER oche
 
-EXPOSE 80 8180 3180
+EXPOSE 80 8180 3180 8080
 
 CMD ["python", "-m", "app.server"]
