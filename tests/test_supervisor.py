@@ -16,6 +16,9 @@ class SupervisorTests(unittest.TestCase):
         self.assertIn('/supervisor?service=autoglow', response.text)
         self.assertIn('<iframe', response.text)
         self.assertIn('/autodarts/start', response.text)
+        self.assertIn('id="toggle-board-btn"', response.text)
+        self.assertIn('href="/autodarts"', response.text)
+        self.assertNotIn("onclick=\"showView('board')\"", response.text)
         ag = self.client.get('/supervisor?service=autoglow')
         self.assertEqual(ag.status_code, 200)
         self.assertIn('/autoglow/process/web/start', ag.text)
@@ -23,6 +26,7 @@ class SupervisorTests(unittest.TestCase):
         self.assertIn('AutoGlow 2', ag.text)
         self.assertNotIn('Listener Logs', ag.text)
         self.assertNotIn('id="toggle-logs-btn"', ag.text)
+        self.assertIn("onclick=\"showView('board')\"", ag.text)
         toggle_bar = ag.text[ag.text.index('class="embed-toggle"'):ag.text.index('class="embed-body"')]
         self.assertEqual(toggle_bar.count('Logs'), 1)
         self.assertLess(response.text.index('class="panels-menu"'), response.text.index('id="nav-link-autodarts"'))

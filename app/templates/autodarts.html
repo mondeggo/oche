@@ -112,13 +112,19 @@ block content %}
 
 <div class="embed-panel">
   <div class="embed-toggle">
+    {% if service == "autodarts" %}
+    <a id="toggle-board-btn" class="view-toggle-btn" href="/autodarts">
+      Board
+    </a>
+    {% else %}
     <button
       id="toggle-board-btn"
       class="view-toggle-btn active"
       onclick="showView('board')"
     >
-      {{ "Board" if service == "autodarts" else "AutoGlow 2" }}
+      AutoGlow 2
     </button>
+    {% endif %}
     <button
       id="toggle-play-btn"
       class="view-toggle-btn"
@@ -129,7 +135,7 @@ block content %}
     {% if service == "autodarts" %}
     <button
       id="toggle-logs-btn"
-      class="view-toggle-btn"
+      class="view-toggle-btn active"
       onclick="showView('logs')"
     >
       Logs
@@ -169,7 +175,8 @@ block content %}
 </div>
 
 <script>
-  let currentView = "board";
+  const embedsLocalBoard = {{ 'false' if service == 'autodarts' else 'true' }};
+  let currentView = "{{ 'logs' if service == 'autodarts' else 'board' }}";
 
   function showView(view) {
     currentView = view;
@@ -196,7 +203,7 @@ block content %}
       showPlay();
     } else {
       document.getElementById("play-frame").hidden = true;
-      pollBoardStatus();
+      if (embedsLocalBoard) pollBoardStatus();
     }
   }
 
@@ -304,7 +311,7 @@ block content %}
   }
 
   async function pollBoardStatus() {
-    if (currentView !== "board") return;
+    if (!embedsLocalBoard || currentView !== "board") return;
     const res = await fetch("/{{ service }}/status").catch(() => null);
     const data = res ? await res.json().catch(() => null) : null;
     const reachable = data && (data.processes ? data.processes["autoglow-web"] === "running" : data.status === "running") && await isBoardReachable();
@@ -321,9 +328,12 @@ block content %}
   }
 
   refreshStatus();
-  refreshLogs();
   showBoardOffline();
-  setTimeout(pollBoardStatus, 800);
+  if (currentView === "board") {
+    setTimeout(pollBoardStatus, 800);
+  } else {
+    showView(currentView);
+  }
   setInterval(refreshStatus, 5000);
   setInterval(refreshLogs, 5000);
   setInterval(pollBoardStatus, 5000);
