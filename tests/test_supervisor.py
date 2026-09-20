@@ -19,10 +19,12 @@ class SupervisorTests(unittest.TestCase):
         ag = self.client.get('/supervisor?service=autoglow')
         self.assertEqual(ag.status_code, 200)
         self.assertIn('/autoglow/process/web/start', ag.text)
-        self.assertIn('/autoglow/process/listener/start', ag.text)
-        self.assertIn('Webserver', ag.text)
-        self.assertIn('Web Logs', ag.text)
-        self.assertIn('Listener Logs', ag.text)
+        self.assertNotIn('/autoglow/process/listener/start', ag.text)
+        self.assertIn('AutoGlow 2', ag.text)
+        self.assertNotIn('Listener Logs', ag.text)
+        self.assertNotIn('id="toggle-logs-btn"', ag.text)
+        toggle_bar = ag.text[ag.text.index('class="embed-toggle"'):ag.text.index('class="embed-body"')]
+        self.assertEqual(toggle_bar.count('Logs'), 1)
         self.assertLess(response.text.index('class="panels-menu"'), response.text.index('id="nav-link-autodarts"'))
         self.assertLess(response.text.index('id="nav-link-autodarts"'), response.text.index('aria-label="Settings"'))
         self.assertIn('>Supervisor</a', response.text)
@@ -41,8 +43,8 @@ class SupervisorTests(unittest.TestCase):
         with patch('app.routers.autoglow.autoglow.installed', return_value=False):
             self.assertEqual(self.client.post('/autoglow/restart').status_code, 503)
 
-    def test_autoglow_logs_separate_processes(self):
-        logs = {'autoglow-web': 'server output', 'autoglow-listener': 'listener output'}
+    def test_autoglow_combined_logs(self):
+        logs = {'autoglow-web': 'server output'}
         with patch('app.routers.autoglow.autoglow.logs', return_value=logs):
             self.assertEqual(self.client.get('/autoglow/logs').json(), logs)
 

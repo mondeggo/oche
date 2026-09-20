@@ -62,6 +62,7 @@ class PanelTests(unittest.TestCase):
         panel = self.save_panels([{"name": "Tool", "url": "http://192.168.1.10"}]).json()["panels"][0]
         response = self.client.post("/config/data", json={
             "autostart_autodarts": False,
+            "autostart_autoglow": False,
             "autohide_navbar_on_board": True,
             "autohide_navbar_on_play": False,
             "autohide_navbar_on_autodarts": False,
@@ -117,6 +118,7 @@ class PanelTests(unittest.TestCase):
 
         response = self.client.post("/config/data", json={
             "autostart_autodarts": False,
+            "autostart_autoglow": False,
             "autohide_navbar_on_board": False,
             "autohide_navbar_on_play": False,
             "autohide_navbar_on_autodarts": False,

@@ -14,20 +14,20 @@ _processes = [
         name=f"autoglow-{role}",
         command=[sys.executable, "-u", "-m", "app.autoglow_runner", role],
         cwd=ROOT,
-    )) for role in ("web", "listener")
+    )) for role in ("web",)
 ]
 
 
 def installed() -> bool:
     return all((SOURCE / name).is_file() for name in
-               ("web_server.py", "autodarts_wled_mini.py"))
+               ("server.py", "core/engine.py", "web/index.html"))
 
 
 def start() -> bool:
     if not installed():
         return False
-    # Discard connection state left by a previous listener.
-    if _processes[1].status != "running":
+    # Discard connection state left by a previous server.
+    if _processes[0].status != "running":
         (DATA_DIR / "autoglow" / ".sync_status.json").unlink(missing_ok=True)
     started = False
     try:
@@ -74,10 +74,10 @@ def restart() -> bool:
 
 
 def control_process(role: str, action: str) -> None:
-    process = _processes[{"web": 0, "listener": 1}[role]]
+    process = _processes[{"web": 0}[role]]
     if action in ("stop", "restart"):
         process.stop()
     if action in ("start", "restart"):
-        if role == "listener" and process.status != "running":
+        if process.status != "running":
             (DATA_DIR / "autoglow" / ".sync_status.json").unlink(missing_ok=True)
         process.start()

@@ -1,7 +1,12 @@
 # Local development with live reload and separate persistent data.
 services:
   oche:
-    build: .
+    build:
+      context: .
+      args:
+        AUTOGLOW_VERSION: ${AUTOGLOW_VERSION:-}
+      secrets:
+        - autoglow_token
     image: oche:dev
     container_name: oche-dev
     restart: "no"
@@ -12,6 +17,10 @@ services:
       - ./app:/app/app
       - dev-data:/app/data
       - dev-autodarts:/app/data/autodarts
+
+secrets:
+  autoglow_token:
+    environment: AUTOGLOW_TOKEN
 
 volumes:
   dev-data:

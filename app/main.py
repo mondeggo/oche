@@ -14,8 +14,10 @@ from app.templating import templates
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     try:
-        autoglow_service.start()
-        if load_config().get("autostart_autodarts"):
+        config = load_config()
+        if config.get("autostart_autoglow"):
+            autoglow_service.start()
+        if config.get("autostart_autodarts"):
             autodarts_service.start()
         yield
     finally:

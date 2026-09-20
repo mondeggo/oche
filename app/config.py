@@ -14,6 +14,7 @@ AUTODARTS_DIR.mkdir(exist_ok=True)
 DEFAULTS = {
     "lang": "en",
     "autostart_autodarts": True,
+    "autostart_autoglow": True,
     "autohide_navbar_on_board": False,
     "autohide_navbar_on_play": False,
     "autohide_navbar_on_autodarts": False,

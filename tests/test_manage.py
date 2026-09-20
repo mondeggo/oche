@@ -11,13 +11,15 @@ BASH = r"C:\Program Files\Git\bin\bash.exe" if os.name == "nt" else shutil.which
 
 @unittest.skipUnless(BASH and Path(BASH).exists(), "Bash is required")
 class ManageTests(unittest.TestCase):
-    def run_helper(self, action, *, local=True, pull=True, sources=False, camera_setup=None):
+    def run_helper(self, action, *, local=True, pull=True, sources=False, camera_setup=None, checkout=False):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
-            shutil.copyfile(ROOT / 'oche.sh', root / 'oche.sh')
+            (root / 'scripts').mkdir()
+            helper_path = 'scripts/oche.sh' if checkout else 'oche.sh'
+            shutil.copyfile(ROOT / 'scripts/oche.sh', root / helper_path)
+            (root / 'docker-compose.yml').touch()
             (root / 'docker-compose.override.yml').touch()
             if camera_setup is not None:
-                (root / 'scripts').mkdir()
                 (root / 'scripts/install.sh').write_text(camera_setup, newline='\n')
             if sources:
                 (root / 'Dockerfile').touch()
@@ -36,11 +38,20 @@ docker() {
     esac
     return 0
 }
-source ./oche.sh "$1"
+source "$2" "$1"
 '''.replace('LOCAL_RESULT', '0' if local else '1').replace('PULL_RESULT', '0' if pull else '1')
-            result = subprocess.run([BASH, '-c', mock, 'test', action], cwd=root, capture_output=True)
+            result = subprocess.run([BASH, '-c', mock, 'test', action, str(root / helper_path)], cwd=root / 'scripts', capture_output=True)
             calls = (root / 'calls').read_text() if (root / 'calls').exists() else ''
             return result, calls
+
+    def test_checkout_helper_resolves_compose_and_camera_setup(self):
+        result, calls = self.run_helper('cameras', checkout=True, camera_setup='''
+reconfigure_cameras() { echo camera-setup >> calls; }
+''')
+        self.assertEqual(result.returncode, 0, result.stderr.decode())
+        self.assertIn('camera-setup', calls)
+        self.assertIn('docker-compose.override.yml', calls)
+        self.assertIn('up -d', calls)
 
     def test_start_and_restart_pull_before_starting_even_with_local_image(self):
         for action in ('start', 'restart', 'update'):

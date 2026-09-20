@@ -33,6 +33,13 @@ block content %}
       <span class="status-item">
         {{ "PID" if service == "autodarts" else "Processes" }}: <span id="ad-pid">{{ status.pid or '-' }}</span>
       </span>
+      <span class="status-item">
+        Start on boot
+        <label class="toggle">
+          <input type="checkbox" id="ad-autostart-boot" aria-label="Start Autodarts on boot" {{ 'checked' if config.autostart_autodarts }}>
+          <span class="toggle-track"><span class="toggle-thumb"></span></span>
+        </label>
+      </span>
     </div>
     <div class="btn-row">
       <button
@@ -60,21 +67,23 @@ block content %}
   </div>
 
   {% else %}
-  <div class="autoglow-controls-stack">
-  {% for role, label in [('web', 'Webserver'), ('listener', 'Listener')] %}
-  <div class="controls-card" data-ag-role="{{ role }}">
-    <h2>{{ label }}</h2>
+  <div class="controls-card" data-ag-role="web">
     <div class="status-row">
-      <span>Status: <span id="ag-{{ role }}-status" class="badge">{{ status.processes['autoglow-' ~ role] }}</span></span>
-      <span>PID: <span id="ag-{{ role }}-pid">{{ status.pids['autoglow-' ~ role] or '-' }}</span></span>
+      <span>Status: <span id="ag-web-status" class="badge">{{ status.processes['autoglow-web'] }}</span></span>
+      <span>PID: <span id="ag-web-pid">{{ status.pids['autoglow-web'] or '-' }}</span></span>
+      <span class="status-item">
+        Start on boot
+        <label class="toggle">
+          <input type="checkbox" id="ag-autostart-boot" aria-label="Start AutoGlow 2 on boot" {{ 'checked' if config.autostart_autoglow }}>
+          <span class="toggle-track"><span class="toggle-thumb"></span></span>
+        </label>
+      </span>
     </div>
     <div class="btn-row">
       {% for action, color in [('start', 'success'), ('stop', 'danger'), ('restart', 'neutral')] %}
-      <button class="btn-{{ color }}" onclick="postAction('/autoglow/process/{{ role }}/{{ action }}')">{{ action|capitalize }}</button>
+      <button class="btn-{{ color }}" onclick="postAction('/autoglow/process/web/{{ action }}')">{{ action|capitalize }}</button>
       {% endfor %}
     </div>
-  </div>
-  {% endfor %}
   </div>
   {% endif %}
 
@@ -90,9 +99,7 @@ block content %}
   </a>{% else %}
   <div class="autoglow-community-links">
     {% for name, caption, logo, url in [
-      ('GitHub', 'Check AutoGlow2 code', 'github_logo.svg', 'https://github.com/IteraThor/Autoglow-2'),
-      ('MakerWorld', 'Explore IteraThor models', 'makerworld_logo.svg', 'https://makerworld.com/fr/@HipsThor'),
-      ('Discord', 'Join IteraThor 3D Design', 'discord_logo.svg', 'https://discord.gg/ejP94FMVWd')
+      ('GitHub', 'Visit IteraThor on GitHub', 'github_logo.svg', 'https://github.com/IteraThor')
     ] %}
     <a class="play-tile community-tile" href="{{ url }}" target="_blank" rel="noopener noreferrer" aria-label="{{ name }} (opens in a new tab)">
       <img src="/static/img/{{ logo }}" alt="{{ name }}" class="community-logo">
@@ -110,22 +117,24 @@ block content %}
       class="view-toggle-btn active"
       onclick="showView('board')"
     >
-      {{ "Board" if service == "autodarts" else "Webserver" }}
+      {{ "Board" if service == "autodarts" else "AutoGlow 2" }}
     </button>
     <button
       id="toggle-play-btn"
       class="view-toggle-btn"
       onclick="showView('{{ "play" if service == "autodarts" else "web-logs" }}')"
     >
-      {{ "Play" if service == "autodarts" else "Web Logs" }}
+      {{ "Play" if service == "autodarts" else "Logs" }}
     </button>
+    {% if service == "autodarts" %}
     <button
       id="toggle-logs-btn"
       class="view-toggle-btn"
-      onclick="showView('{{ "logs" if service == "autodarts" else "listener-logs" }}')"
+      onclick="showView('logs')"
     >
-      {{ "Logs" if service == "autodarts" else "Listener Logs" }}
+      Logs
     </button>
+    {% endif %}
   </div>
 
   <div class="embed-body">
@@ -164,7 +173,7 @@ block content %}
 
   function showView(view) {
     currentView = view;
-    const isLogs = ['logs', 'web-logs', 'listener-logs'].includes(view);
+    const isLogs = ['logs', 'web-logs'].includes(view);
     document
       .getElementById("toggle-board-btn")
       .classList.toggle("active", view === "board");
@@ -173,7 +182,7 @@ block content %}
       .classList.toggle("active", view === "play" || view === "web-logs");
     document
       .getElementById("toggle-logs-btn")
-      .classList.toggle("active", view === "logs" || view === "listener-logs");
+      ?.classList.toggle("active", view === "logs");
     document.getElementById("ad-logs").hidden = !isLogs;
 
     if (isLogs) {
@@ -214,20 +223,18 @@ block content %}
     const res = await fetch("/{{ service }}/status");
     const data = await res.json();
     if (data.processes) {
-      for (const role of ['web', 'listener']) {
-        const state = data.processes['autoglow-' + role];
-        const badge = document.getElementById(`ag-${role}-status`);
-        badge.textContent = state;
-        badge.className = 'badge ' + (state === 'running' ? 'badge-green' : 'badge-red');
-        document.getElementById(`ag-${role}-pid`).textContent = data.pids['autoglow-' + role] || '-';
-      }
+      const state = data.processes['autoglow-web'];
+      const badge = document.getElementById('ag-web-status');
+      badge.textContent = state;
+      badge.className = 'badge ' + (state === 'running' ? 'badge-green' : 'badge-red');
+      document.getElementById('ag-web-pid').textContent = data.pids['autoglow-web'] || '-';
       return;
     }
     document.getElementById("ad-status").textContent = data.status;
     document.getElementById("ad-status").className =
       "badge " + (data.status === "running" ? "badge-green" : "badge-red");
     document.getElementById("ad-pid").textContent = data.processes
-      ? `Web: ${data.processes['autoglow-web']}; listener: ${data.processes['autoglow-listener']}`
+      ? `Server: ${data.processes['autoglow-web']}`
       : data.pid || "-";
   }
 
@@ -243,12 +250,12 @@ block content %}
   }
 
   async function refreshLogs() {
-    if (!["logs", "web-logs", "listener-logs"].includes(currentView)) return;
+    if (!["logs", "web-logs"].includes(currentView)) return;
     const requestedView = currentView;
     const box = document.getElementById("ad-logs");
     const res = await fetch("/{{ service }}/logs");
     const text = requestedView === 'logs' ? await res.text()
-      : (await res.json())[requestedView === 'web-logs' ? 'autoglow-web' : 'autoglow-listener'];
+      : (await res.json())['autoglow-web'];
     if (currentView !== requestedView) return;
     box.textContent = text || "(no logs yet)";
     box.scrollTop = box.scrollHeight;
@@ -320,5 +327,17 @@ block content %}
   setInterval(refreshStatus, 5000);
   setInterval(refreshLogs, 5000);
   setInterval(pollBoardStatus, 5000);
+
+  const autostartConfigKey = "{{ 'autostart_autodarts' if service == 'autodarts' else 'autostart_autoglow' }}";
+  document.getElementById("{{ 'ad-autostart-boot' if service == 'autodarts' else 'ag-autostart-boot' }}")
+    ?.addEventListener("change", (event) => {
+      const body = {};
+      body[autostartConfigKey] = event.target.checked;
+      fetch("/config/data", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+    });
 </script>
 {% endblock %}

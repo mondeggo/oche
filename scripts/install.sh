@@ -387,10 +387,10 @@ project_dir="$install_dir"
 if [[ "$source_dir" != "$install_dir" || ! -f "$install_dir/oche.sh" ]]; then
     helper_tmp=$(mktemp "$install_dir/.manage.XXXXXX")
     trap 'rm -f -- "$helper_tmp"' EXIT
-    if [[ -n "$source_dir" && -f "$source_dir/oche.sh" ]]; then
-        cp -- "$source_dir/oche.sh" "$helper_tmp"
+    if [[ -n "$source_dir" && -f "$source_dir/scripts/oche.sh" ]]; then
+        cp -- "$source_dir/scripts/oche.sh" "$helper_tmp"
     else
-        curl -fsSL --retry 3 "https://raw.githubusercontent.com/$repo/main/oche.sh" -o "$helper_tmp"
+        curl -fsSL --retry 3 "https://raw.githubusercontent.com/$repo/main/scripts/oche.sh" -o "$helper_tmp"
     fi
     bash -n "$helper_tmp"
     chmod 755 "$helper_tmp"

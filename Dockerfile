@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 FROM python:3.12-slim
 
 ARG TARGETARCH
@@ -33,26 +34,30 @@ RUN set -eux; \
   | tar -xz -C /opt/autodarts; \
   chmod +x /opt/autodarts/autodarts
 
-# Remote ADD is revalidated on rebuild so upstream changes invalidate the cache.
-# CI supplies the resolved SHA to keep both architectures and the image tag aligned.
-ADD https://api.github.com/repos/IteraThor/Autoglow-2/git/ref/heads/main /tmp/autoglow-ref.json
-RUN set -eu; \
+# CI pins the SHA; local builds default to the repository's default branch.
+# Credentials are mounted only for this step and never saved in an image layer.
+RUN --mount=type=secret,id=autoglow_token,required=true set -eu; \
+  AG_TOKEN=$(cat /run/secrets/autoglow_token); \
+  test -n "$AG_TOKEN" || { echo "AutoGlow build token is empty." >&2; exit 1; }; \
   AG_VERSION="${AUTOGLOW_VERSION:-}"; \
   if [ -z "$AG_VERSION" ]; then \
-    AG_VERSION=$(python -c 'import json; print(json.load(open("/tmp/autoglow-ref.json"))["object"]["sha"])'); \
+    curl -fsSL --retry 3 -H "Authorization: Bearer $AG_TOKEN" \
+      "https://api.github.com/repos/mondeggo/AutoGlow2/commits/HEAD" -o /tmp/autoglow-ref.json; \
+    AG_VERSION=$(python -c 'import json; print(json.load(open("/tmp/autoglow-ref.json"))["sha"])'); \
   fi; \
   echo "$AG_VERSION" | grep -Eq '^[0-9a-f]{40}$'; \
   mkdir -p /opt/autoglow; \
-  curl -fsSL --retry 3 "https://codeload.github.com/IteraThor/Autoglow-2/tar.gz/${AG_VERSION}" \
+  curl -fsSL --retry 3 -H "Authorization: Bearer $AG_TOKEN" \
+  "https://api.github.com/repos/mondeggo/AutoGlow2/tarball/${AG_VERSION}" \
   -o /tmp/autoglow.tar.gz; \
   tar -xzf /tmp/autoglow.tar.gz --strip-components=1 -C /opt/autoglow; \
   echo "$AG_VERSION" > /opt/autoglow/REVISION; \
-  rm /tmp/autoglow.tar.gz /tmp/autoglow-ref.json
+  rm -f /tmp/autoglow.tar.gz /tmp/autoglow-ref.json
 
 WORKDIR /app
 
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt -r /opt/autoglow/requirements.txt
 
 COPY app ./app
 

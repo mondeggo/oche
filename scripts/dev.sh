@@ -2,7 +2,7 @@
 # Build and launch Oche locally with live logs and reload.
 set -euo pipefail
 
-cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
+cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.."
 command -v docker >/dev/null || { echo "Install and start Docker first." >&2; exit 1; }
 
 compose=(docker compose -p oche-dev -f docker-compose.yml)

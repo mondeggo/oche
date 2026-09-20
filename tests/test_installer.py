@@ -217,14 +217,20 @@ if configure_cameras <<< all; then exit 1; fi
         for local in (True, False):
             with self.subTest(local=local), tempfile.TemporaryDirectory() as folder:
                 root = Path(folder)
-                (root / 'source').mkdir()
+                (root / 'source/scripts').mkdir(parents=True)
                 (root / 'install').mkdir()
                 helper = '#!/usr/bin/env bash\necho helper\n'
-                (root / 'source/oche.sh').write_text(helper, newline='\n')
+                (root / 'source/scripts/oche.sh').write_text(helper, newline='\n')
+                (root / 'source/scripts/install.sh').write_text(helper, newline='\n')
                 setup = '''
 install_dir="$PWD/install"
 repo=mondeggo/oche
-curl() { cp source/oche.sh "${@: -1}"; }
+curl() {
+    case "$4" in
+        */scripts/oche.sh|*/scripts/install.sh) cp "source/scripts/${4##*/}" "${@: -1}" ;;
+        *) return 1 ;;
+    esac
+}
 '''
                 setup += 'source_dir="$PWD/source"\n' if local else 'source_dir=""\n'
                 self.run_bash(setup + block, cwd=folder)

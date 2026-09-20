@@ -62,7 +62,7 @@ def restart():
 
 
 @router.post("/process/{role}/{action}")
-def control_process(role: Literal["web", "listener"], action: Literal["start", "stop", "restart"]):
+def control_process(role: Literal["web"], action: Literal["start", "stop", "restart"]):
     if action != "stop" and not autoglow.installed():
         raise HTTPException(status_code=503, detail="AutoGlow 2 is not installed in this image.")
     try:

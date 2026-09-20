@@ -10,15 +10,17 @@ router = APIRouter(prefix="/autodarts", tags=["autodarts"])
 
 async def page(request: Request):
     service = "autoglow" if request.query_params.get("service") == "autoglow" else "autodarts"
+    config = load_config()
     return templates.TemplateResponse(
         "autodarts.html",
         {
             "request": request,
             "service": service,
             "status": autoglow.get_status() if service == "autoglow" else autodarts.get_status(),
+            "config": config,
             "active_nav": "autodarts",
             "allow_header_autohide": True,
-            "autohide_navbar_default": load_config().get("autohide_navbar_on_autodarts", False),
+            "autohide_navbar_default": config.get("autohide_navbar_on_autodarts", False),
         },
     )
 

@@ -85,6 +85,8 @@ run `docker compose up -d` to apply it.
 ## Manage Oche
 
 The installer includes `oche.sh` to start, stop, restart, and update the container.
+In a repository checkout, use `bash scripts/oche.sh <command>` instead;
+the installer places this helper at the installation root for convenience.
 It uses the image configured
 in `.env`/Compose and includes `docker-compose.override.yml` for camera mappings.
 Run it from the installation folder:
@@ -115,21 +117,35 @@ If `./oche.sh` cannot run because the file lacks execute permission, use
 
 ## Development
 
-With Docker running, open a terminal in your local copy of this repository and run:
+Local image builds need a GitHub token with **Contents: read** access to the
+private `mondeggo/AutoGlow2` repository. Copy `.env.example` to `.env` at the
+repository root and fill in `AUTOGLOW_TOKEN`:
 
-```bash
-bash dev.sh
+```dotenv
+AUTOGLOW_TOKEN=your_github_token
 ```
 
-On Windows, run `.\dev.bat` instead. Docker Desktop must have host networking
+Compose automatically reads `.env`, which is ignored by Git and excluded from
+the Docker build context. You can also set the token in your shell environment;
+shell values take precedence over `.env`. Compose passes it as a temporary
+BuildKit secret; it is not included in the running container.
+
+With Docker running and the token set, open a terminal in your local copy of this repository and run:
+
+```bash
+bash scripts/dev.sh
+```
+
+On Windows, run `.\scripts\dev.bat` instead. Docker Desktop must have host networking
 enabled; device mounts refer to its Linux VM. No local Python installation is needed to launch development.
 
 This builds and launches a local image, shows logs, and reloads Python changes automatically. Open **http://localhost:8180**; refresh the browser after editing templates or styles. Press **Ctrl+C** to stop.
 
 
-### Supervisor
+## Supervisor
 
 Open **Supervisor** to start, stop, or restart Autodarts and AutoGlow 2 and
-view their logs. AutoGlow's configuration server and lighting listener have
-separate log views and independent Start/Stop/Restart controls, each showing its PID. **Autodarts** in the navigation
+view their logs. AutoGlow runs its configuration server and lighting engine together, with one
+Start/Stop/Restart control and combined logs. Configuration, presets, flows, and
+backups are stored in `data/autoglow/`. Update AutoGlow through the Oche image. **Autodarts** in the navigation
 opens the full board interface; **AutoGlow 2** opens its lighting configuration.

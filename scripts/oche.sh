@@ -3,6 +3,10 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+# Repository scripts live in scripts/; installed helpers live beside Compose.
+if [[ ! -f "$SCRIPT_DIR/docker-compose.yml" ]]; then
+    SCRIPT_DIR="$(cd -- "$SCRIPT_DIR/.." && pwd)"
+fi
 cd "$SCRIPT_DIR"
 
 usage() {
@@ -10,7 +14,7 @@ usage() {
 Usage: $0 {start|stop|restart|update|pull|cameras}
        $0 -h | --help
 
-Manage Oche using the Compose files and .env beside this script.
+Manage Oche using the Compose files and .env in the project directory.
 
   start    Pull the configured image and start Oche.
   stop     Remove containers, keeping persistent data.

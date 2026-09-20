@@ -24,9 +24,10 @@ jobs:
       - name: Resolve image version
         id: image
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.AUTOGLOW_TOKEN }}
         run: |
           set -euo pipefail
+          [[ -n "$GH_TOKEN" ]] || { echo "Set AUTOGLOW_TOKEN with Contents read access to mondeggo/AutoGlow2." >&2; exit 1; }
           for arch in amd64 arm64; do
             version=$(curl -fsSL --retry 3 "https://get.autodarts.io/detection/latest/linux/$arch/RELEASES.json" | jq -er '.currentVersion')
             version=${version#v}
@@ -39,7 +40,7 @@ jobs:
             fi
           done
           echo "autodarts_version=$autodarts_version" >> "$GITHUB_OUTPUT"
-          autoglow_version=$(gh api repos/IteraThor/Autoglow-2/git/ref/heads/main --jq '.object.sha')
+          autoglow_version=$(gh api repos/mondeggo/AutoGlow2/commits/HEAD --jq '.sha')
           [[ "$autoglow_version" =~ ^[0-9a-f]{40}$ ]] || { echo "Invalid AutoGlow commit: $autoglow_version" >&2; exit 1; }
           echo "autoglow_version=$autoglow_version" >> "$GITHUB_OUTPUT"
           echo "tag=v0.${GITHUB_RUN_NUMBER}_AD${autodarts_version}_AG${autoglow_version:0:5}" >> "$GITHUB_OUTPUT"
@@ -55,6 +56,8 @@ jobs:
           context: .
           platforms: linux/amd64,linux/arm64
           push: true
+          secrets: |
+            autoglow_token=${{ secrets.AUTOGLOW_TOKEN }}
           build-args: |
             AUTODARTS_VERSION=${{ steps.image.outputs.autodarts_version }}
             AUTOGLOW_VERSION=${{ steps.image.outputs.autoglow_version }}

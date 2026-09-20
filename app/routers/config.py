@@ -1,3 +1,5 @@
+from typing import Optional
+
 from fastapi import APIRouter, Request
 from app.templating import templates
 from pydantic import BaseModel
@@ -8,17 +10,20 @@ router = APIRouter(prefix="/config", tags=["config"])
 
 
 class ConfigUpdate(BaseModel):
-    autostart_autodarts: bool
-    autohide_navbar_on_board: bool
-    autohide_navbar_on_play: bool
-    autohide_navbar_on_autodarts: bool
-    autohide_navbar_on_autoglow: bool
-    autohide_navbar_on_panels: bool
-    show_play_in_navbar: bool
-    show_board_in_navbar: bool
-    show_autodarts_in_navbar: bool
-    show_autoglow_in_navbar: bool
-    show_panels_in_navbar: bool
+    # All optional: callers (the Settings page, and the Supervisor page's
+    # inline toggles) only send the fields they're changing.
+    autostart_autodarts: Optional[bool] = None
+    autostart_autoglow: Optional[bool] = None
+    autohide_navbar_on_board: Optional[bool] = None
+    autohide_navbar_on_play: Optional[bool] = None
+    autohide_navbar_on_autodarts: Optional[bool] = None
+    autohide_navbar_on_autoglow: Optional[bool] = None
+    autohide_navbar_on_panels: Optional[bool] = None
+    show_play_in_navbar: Optional[bool] = None
+    show_board_in_navbar: Optional[bool] = None
+    show_autodarts_in_navbar: Optional[bool] = None
+    show_autoglow_in_navbar: Optional[bool] = None
+    show_panels_in_navbar: Optional[bool] = None
 
 
 @router.get("")
@@ -37,6 +42,6 @@ async def get_data():
 @router.post("/data")
 async def update_data(update: ConfigUpdate):
     config = load_config()
-    config.update(update.model_dump())
+    config.update(update.model_dump(exclude_none=True))
     save_config(config)
     return config

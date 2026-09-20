@@ -1,7 +1,7 @@
 @echo off
 REM Build and launch Oche locally with live logs and reload.
 setlocal
-cd /d "%~dp0"
+cd /d "%~dp0.."
 
 where docker >nul 2>&1
 if errorlevel 1 (
