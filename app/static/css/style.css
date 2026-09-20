@@ -62,6 +62,22 @@ body {
   background: var(--bg);
 }
 
+.oche-board-frame {
+  position: fixed;
+  left: -100000px;
+  top: 0;
+  width: 1px;
+  height: 1px;
+  border: 0;
+  background: var(--bg);
+  z-index: 20;
+  pointer-events: none;
+}
+
+.oche-board-frame.active {
+  pointer-events: auto;
+}
+
 .brand {
   font-size: 1.75rem;
   font-weight: bold;

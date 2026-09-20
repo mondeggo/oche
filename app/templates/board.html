@@ -10,7 +10,7 @@
   </div>
 </div>
 
-<iframe id="board-frame" class="board-frame" title="Autodarts Board" hidden></iframe>
+<div id="board-frame" class="board-frame shared-board-slot" hidden></div>
 
 <script>
 const boardUrl = `${location.protocol}//${location.hostname}:3180/`;
@@ -19,11 +19,19 @@ const boardDisconnected = document.getElementById('board-disconnected');
 const boardTitle = document.getElementById('board-placeholder-title');
 const boardText = document.getElementById('board-placeholder-text');
 const boardStartBtn = document.getElementById('board-start-btn');
-let boardLoaded = false;
 let boardPid = null;
 let starting = false;
 
+function sharedBoard() {
+  try {
+    if (window.ocheBoard) return window.ocheBoard;
+    if (parent !== window && parent.ocheBoard) return parent.ocheBoard;
+  } catch (_) { /* Oche may itself be embedded by another origin. */ }
+  return null;
+}
+
 function showOffline() {
+  sharedBoard()?.hide(boardFrame);
   boardFrame.hidden = true;
   boardDisconnected.hidden = false;
   boardTitle.textContent = 'Autodarts is offline';
@@ -34,6 +42,7 @@ function showOffline() {
 }
 
 function showStarting() {
+  sharedBoard()?.hide(boardFrame);
   boardDisconnected.hidden = false;
   boardFrame.hidden = true;
   boardTitle.textContent = 'Starting Autodarts…';
@@ -42,17 +51,9 @@ function showStarting() {
 }
 
 function showOnline() {
-  if (!boardLoaded) {
-    // Keep the iframe hidden until its document actually finishes loading -
-    // an iframe paints white the instant navigation starts, before its own
-    // stylesheet applies, so revealing it early causes a white flash.
-    boardFrame.addEventListener('load', () => { boardFrame.hidden = false; }, { once: true });
-    boardFrame.src = boardUrl;
-    boardLoaded = true;
-  } else {
-    boardFrame.hidden = false;
-  }
+  boardFrame.hidden = false;
   boardDisconnected.hidden = true;
+  sharedBoard()?.show(boardFrame, boardPid);
 }
 
 // Only 3180 actually responding proves Autodarts is ready to be embedded -
@@ -76,7 +77,6 @@ async function pollBoardStatus() {
     return;
   }
   if (await isBoardReachable()) {
-    if (boardPid !== null && data.pid !== boardPid) boardLoaded = false;
     boardPid = data.pid;
     showOnline();
   } else {
