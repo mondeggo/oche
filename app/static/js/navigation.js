@@ -1,7 +1,7 @@
 // Keep camera-bearing documents attached for the lifetime of this browser tab.
 // Moving an iframe between DOM parents also reloads it, so each view stays put.
 (() => {
-  const persistent = path => path === '/autodarts' || path === '/supervisor';
+  const persistent = path => path === '/autodarts';
   const internal = url => url.origin === location.origin &&
     (/^\/(?:board|autodarts|supervisor|play|autoglow|config)?$/.test(url.pathname) ||
      /^\/panels\/[^/]+$/.test(url.pathname));

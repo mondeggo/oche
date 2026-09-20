@@ -92,20 +92,27 @@ class NavigationTests(unittest.TestCase):
         self.page.go_forward()
         self.page.wait_for_url('http://oche.test/autodarts')
         self.assertEqual(self.board().evaluate('window.streamMarker'), 'original')
+        self.assertEqual(self.errors, [])
+
+    def test_supervisor_reuses_persistent_autodarts_board(self):
+        self.page.goto('http://oche.test/autodarts')
+        board = self.board()
+        board.evaluate('window.streamMarker = "original"')
+        self.assertEqual(self.board_loads, 1)
+
         self.go('/supervisor')
-        other = self.board()
-        other.evaluate('window.streamMarker = "autodarts"')
-        self.view().locator('#toggle-logs-btn').click()
         self.view().locator('#toggle-play-btn').click()
+        self.view().locator('#toggle-logs-btn').click()
+        self.assertEqual(self.board_loads, 1)
+
         self.view().locator('#toggle-board-btn').click()
-        self.go('/config')
-        self.go('/supervisor')
-        self.assertEqual(self.board().evaluate('window.streamMarker'), 'autodarts')
-        self.assertEqual(self.board_loads, 2)
+        self.page.wait_for_url('http://oche.test/autodarts')
+        self.assertEqual(self.board().evaluate('window.streamMarker'), 'original')
+        self.assertEqual(self.board_loads, 1)
         self.assertEqual(self.errors, [])
 
     def test_poll_failure_preserves_stream_but_restart_reloads(self):
-        for path in ('/autodarts', '/supervisor'):
+        for path in ('/autodarts',):
             with self.subTest(path=path):
                 self.page.goto('http://oche.test' + path)
                 board = self.board()
