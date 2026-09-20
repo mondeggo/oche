@@ -1,0 +1,324 @@
+{% extends "base.html" %} {% block title %}Oche - Supervisor{% endblock %} {%
+block content %}
+<div class="embed-toggle supervisor-selector" aria-label="Service">
+  <a class="view-toggle-btn {{ 'active' if service == 'autodarts' }}" href="/supervisor?service=autodarts">Autodarts</a>
+  <a class="view-toggle-btn {{ 'active' if service == 'autoglow' }}" href="/supervisor?service=autoglow">AutoGlow 2</a>
+</div>
+{% if service == "autodarts" %}
+<div class="page-header">
+  <img
+    src="/static/img/autodarts_logo_with_name.svg"
+    alt="Autodarts"
+    class="page-logo"
+  />
+</div>
+{% else %}<h1>AutoGlow 2</h1>{% endif %}
+<p class="subtitle">
+  Manage {{ "the Autodarts board manager" if service == "autodarts" else "AutoGlow lighting services" }} running inside this container.
+</p>
+
+<div class="status-panel">
+  {% if service == "autodarts" %}
+  <div class="controls-card">
+    <div class="status-row">
+      <span class="status-item">
+        Status:
+        <span
+          id="ad-status"
+          class="badge {{ 'badge-green' if status.status == 'running' else 'badge-red' }}"
+        >
+          {{ status.status }}
+        </span>
+      </span>
+      <span class="status-item">
+        {{ "PID" if service == "autodarts" else "Processes" }}: <span id="ad-pid">{{ status.pid or '-' }}</span>
+      </span>
+    </div>
+    <div class="btn-row">
+      <button
+        id="btn-start"
+        class="btn-success"
+        onclick="postAction('/{{ service }}/start')"
+      >
+        Start
+      </button>
+      <button
+        id="btn-stop"
+        class="btn-danger"
+        onclick="postAction('/{{ service }}/stop')"
+      >
+        Stop
+      </button>
+      <button
+        id="btn-restart"
+        class="btn-neutral"
+        onclick="postAction('/{{ service }}/restart')"
+      >
+        Restart
+      </button>
+    </div>
+  </div>
+
+  {% else %}
+  <div class="autoglow-controls-stack">
+  {% for role, label in [('web', 'Webserver'), ('listener', 'Listener')] %}
+  <div class="controls-card" data-ag-role="{{ role }}">
+    <h2>{{ label }}</h2>
+    <div class="status-row">
+      <span>Status: <span id="ag-{{ role }}-status" class="badge">{{ status.processes['autoglow-' ~ role] }}</span></span>
+      <span>PID: <span id="ag-{{ role }}-pid">{{ status.pids['autoglow-' ~ role] or '-' }}</span></span>
+    </div>
+    <div class="btn-row">
+      {% for action, color in [('start', 'success'), ('stop', 'danger'), ('restart', 'neutral')] %}
+      <button class="btn-{{ color }}" onclick="postAction('/autoglow/process/{{ role }}/{{ action }}')">{{ action|capitalize }}</button>
+      {% endfor %}
+    </div>
+  </div>
+  {% endfor %}
+  </div>
+  {% endif %}
+
+  {% if service == "autodarts" %}<a class="play-tile" href="https://play.autodarts.io/" target="_blank">
+    <img
+      src="/static/img/autodarts_logo_with_name.svg"
+      alt="Autodarts"
+      class="play-tile-logo"
+    />
+    <span class="play-tile-label"
+      >Play Online <span class="play-tile-arrow">↗</span></span
+    >
+  </a>{% else %}
+  <div class="autoglow-community-links">
+    {% for name, caption, logo, url in [
+      ('GitHub', 'Check AutoGlow2 code', 'github_logo.svg', 'https://github.com/IteraThor/Autoglow-2'),
+      ('MakerWorld', 'Explore IteraThor models', 'makerworld_logo.svg', 'https://makerworld.com/fr/@HipsThor'),
+      ('Discord', 'Join IteraThor 3D Design', 'discord_logo.svg', 'https://discord.gg/ejP94FMVWd')
+    ] %}
+    <a class="play-tile community-tile" href="{{ url }}" target="_blank" rel="noopener noreferrer" aria-label="{{ name }} (opens in a new tab)">
+      <img src="/static/img/{{ logo }}" alt="{{ name }}" class="community-logo">
+      <span class="play-tile-label">{{ caption }} <span class="play-tile-arrow" aria-hidden="true">&#8599;</span></span>
+    </a>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
+
+<div class="embed-panel">
+  <div class="embed-toggle">
+    <button
+      id="toggle-board-btn"
+      class="view-toggle-btn active"
+      onclick="showView('board')"
+    >
+      {{ "Board" if service == "autodarts" else "Webserver" }}
+    </button>
+    <button
+      id="toggle-play-btn"
+      class="view-toggle-btn"
+      onclick="showView('{{ "play" if service == "autodarts" else "web-logs" }}')"
+    >
+      {{ "Play" if service == "autodarts" else "Web Logs" }}
+    </button>
+    <button
+      id="toggle-logs-btn"
+      class="view-toggle-btn"
+      onclick="showView('{{ "logs" if service == "autodarts" else "listener-logs" }}')"
+    >
+      {{ "Logs" if service == "autodarts" else "Listener Logs" }}
+    </button>
+  </div>
+
+  <div class="embed-body">
+    <div id="board-disconnected" class="board-placeholder" hidden>
+      <div class="board-placeholder-inner">
+        <img src="/static/img/autodarts_logo.svg" alt="" class="board-placeholder-icon">
+        <h2 id="board-placeholder-title" class="board-placeholder-title">
+          {{ "Autodarts" if service == "autodarts" else "AutoGlow 2" }} is offline
+        </h2>
+        <p id="board-placeholder-text" class="board-placeholder-text">
+          Start it above to bring your board online.
+        </p>
+      </div>
+    </div>
+
+    <iframe
+      id="board-frame"
+      class="board-frame"
+      title="{{ 'Autodarts Board' if service == 'autodarts' else 'AutoGlow 2 configuration' }}"
+      hidden
+    ></iframe>
+
+    <iframe
+      id="play-frame"
+      class="board-frame"
+      title="Autodarts Play"
+      hidden
+    ></iframe>
+
+    <pre id="ad-logs" class="log-box board-log-view" hidden>Loading...</pre>
+  </div>
+</div>
+
+<script>
+  let currentView = "board";
+
+  function showView(view) {
+    currentView = view;
+    const isLogs = ['logs', 'web-logs', 'listener-logs'].includes(view);
+    document
+      .getElementById("toggle-board-btn")
+      .classList.toggle("active", view === "board");
+    document
+      .getElementById("toggle-play-btn")
+      .classList.toggle("active", view === "play" || view === "web-logs");
+    document
+      .getElementById("toggle-logs-btn")
+      .classList.toggle("active", view === "logs" || view === "listener-logs");
+    document.getElementById("ad-logs").hidden = !isLogs;
+
+    if (isLogs) {
+      document.getElementById("board-frame").hidden = true;
+      document.getElementById("board-disconnected").hidden = true;
+      document.getElementById("play-frame").hidden = true;
+      refreshLogs();
+    } else if (view === "play") {
+      document.getElementById("board-frame").hidden = true;
+      document.getElementById("board-disconnected").hidden = true;
+      showPlay();
+    } else {
+      document.getElementById("play-frame").hidden = true;
+      pollBoardStatus();
+    }
+  }
+
+  // --- Embedded Play view (play.autodarts.com, the actual game/lobby app -
+  // separate from the local board manager UI on :3180 above) ---
+  const playFrame = document.getElementById("play-frame");
+
+  function showPlay() {
+    if (!playFrame.src) {
+      playFrame.addEventListener(
+        "load",
+        () => {
+          playFrame.hidden = false;
+        },
+        { once: true },
+      );
+      playFrame.src = "https://play.autodarts.com/";
+    } else {
+      playFrame.hidden = false;
+    }
+  }
+
+  async function refreshStatus() {
+    const res = await fetch("/{{ service }}/status");
+    const data = await res.json();
+    if (data.processes) {
+      for (const role of ['web', 'listener']) {
+        const state = data.processes['autoglow-' + role];
+        const badge = document.getElementById(`ag-${role}-status`);
+        badge.textContent = state;
+        badge.className = 'badge ' + (state === 'running' ? 'badge-green' : 'badge-red');
+        document.getElementById(`ag-${role}-pid`).textContent = data.pids['autoglow-' + role] || '-';
+      }
+      return;
+    }
+    document.getElementById("ad-status").textContent = data.status;
+    document.getElementById("ad-status").className =
+      "badge " + (data.status === "running" ? "badge-green" : "badge-red");
+    document.getElementById("ad-pid").textContent = data.processes
+      ? `Web: ${data.processes['autoglow-web']}; listener: ${data.processes['autoglow-listener']}`
+      : data.pid || "-";
+  }
+
+  async function postAction(url) {
+    const res = await fetch(url, { method: "POST" });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      alert(err.detail || "Action failed");
+    }
+    await refreshStatus();
+    await refreshLogs();
+    await pollBoardStatus();
+  }
+
+  async function refreshLogs() {
+    if (!["logs", "web-logs", "listener-logs"].includes(currentView)) return;
+    const requestedView = currentView;
+    const box = document.getElementById("ad-logs");
+    const res = await fetch("/{{ service }}/logs");
+    const text = requestedView === 'logs' ? await res.text()
+      : (await res.json())[requestedView === 'web-logs' ? 'autoglow-web' : 'autoglow-listener'];
+    if (currentView !== requestedView) return;
+    box.textContent = text || "(no logs yet)";
+    box.scrollTop = box.scrollHeight;
+  }
+
+  // --- Embedded Board view (the only place with online/offline detection -
+  // the pinned Board panel elsewhere in the app is a plain iframe) ---
+  const boardUrl = `${location.protocol}//${location.hostname}:{{ status.web_port if service == "autoglow" else 3180 }}/`;
+  const boardFrame = document.getElementById("board-frame");
+  const boardDisconnected = document.getElementById("board-disconnected");
+  let boardPid = null;
+  let boardLoaded = false;
+
+  function showBoardOffline() {
+    boardFrame.hidden = true;
+    boardDisconnected.hidden = false;
+  }
+
+  function showBoardOnline() {
+    if (!boardLoaded) {
+      // Keep the iframe hidden until its document actually finishes loading -
+      // an iframe paints white the instant navigation starts, before its own
+      // stylesheet applies, so revealing it early causes a white flash.
+      boardFrame.addEventListener(
+        "load",
+        () => {
+          boardFrame.hidden = currentView !== "board";
+        },
+        { once: true },
+      );
+      boardFrame.src = boardUrl;
+      boardLoaded = true;
+    } else {
+      boardFrame.hidden = false;
+    }
+    boardDisconnected.hidden = true;
+  }
+
+  async function isBoardReachable() {
+    try {
+      await fetch(boardUrl, { mode: "no-cors", cache: "no-store" });
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  async function pollBoardStatus() {
+    if (currentView !== "board") return;
+    const res = await fetch("/{{ service }}/status").catch(() => null);
+    const data = res ? await res.json().catch(() => null) : null;
+    const reachable = data && (data.processes ? data.processes["autoglow-web"] === "running" : data.status === "running") && await isBoardReachable();
+    // A tab switch may happen while the health requests are in flight.
+    if (currentView !== "board") return;
+    if (!reachable) {
+      showBoardOffline();
+    } else {
+      const pid = data.pids ? data.pids["autoglow-web"] : data.pid;
+      if (boardPid !== null && pid !== boardPid) boardLoaded = false;
+      boardPid = pid;
+      showBoardOnline();
+    }
+  }
+
+  refreshStatus();
+  refreshLogs();
+  showBoardOffline();
+  setTimeout(pollBoardStatus, 800);
+  setInterval(refreshStatus, 5000);
+  setInterval(refreshLogs, 5000);
+  setInterval(pollBoardStatus, 5000);
+</script>
+{% endblock %}

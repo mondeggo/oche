@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark" />
+    <title>{% block title %}Oche{% endblock %}</title>
+    <link rel="stylesheet" href="/static/css/style.css" />
+  </head>
+  <body>
+    <div id="oche-page">
+    <header id="topbar" class="topbar">
+      <a class="brand" href="/">
+        Oche
+      </a>
+      <nav aria-label="Main navigation">
+        <a
+          id="nav-link-play"
+          href="/play"
+          class="nav-cta {{ 'active' if active_nav == 'play' }}"
+          {{ 'hidden' if not nav_visibility.play }}
+          >Play</a
+        >
+        <a
+          id="nav-link-board"
+          href="/autodarts"
+          class="{{ 'active' if active_nav == 'board' }}"
+          {{ 'hidden' if not nav_visibility.board }}
+          >Autodarts</a
+        >
+        <a
+          id="nav-link-autoglow"
+          href="/autoglow"
+          class="{{ 'active' if active_nav == 'autoglow' }}"
+          {{ 'hidden' if not nav_visibility.autoglow }}
+          >AutoGlow 2</a
+        >
+        {% if nav_visibility.panels %}
+        <span id="nav-pinned-panels">{%- for item in nav_panels if item.pinned %}
+        <a
+          class="pinned-panel {{ 'active' if panel is defined and panel.id == item.id }}"
+          href="{{ item.url if item.open_in_new_tab else '/panels/' ~ item.id }}"
+          {%
+          if
+          item.open_in_new_tab
+          %}target="_blank"
+          rel="noopener noreferrer"
+          {%
+          endif
+          %}
+          title="{{ item.name }}"
+          >{{ item.name }}</a
+        >
+        {% endfor -%}</span>
+        <details class="panels-menu">
+          <summary class="{{ 'active' if active_nav == 'panels' }}">
+            <span class="panels-menu-label">{{ panel.name if panel is defined else 'Panels' }}</span>
+          </summary>
+          <div class="panels-dropdown">
+            <div class="panels-menu-list" id="panels-menu-list">
+              {% for item in nav_panels %}
+              <div class="panels-menu-item">
+                {% if item.open_in_new_tab %}
+                <a
+                  class="panel-menu-name"
+                  href="{{ item.url }}"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  >{{ item.name }}</a
+                >
+                {% else %}
+                <a class="panel-menu-name" href="/panels/{{ item.id }}"
+                  >{{ item.name }}</a
+                >
+                {% endif %}
+              </div>
+              {% else %}
+              <p class="panels-menu-empty">
+                Keep your favorite tools in reach.
+              </p>
+              {% endfor %}
+            </div>
+            <a class="panels-manage" href="/config#panels"
+              >Manage panels <span aria-hidden="true">&#8599;</span></a
+            >
+          </div>
+        </details>
+        {% endif %}
+        <a
+          id="nav-link-autodarts"
+          href="/supervisor"
+          class="{{ 'active' if active_nav == 'autodarts' }}"
+          {{ 'hidden' if not nav_visibility.autodarts }}
+          >Supervisor</a
+        >
+        <a
+          href="/config"
+          class="nav-icon {{ 'active' if active_nav == 'config' }}"
+          title="Settings"
+          aria-label="Settings"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            width="19"
+            height="19"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <circle cx="12" cy="12" r="3"></circle>
+            <path
+              d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"
+            ></path>
+          </svg>
+        </a>
+      </nav>
+    </header>
+    <main class="{{ 'container-full' if full_width else 'container' }}">
+      {% if allow_header_autohide %}
+      <button
+        id="header-toggle-btn"
+        class="glass-icon-btn header-toggle-btn"
+        title="Hide header"
+        data-default-hidden="{{ '1' if autohide_navbar_default else '0' }}"
+      >
+        <svg
+          viewBox="0 0 24 24"
+          width="16"
+          height="16"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <polyline points="18 15 12 9 6 15"></polyline>
+        </svg>
+      </button>
+      {% endif %} {% block content %}{% endblock %}
+    </main>
+    </div>
+    <script src="/static/js/navigation.js"></script>
+    <script src="/static/js/app.js"></script>
+    {% block scripts %}{% endblock %}
+  </body>
+</html>

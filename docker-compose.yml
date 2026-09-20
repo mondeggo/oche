@@ -1,0 +1,31 @@
+services:
+  oche:
+    image: "${OCHE_IMAGE:-oche:latest}"
+    container_name: oche
+
+    # Autodarts needs host network directly.
+    network_mode: host
+
+    environment:
+      OCHE_AUTOGLOW_PORT: "${OCHE_AUTOGLOW_PORT:-8080}"
+      OCHE_PORT: "${OCHE_PORT:-80}"
+      OCHE_REUSE_AUTODARTS_CONFIG: "${OCHE_REUSE_AUTODARTS_CONFIG:-true}"
+
+    volumes:
+      # Persistent application data
+      - ./data:/app/data
+
+      # Host timezone
+      - type: bind
+        source: /etc/localtime
+        target: /etc/localtime
+        read_only: true
+        bind:
+          create_host_path: false
+
+      # Expose the host device tree so newly connected
+      # /dev/video* devices are visible inside the container.
+      - /dev:/dev
+
+    init: true
+    restart: "${OCHE_RESTART_POLICY:-unless-stopped}"

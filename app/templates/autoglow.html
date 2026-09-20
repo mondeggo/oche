@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}Oche - AutoGlow 2{% endblock %}
+{% block content %}
+<div class="autoglow-viewport">
+<div id="ag-placeholder" class="board-placeholder">
+  <div class="board-placeholder-inner">
+    <h1>AutoGlow 2</h1>
+    <p id="ag-message">Loading lighting controls…</p>
+    <button id="ag-start" hidden>Start AutoGlow 2</button>
+  </div>
+</div>
+<iframe id="ag-frame" class="board-frame" title="AutoGlow 2 configuration" hidden></iframe>
+</div>
+<script>
+(() => {
+  const frame = document.getElementById('ag-frame');
+  const placeholder = document.getElementById('ag-placeholder');
+  const message = document.getElementById('ag-message');
+  const button = document.getElementById('ag-start');
+  let loaded = false;
+  let ready = false;
+  let online = false;
+  let refreshing = false;
+  frame.addEventListener('load', () => {
+    if (!loaded) return;
+    ready = true;
+    if (online) {
+      frame.hidden = false;
+      placeholder.hidden = true;
+    }
+  });
+  async function refresh() {
+    if (refreshing) return;
+    refreshing = true;
+    try {
+      const response = await fetch('/autoglow/status');
+      if (!response.ok) throw new Error('Could not read AutoGlow status.');
+      const status = await response.json();
+      if (status.processes['autoglow-web'] === 'running') {
+        const url = new URL(location.href);
+        url.port = status.web_port;
+        url.pathname = '/'; url.search = ''; url.hash = '';
+        await fetch(url, {mode: 'no-cors', cache: 'no-store'});
+        online = true;
+        if (!loaded) {
+          ready = false;
+          loaded = true;
+          frame.src = url.href;
+        }
+        frame.hidden = !ready;
+        placeholder.hidden = ready;
+        button.hidden = true;
+        message.textContent = 'Loading lighting controls?';
+      } else {
+        online = false; ready = false;
+        frame.hidden = true; placeholder.hidden = false; loaded = false;
+        message.textContent = status.installed ? 'AutoGlow 2 is stopped.' :
+          'AutoGlow 2 is not installed. Rebuild the Oche image to include it.';
+        button.hidden = !status.installed;
+      }
+    } catch (error) {
+      online = false;
+      frame.hidden = true; placeholder.hidden = false;
+      message.textContent = 'Waiting for AutoGlow 2. Check its service logs if this persists.';
+    } finally {
+      refreshing = false;
+    }
+  }
+  button.addEventListener('click', async () => {
+    button.disabled = true;
+    try {
+      const response = await fetch('/autoglow/start', {method: 'POST'});
+      if (!response.ok) { message.textContent = (await response.json()).detail; return; }
+      await refresh();
+    } finally { button.disabled = false; }
+  });
+  refresh(); setInterval(refresh, 5000);
+})();
+</script>
+{% endblock %}

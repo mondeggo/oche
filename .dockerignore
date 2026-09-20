@@ -1,0 +1,10 @@
+# Only application sources and dependencies are needed by the image.
+*
+!Dockerfile
+!requirements.txt
+!app/
+!app/**
+
+**/__pycache__/
+**/*.py[cod]
+app/static/img/*_preview.png

@@ -1,0 +1,225 @@
+{% extends "base.html" %}
+{% block title %}Oche - Settings{% endblock %}
+{% block content %}
+<div class="settings-page">
+<h1>Settings</h1>
+<p class="subtitle">Make Oche work the way you like.</p>
+
+<div class="card">
+  <h2>Play</h2>
+  <div class="toggle-row">
+    <div class="toggle-label">
+      <span>Show in navbar</span>
+      <p class="hint">Show the Play tab in the top navigation.</p>
+    </div>
+    <label class="toggle">
+      <input type="checkbox" aria-label="Show Play in navbar" id="cfg-show-play" {{ 'checked' if config.show_play_in_navbar }}>
+      <span class="toggle-track"><span class="toggle-thumb"></span></span>
+    </label>
+  </div>
+  <div class="toggle-row">
+    <div class="toggle-label">
+      <span>Auto-hide navbar</span>
+      <p class="hint">Default the Play page's header to hidden. Can still be toggled per-browser from that page.</p>
+    </div>
+    <label class="toggle">
+      <input type="checkbox" aria-label="Auto-hide navbar on Play" id="cfg-autohide-navbar-play" {{ 'checked' if config.autohide_navbar_on_play }}>
+      <span class="toggle-track"><span class="toggle-thumb"></span></span>
+    </label>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Autodarts</h2>
+  <div class="toggle-row">
+    <div class="toggle-label">
+      <span>Show in navbar</span>
+      <p class="hint">Show the Autodarts tab in the top navigation.</p>
+    </div>
+    <label class="toggle">
+      <input type="checkbox" aria-label="Show Autodarts in navbar" id="cfg-show-board" {{ 'checked' if config.show_board_in_navbar }}>
+      <span class="toggle-track"><span class="toggle-thumb"></span></span>
+    </label>
+  </div>
+  <div class="toggle-row">
+    <div class="toggle-label">
+      <span>Auto-hide navbar</span>
+      <p class="hint">Default the Autodarts page's header to hidden. Can still be toggled per-browser from that page.</p>
+    </div>
+    <label class="toggle">
+      <input type="checkbox" aria-label="Auto-hide navbar on Autodarts" id="cfg-autohide-navbar" {{ 'checked' if config.autohide_navbar_on_board }}>
+      <span class="toggle-track"><span class="toggle-thumb"></span></span>
+    </label>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Supervisor</h2>
+  <div class="toggle-row">
+    <div class="toggle-label">
+      <span>Show in navbar</span>
+      <p class="hint">Show the Supervisor tab in the top navigation.</p>
+    </div>
+    <label class="toggle">
+      <input type="checkbox" aria-label="Show Supervisor in navbar" id="cfg-show-autodarts" {{ 'checked' if config.show_autodarts_in_navbar }}>
+      <span class="toggle-track"><span class="toggle-thumb"></span></span>
+    </label>
+  </div>
+  <div class="toggle-row">
+    <div class="toggle-label">
+      <span>Start Autodarts on boot</span>
+      <p class="hint">Launches the Autodarts daemon automatically on container boot.</p>
+    </div>
+    <label class="toggle">
+      <input type="checkbox" aria-label="Start Autodarts on boot" id="cfg-autostart-autodarts" {{ 'checked' if config.autostart_autodarts }}>
+      <span class="toggle-track"><span class="toggle-thumb"></span></span>
+    </label>
+  </div>
+  <div class="toggle-row">
+    <div class="toggle-label">
+      <span>Auto-hide navbar</span>
+      <p class="hint">Default the Supervisor page's header to hidden. Can still be toggled per-browser from that page.</p>
+    </div>
+    <label class="toggle">
+      <input type="checkbox" aria-label="Auto-hide navbar on Supervisor" id="cfg-autohide-navbar-autodarts" {{ 'checked' if config.autohide_navbar_on_autodarts }}>
+      <span class="toggle-track"><span class="toggle-thumb"></span></span>
+    </label>
+  </div>
+</div>
+
+<div class="card">
+  <h2>AutoGlow 2</h2>
+  <div class="toggle-row">
+    <div class="toggle-label">
+      <span>Show in navbar</span>
+      <p class="hint">Show the AutoGlow 2 tab in the top navigation.</p>
+    </div>
+    <label class="toggle">
+      <input type="checkbox" aria-label="Show AutoGlow 2 in navbar" id="cfg-show-autoglow" {{ 'checked' if config.show_autoglow_in_navbar }}>
+      <span class="toggle-track"><span class="toggle-thumb"></span></span>
+    </label>
+  </div>
+  <div class="toggle-row">
+    <div class="toggle-label">
+      <span>Auto-hide navbar</span>
+      <p class="hint">Default the AutoGlow 2 page's header to hidden. Can still be toggled per-browser from that page.</p>
+    </div>
+    <label class="toggle">
+      <input type="checkbox" aria-label="Auto-hide navbar on AutoGlow 2" id="cfg-autohide-navbar-autoglow" {{ 'checked' if config.autohide_navbar_on_autoglow }}>
+      <span class="toggle-track"><span class="toggle-thumb"></span></span>
+    </label>
+  </div>
+</div>
+
+<section class="card" id="panels">
+  <h2>Panels</h2>
+  <p class="subtitle">Your tools, one menu away. Add a website to open it inside Oche.</p>
+  <div class="toggle-row">
+    <div class="toggle-label">
+      <span>Show in navbar</span>
+      <p class="hint">Show pinned panels in the top navigation.</p>
+    </div>
+    <label class="toggle">
+      <input type="checkbox" aria-label="Show panels in navbar" id="cfg-show-panels" {{ 'checked' if config.show_panels_in_navbar }}>
+      <span class="toggle-track"><span class="toggle-thumb"></span></span>
+    </label>
+  </div>
+  <div class="toggle-row">
+    <div class="toggle-label">
+      <span>Auto-hide navbar</span>
+      <p class="hint">Default a panel page's header to hidden. Can still be toggled per-browser from that page.</p>
+    </div>
+    <label class="toggle">
+      <input type="checkbox" aria-label="Auto-hide navbar on panels" id="cfg-autohide-navbar-panels" {{ 'checked' if config.autohide_navbar_on_panels }}>
+      <span class="toggle-track"><span class="toggle-thumb"></span></span>
+    </label>
+  </div>
+  <form id="panels-form">
+    <div id="panel-list"></div>
+    <div id="panels-empty" class="panels-empty"><span aria-hidden="true">&#8862;</span><strong>A place for your favorite tools</strong><p>Add a dashboard, lighting controls, or any website you use while playing.</p></div>
+    <div class="panel-actions">
+      <span id="panels-count" class="hint"></span>
+      <button type="button" id="add-panel"><span aria-hidden="true">+</span> Add panel</button>
+    </div>
+    <p id="panels-status" role="status" aria-live="polite"></p>
+  </form>
+  <p class="hint">For sites like Google that block embedding, turn on “Open in a new tab”.</p>
+</section>
+</div>
+<template id="panel-row-template">
+  <div class="panel-row">
+    <label>Name<input class="panel-name" type="text" required maxlength="60" placeholder="My dashboard"></label>
+    <label>Website URL<input class="panel-url" type="url" required placeholder="http://wled.local" pattern="https?://.+"></label>
+    <button type="button" class="remove-panel" aria-label="Remove panel" title="Remove panel">
+      <svg aria-hidden="true" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3m-8 0 1 13h8l1-13M10 11v6M14 11v6"/></svg>
+    </button>
+    <div class="panel-options">
+      <div class="panel-option-toggle">
+        <span>Open in a new tab</span>
+        <label class="toggle">
+          <input class="panel-new-tab" type="checkbox">
+          <span class="toggle-track"><span class="toggle-thumb"></span></span>
+        </label>
+      </div>
+      <div class="panel-option-toggle">
+        <span>Pin to navbar</span>
+        <label class="toggle">
+          <input class="panel-pin" type="checkbox">
+          <span class="toggle-track"><span class="toggle-thumb"></span></span>
+        </label>
+      </div>
+    </div>
+  </div>
+</template>
+<script id="initial-panels" type="application/json">{{ config.panels | tojson }}</script>
+<script src="/static/js/panels.js" defer></script>
+
+<script>
+const autostartInput = document.getElementById('cfg-autostart-autodarts');
+const autohideInput = document.getElementById('cfg-autohide-navbar');
+const autohidePlayInput = document.getElementById('cfg-autohide-navbar-play');
+const autohideAutodartsInput = document.getElementById('cfg-autohide-navbar-autodarts');
+const autohideAutoglowInput = document.getElementById('cfg-autohide-navbar-autoglow');
+const autohidePanelsInput = document.getElementById('cfg-autohide-navbar-panels');
+const showPlayInput = document.getElementById('cfg-show-play');
+const showBoardInput = document.getElementById('cfg-show-board');
+const showAutodartsInput = document.getElementById('cfg-show-autodarts');
+const showAutoglowInput = document.getElementById('cfg-show-autoglow');
+const showPanelsInput = document.getElementById('cfg-show-panels');
+
+async function saveConfig() {
+  await fetch('/config/data', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      autostart_autodarts: autostartInput.checked,
+      autohide_navbar_on_board: autohideInput.checked,
+      autohide_navbar_on_play: autohidePlayInput.checked,
+      autohide_navbar_on_autodarts: autohideAutodartsInput.checked,
+      autohide_navbar_on_autoglow: autohideAutoglowInput.checked,
+      autohide_navbar_on_panels: autohidePanelsInput.checked,
+      show_play_in_navbar: showPlayInput.checked,
+      show_board_in_navbar: showBoardInput.checked,
+      show_autodarts_in_navbar: showAutodartsInput.checked,
+      show_autoglow_in_navbar: showAutoglowInput.checked,
+      show_panels_in_navbar: showPanelsInput.checked,
+    }),
+  });
+}
+
+// Reflect "show in navbar" toggles in the navbar immediately - it's rendered
+// on this same page, so there's no need to wait for the next page load.
+[
+  [showPlayInput, 'nav-link-play'],
+  [showBoardInput, 'nav-link-board'],
+  [showAutodartsInput, 'nav-link-autodarts'],
+  [showAutoglowInput, 'nav-link-autoglow'],
+].forEach(([input, linkId]) => {
+  const link = document.getElementById(linkId);
+  input.addEventListener('change', () => { link.hidden = !input.checked; });
+});
+
+[autostartInput, autohideInput, autohidePlayInput, autohideAutodartsInput, autohideAutoglowInput, autohidePanelsInput, showPlayInput, showBoardInput, showAutodartsInput, showAutoglowInput, showPanelsInput]
+  .forEach((input) => input.addEventListener('change', saveConfig));
+</script>
+{% endblock %}

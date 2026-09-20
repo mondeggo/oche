@@ -1,0 +1,197 @@
+{% extends "base.html" %} {% block title %}Oche - Dashboard{% endblock %} {%
+block content %}
+<h1>Oche</h1>
+<p class="subtitle">
+  Setup &amp; control for your Autodarts board, containerized.
+</p>
+
+<h2 class="section-title">System</h2>
+<div class="metrics-grid">
+  {% macro bar_level(percent) %}{{ 'metric-danger' if percent >= 90 else
+  ('metric-warn' if percent >= 75 else '') }}{% endmacro %}
+  <div class="metric-card">
+    <div class="metric-label">CPU</div>
+    <div class="metric-value" id="m-cpu">{{ system.cpu_percent }}%</div>
+    <div class="metric-bar">
+      <div
+        class="metric-bar-fill {{ bar_level(system.cpu_percent) }}"
+        id="m-cpu-bar"
+        style="width: {{ system.cpu_percent }}%"
+      ></div>
+    </div>
+    <div class="metric-sub">{{ system.cpu_count }} cores</div>
+  </div>
+  <div class="metric-card">
+    <div class="metric-label">Memory</div>
+    <div class="metric-value" id="m-mem">{{ system.mem_percent }}%</div>
+    <div class="metric-bar">
+      <div
+        class="metric-bar-fill {{ bar_level(system.mem_percent) }}"
+        id="m-mem-bar"
+        style="width: {{ system.mem_percent }}%"
+      ></div>
+    </div>
+    <div class="metric-sub" id="m-mem-sub">
+      {{ system.mem_used_gb }} / {{ system.mem_total_gb }} GB
+    </div>
+  </div>
+  <div class="metric-card">
+    <div class="metric-label">Disk (data)</div>
+    <div class="metric-value" id="m-disk">{{ system.disk_percent }}%</div>
+    <div class="metric-bar">
+      <div
+        class="metric-bar-fill {{ bar_level(system.disk_percent) }}"
+        id="m-disk-bar"
+        style="width: {{ system.disk_percent }}%"
+      ></div>
+    </div>
+    <div class="metric-sub" id="m-disk-sub">
+      {{ system.disk_used_gb }} / {{ system.disk_total_gb }} GB
+    </div>
+  </div>
+  <div class="metric-card">
+    <div class="metric-label">Temperature</div>
+    <div class="metric-value" id="m-temp">
+      {{ (system.cpu_temp_c ~ '°C') if system.cpu_temp_c is not none else '—' }}
+    </div>
+    <div class="metric-sub" id="m-uptime">
+      Up {{ system.uptime_s // 3600 }}h {{ (system.uptime_s % 3600) // 60 }}m
+    </div>
+  </div>
+  <div class="metric-card">
+    <div class="metric-label">Disk I/O</div>
+    <div class="metric-value metric-value-sm" id="m-diskio">
+      {{ system.disk_read_mb_s }} / {{ system.disk_write_mb_s }} MB/s
+    </div>
+    <div class="metric-sub">read / write</div>
+  </div>
+  <div class="metric-card">
+    <div class="metric-label">Network</div>
+    <div class="metric-value metric-value-sm" id="m-netio">
+      {{ system.net_recv_mb_s }} / {{ system.net_sent_mb_s }} MB/s
+    </div>
+    <div class="metric-sub">down / up</div>
+  </div>
+</div>
+
+<h2 class="section-title">Services</h2>
+<div class="grid services-grid">
+  <a class="card" href="/supervisor?service=autodarts">
+    <div class="card-head">
+      <h2 class="card-title">
+        <img
+          src="/static/img/autodarts_logo.svg"
+          alt="Autodarts"
+          class="card-logo"
+        />
+        Autodarts
+      </h2>
+      <span
+        id="svc-autodarts-badge"
+        class="badge {{ 'badge-green' if autodarts_status.status == 'running' else ('badge-yellow' if autodarts_status.status == 'nofile' else 'badge-red') }}"
+      >
+        {{ 'running' if autodarts_status.status == 'running' else ('not
+        installed' if autodarts_status.status == 'nofile' else 'stopped') }}
+      </span>
+    </div>
+    <p>Board manager status &amp; controls.</p>
+  </a>
+  <a class="card" href="/supervisor?service=autoglow">
+    <div class="card-head">
+      <h2>💡 AutoGlow 2</h2>
+      {% set ag_ok = (autoglow_status.status == 'running') and
+      autoglow_status.autodarts_connected %}
+      <span
+        id="svc-autoglow-badge"
+        class="badge {{ 'badge-green' if ag_ok else ('badge-yellow' if (autoglow_status.status == 'running') else 'badge-red') }}"
+      >
+        {{ 'connected' if ag_ok else ('idle' if (autoglow_status.status == 'running')
+        else 'not found') }}
+      </span>
+    </div>
+    <p>Board lighting status &amp; controls.</p>
+  </a>
+</div>
+
+<script>
+  function setBarLevel(el, percent) {
+    el.classList.remove("metric-warn", "metric-danger");
+    if (percent >= 90) el.classList.add("metric-danger");
+    else if (percent >= 75) el.classList.add("metric-warn");
+  }
+
+  async function refreshDashboard() {
+    try {
+      const [sysRes, adRes, agRes] = await Promise.all([
+        fetch("/system/status"),
+        fetch("/autodarts/status"),
+        fetch("/autoglow/status"),
+      ]);
+      const sys = await sysRes.json();
+      const ad = await adRes.json();
+      const ag = await agRes.json();
+
+      document.getElementById("m-cpu").textContent = sys.cpu_percent + "%";
+      const cpuBar = document.getElementById("m-cpu-bar");
+      cpuBar.style.width = sys.cpu_percent + "%";
+      setBarLevel(cpuBar, sys.cpu_percent);
+
+      document.getElementById("m-mem").textContent = sys.mem_percent + "%";
+      const memBar = document.getElementById("m-mem-bar");
+      memBar.style.width = sys.mem_percent + "%";
+      setBarLevel(memBar, sys.mem_percent);
+      document.getElementById("m-mem-sub").textContent =
+        `${sys.mem_used_gb} / ${sys.mem_total_gb} GB`;
+
+      document.getElementById("m-disk").textContent = sys.disk_percent + "%";
+      const diskBar = document.getElementById("m-disk-bar");
+      diskBar.style.width = sys.disk_percent + "%";
+      setBarLevel(diskBar, sys.disk_percent);
+      document.getElementById("m-disk-sub").textContent =
+        `${sys.disk_used_gb} / ${sys.disk_total_gb} GB`;
+
+      document.getElementById("m-temp").textContent =
+        sys.cpu_temp_c != null ? `${sys.cpu_temp_c}°C` : "—";
+      const h = Math.floor(sys.uptime_s / 3600);
+      const m = Math.floor((sys.uptime_s % 3600) / 60);
+      document.getElementById("m-uptime").textContent = `Up ${h}h ${m}m`;
+
+      document.getElementById("m-diskio").textContent =
+        `${sys.disk_read_mb_s} / ${sys.disk_write_mb_s} MB/s`;
+      document.getElementById("m-netio").textContent =
+        `${sys.net_recv_mb_s} / ${sys.net_sent_mb_s} MB/s`;
+
+      const adBadge = document.getElementById("svc-autodarts-badge");
+      const adOk = ad.status === "running";
+      const adNofile = ad.status === "nofile";
+      adBadge.className =
+        "badge " +
+        (adOk ? "badge-green" : adNofile ? "badge-yellow" : "badge-red");
+      adBadge.textContent = adOk
+        ? "running"
+        : adNofile
+          ? "not installed"
+          : "stopped";
+
+      const agOk = (ag.status === "running") && ag.autodarts_connected;
+      const agBadge = document.getElementById("svc-autoglow-badge");
+      agBadge.className =
+        "badge " +
+        (agOk
+          ? "badge-green"
+          : (ag.status === "running")
+            ? "badge-yellow"
+            : "badge-red");
+      agBadge.textContent = agOk
+        ? "connected"
+        : (ag.status === "running")
+          ? "idle"
+          : "not found";
+    } catch (e) {
+      // Ignore transient poll failures - values just stay stale until the next tick.
+    }
+  }
+
+  setInterval(refreshDashboard, 5000);
+</script>
+{% endblock %}
