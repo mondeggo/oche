@@ -112,19 +112,13 @@ block content %}
 
 <div class="embed-panel">
   <div class="embed-toggle">
-    {% if service == "autodarts" %}
-    <a id="toggle-board-btn" class="view-toggle-btn" href="/autodarts">
-      Board
-    </a>
-    {% else %}
     <button
       id="toggle-board-btn"
       class="view-toggle-btn active"
       onclick="showView('board')"
     >
-      AutoGlow 2
+      {{ "Board" if service == "autodarts" else "AutoGlow 2" }}
     </button>
-    {% endif %}
     <button
       id="toggle-play-btn"
       class="view-toggle-btn"
@@ -135,7 +129,7 @@ block content %}
     {% if service == "autodarts" %}
     <button
       id="toggle-logs-btn"
-      class="view-toggle-btn active"
+      class="view-toggle-btn"
       onclick="showView('logs')"
     >
       Logs
@@ -156,12 +150,16 @@ block content %}
       </div>
     </div>
 
+    {% if service == "autodarts" %}
+    <div id="board-frame" class="board-frame shared-board-slot" hidden></div>
+    {% else %}
     <iframe
       id="board-frame"
       class="board-frame"
-      title="{{ 'Autodarts Board' if service == 'autodarts' else 'AutoGlow 2 configuration' }}"
+      title="AutoGlow 2 configuration"
       hidden
     ></iframe>
+    {% endif %}
 
     <iframe
       id="play-frame"
@@ -175,8 +173,8 @@ block content %}
 </div>
 
 <script>
-  const embedsLocalBoard = {{ 'false' if service == 'autodarts' else 'true' }};
-  let currentView = "{{ 'logs' if service == 'autodarts' else 'board' }}";
+  const usesSharedBoard = {{ 'true' if service == 'autodarts' else 'false' }};
+  let currentView = "board";
 
   function showView(view) {
     currentView = view;
@@ -193,17 +191,19 @@ block content %}
     document.getElementById("ad-logs").hidden = !isLogs;
 
     if (isLogs) {
+      if (usesSharedBoard) sharedBoard()?.hide(boardFrame);
       document.getElementById("board-frame").hidden = true;
       document.getElementById("board-disconnected").hidden = true;
       document.getElementById("play-frame").hidden = true;
       refreshLogs();
     } else if (view === "play") {
+      if (usesSharedBoard) sharedBoard()?.hide(boardFrame);
       document.getElementById("board-frame").hidden = true;
       document.getElementById("board-disconnected").hidden = true;
       showPlay();
     } else {
       document.getElementById("play-frame").hidden = true;
-      if (embedsLocalBoard) pollBoardStatus();
+      pollBoardStatus();
     }
   }
 
@@ -276,13 +276,25 @@ block content %}
   let boardPid = null;
   let boardLoaded = false;
 
+  function sharedBoard() {
+    try {
+      if (window.ocheBoard) return window.ocheBoard;
+      if (parent !== window && parent.ocheBoard) return parent.ocheBoard;
+    } catch (_) { /* Oche may itself be embedded by another origin. */ }
+    return null;
+  }
+
   function showBoardOffline() {
+    if (usesSharedBoard) sharedBoard()?.hide(boardFrame);
     boardFrame.hidden = true;
     boardDisconnected.hidden = false;
   }
 
   function showBoardOnline() {
-    if (!boardLoaded) {
+    if (usesSharedBoard) {
+      boardFrame.hidden = false;
+      sharedBoard()?.show(boardFrame, boardPid);
+    } else if (!boardLoaded) {
       // Keep the iframe hidden until its document actually finishes loading -
       // an iframe paints white the instant navigation starts, before its own
       // stylesheet applies, so revealing it early causes a white flash.
@@ -311,7 +323,7 @@ block content %}
   }
 
   async function pollBoardStatus() {
-    if (!embedsLocalBoard || currentView !== "board") return;
+    if (currentView !== "board") return;
     const res = await fetch("/{{ service }}/status").catch(() => null);
     const data = res ? await res.json().catch(() => null) : null;
     const reachable = data && (data.processes ? data.processes["autoglow-web"] === "running" : data.status === "running") && await isBoardReachable();
@@ -321,19 +333,16 @@ block content %}
       showBoardOffline();
     } else {
       const pid = data.pids ? data.pids["autoglow-web"] : data.pid;
-      if (boardPid !== null && pid !== boardPid) boardLoaded = false;
+      if (!usesSharedBoard && boardPid !== null && pid !== boardPid) boardLoaded = false;
       boardPid = pid;
       showBoardOnline();
     }
   }
 
   refreshStatus();
+  refreshLogs();
   showBoardOffline();
-  if (currentView === "board") {
-    setTimeout(pollBoardStatus, 800);
-  } else {
-    showView(currentView);
-  }
+  setTimeout(pollBoardStatus, 800);
   setInterval(refreshStatus, 5000);
   setInterval(refreshLogs, 5000);
   setInterval(pollBoardStatus, 5000);

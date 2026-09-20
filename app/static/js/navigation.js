@@ -11,6 +11,111 @@
   } catch (_) { /* Oche can itself be embedded by another origin. */ }
 
   if (shell === window) {
+    const boardUrl = `${location.protocol}//${location.hostname}:3180/`;
+    let sharedBoardFrame = null;
+    let sharedBoardReady = false;
+    let sharedBoardLoaded = false;
+    let sharedBoardPid = null;
+    let activeBoardSlot = null;
+    let boardTrackingFrame = null;
+
+    function boardSlotRect(slot) {
+      if (!slot || !slot.isConnected || slot.hidden) return null;
+      let rect = slot.getBoundingClientRect();
+      if (rect.width < 1 || rect.height < 1) return null;
+      let view = slot.ownerDocument.defaultView;
+      while (view && view !== window) {
+        const hostFrame = view.frameElement;
+        if (!hostFrame || hostFrame.hidden) return null;
+        const hostRect = hostFrame.getBoundingClientRect();
+        if (hostRect.width < 1 || hostRect.height < 1) return null;
+        rect = {
+          left: hostRect.left + rect.left,
+          top: hostRect.top + rect.top,
+          width: rect.width,
+          height: rect.height,
+        };
+        view = hostFrame.ownerDocument.defaultView;
+      }
+      return rect;
+    }
+
+    function parkBoard() {
+      if (!sharedBoardFrame) return;
+      sharedBoardFrame.classList.remove('active');
+      sharedBoardFrame.style.left = '-100000px';
+      sharedBoardFrame.style.top = '0';
+    }
+
+    function renderBoard() {
+      if (!sharedBoardFrame || !activeBoardSlot || !sharedBoardReady) {
+        parkBoard();
+        return;
+      }
+      const rect = boardSlotRect(activeBoardSlot);
+      if (!rect) {
+        parkBoard();
+        return;
+      }
+      sharedBoardFrame.style.left = `${rect.left}px`;
+      sharedBoardFrame.style.top = `${rect.top}px`;
+      sharedBoardFrame.style.width = `${rect.width}px`;
+      sharedBoardFrame.style.height = `${rect.height}px`;
+      sharedBoardFrame.classList.add('active');
+    }
+
+    function trackBoard() {
+      boardTrackingFrame = null;
+      if (!activeBoardSlot) return;
+      renderBoard();
+      boardTrackingFrame = requestAnimationFrame(trackBoard);
+    }
+
+    function startBoardTracking() {
+      if (boardTrackingFrame === null) {
+        boardTrackingFrame = requestAnimationFrame(trackBoard);
+      }
+    }
+
+    function ensureSharedBoard(pid) {
+      if (!sharedBoardFrame) {
+        sharedBoardFrame = document.createElement('iframe');
+        sharedBoardFrame.id = 'oche-board-frame';
+        sharedBoardFrame.className = 'oche-board-frame';
+        sharedBoardFrame.title = 'Autodarts Board';
+        sharedBoardFrame.allowFullscreen = true;
+        sharedBoardFrame.addEventListener('load', () => {
+          sharedBoardReady = true;
+          renderBoard();
+        });
+        document.body.appendChild(sharedBoardFrame);
+      }
+
+      const pidChanged = pid != null && sharedBoardPid != null && pid !== sharedBoardPid;
+      if (pid != null) sharedBoardPid = pid;
+      if (!sharedBoardLoaded || pidChanged) {
+        sharedBoardReady = false;
+        sharedBoardFrame.src = boardUrl;
+        sharedBoardLoaded = true;
+      }
+    }
+
+    window.ocheBoard = {
+      show(slot, pid) {
+        ensureSharedBoard(pid);
+        if (!boardSlotRect(slot)) return false;
+        activeBoardSlot = slot;
+        renderBoard();
+        startBoardTracking();
+        return true;
+      },
+      hide(slot) {
+        if (slot && activeBoardSlot !== slot) return;
+        activeBoardSlot = null;
+        parkBoard();
+      },
+    };
+
     const original = document.getElementById('oche-page');
     const initialUrl = new URL(location.href);
     const views = new Map();
@@ -21,6 +126,7 @@
       const url = new URL(href, location.href);
       if (!internal(url)) return false;
       if (push && url.href === location.href) return true;
+      window.ocheBoard.hide();
       let next = views.get(url.pathname + url.search);
       const retained = Boolean(next);
       if (!next) {

@@ -71,11 +71,11 @@ class NavigationTests(unittest.TestCase):
         self.view().locator('#topbar').wait_for()
 
     def board(self):
-        view = self.view()
-        view.locator('#board-frame').wait_for(state='visible')
-        frame = view.locator('#board-frame').element_handle().content_frame()
-        frame.wait_for_selector('h1')
-        return frame
+        frame = self.page.locator('#oche-board-frame')
+        frame.wait_for(state='attached')
+        content = frame.element_handle().content_frame()
+        content.wait_for_selector('h1')
+        return content
 
     def test_navigation_preserves_camera_documents(self):
         self.page.goto('http://oche.test/autodarts')
@@ -101,18 +101,22 @@ class NavigationTests(unittest.TestCase):
         self.assertEqual(self.board_loads, 1)
 
         self.go('/supervisor')
+        self.view().locator('#toggle-board-btn').wait_for(state='visible')
+        self.view().locator('#board-frame').wait_for(state='visible')
+        self.assertEqual(self.page.url, 'http://oche.test/supervisor')
+        self.assertEqual(self.board().evaluate('window.streamMarker'), 'original')
+
         self.view().locator('#toggle-play-btn').click()
         self.view().locator('#toggle-logs-btn').click()
-        self.assertEqual(self.board_loads, 1)
-
         self.view().locator('#toggle-board-btn').click()
-        self.page.wait_for_url('http://oche.test/autodarts')
+        self.view().locator('#board-frame').wait_for(state='visible')
+        self.assertEqual(self.page.url, 'http://oche.test/supervisor')
         self.assertEqual(self.board().evaluate('window.streamMarker'), 'original')
         self.assertEqual(self.board_loads, 1)
         self.assertEqual(self.errors, [])
 
     def test_poll_failure_preserves_stream_but_restart_reloads(self):
-        for path in ('/autodarts',):
+        for path in ('/autodarts', '/supervisor'):
             with self.subTest(path=path):
                 self.page.goto('http://oche.test' + path)
                 board = self.board()
