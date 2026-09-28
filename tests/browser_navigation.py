@@ -96,6 +96,11 @@ class NavigationTests(unittest.TestCase):
         self.go('/play')
         self.go('/supervisor')
         self.assertEqual(self.view().evaluate('window.pageMarker'), 'original')
+        self.page.go_back()
+        self.page.wait_for_url('http://oche.test/play')
+        self.page.go_forward()
+        self.page.wait_for_url('http://oche.test/supervisor')
+        self.assertEqual(self.view().evaluate('window.pageMarker'), 'original')
         self.view().locator('#toggle-logs-btn').click()
         self.view().locator('#board-frame').wait_for(state='hidden')
         self.view().locator('#toggle-play-btn').click()
@@ -104,6 +109,7 @@ class NavigationTests(unittest.TestCase):
         self.view().locator('#board-frame').wait_for(state='visible')
         self.assertEqual(self.view().locator('#board-frame').element_handle().content_frame().evaluate('window.terminalMarker'), 'retained')
         self.assertEqual(self.board_loads, 0)
+        self.assertEqual(len(self.terminal_connections), 1)
         self.assertEqual(self.errors, [])
 
     def test_responsive_layouts_do_not_overflow(self):
