@@ -14,13 +14,11 @@ class ConfigUpdate(BaseModel):
     # inline toggles) only send the fields they're changing.
     autostart_autodarts: Optional[bool] = None
     autostart_autoglow: Optional[bool] = None
-    autohide_navbar_on_board: Optional[bool] = None
     autohide_navbar_on_play: Optional[bool] = None
     autohide_navbar_on_autodarts: Optional[bool] = None
     autohide_navbar_on_autoglow: Optional[bool] = None
     autohide_navbar_on_panels: Optional[bool] = None
     show_play_in_navbar: Optional[bool] = None
-    show_board_in_navbar: Optional[bool] = None
     show_autodarts_in_navbar: Optional[bool] = None
     show_autoglow_in_navbar: Optional[bool] = None
     show_panels_in_navbar: Optional[bool] = None

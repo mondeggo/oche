@@ -2,8 +2,9 @@ from typing import Literal
 from fastapi import APIRouter, HTTPException, Request
 from app.templating import templates
 
-from app.config import load_config
+from app.config import LOG_DIR, load_config
 from app.services import autoglow
+from app.log_download import log_download
 
 router = APIRouter(prefix="/autoglow", tags=["autoglow"])
 
@@ -44,10 +45,25 @@ def logs():
     return autoglow.logs()
 
 
+@router.get("/logs/export")
+def export_logs():
+    path = LOG_DIR / "autoglow-web.log"
+    return log_download(path)
+
+
 @router.post("/stop")
 def stop():
     autoglow.stop()
     return autoglow.get_status()
+
+
+@router.post("/logs/clear")
+def clear_logs():
+    try:
+        autoglow.clear_logs()
+    except OSError as e:
+        raise HTTPException(status_code=500, detail="Failed to clear AutoGlow logs.") from e
+    return {"ok": True}
 
 
 @router.post("/restart")

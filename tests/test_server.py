@@ -6,6 +6,17 @@ from app.server import main
 
 
 class ServerTests(unittest.TestCase):
+    def test_shutdown_stops_both_services(self):
+        from fastapi.testclient import TestClient
+        from app.main import app
+        with patch('app.main.load_config', return_value={}), \
+             patch('app.main.autodarts_service.stop') as autodarts_stop, \
+             patch('app.main.autoglow_service.stop') as autoglow_stop:
+            with TestClient(app):
+                pass
+            autodarts_stop.assert_called_once()
+            autoglow_stop.assert_called_once()
+
     def test_configured_port_and_legacy_default(self):
         for environment, expected in (({}, 8180), ({"OCHE_PORT": "80"}, 80),
                                       ({"OCHE_PORT": "9090"}, 9090)):

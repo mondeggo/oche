@@ -68,6 +68,11 @@ def logs() -> dict:
     return {p.name: p.tail_log() for p in _processes}
 
 
+def clear_logs() -> None:
+    for process in _processes:
+        process.clear_log()
+
+
 def restart() -> bool:
     stop()
     return start()

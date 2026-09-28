@@ -1,0 +1,28 @@
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; background: #18181b; color: #d4d4d8; }
+body { display: flex; flex-direction: column; font: 14px "Segoe UI", system-ui, sans-serif; }
+.terminal-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 12px; }
+.terminal-toolbar button { font: inherit; padding: 5px 12px; background: #3f3f46; color: white; border: 0; border-radius: 6px; cursor: pointer; }
+.terminal-toolbar button:disabled { opacity: .5; cursor: default; }
+.terminal-toolbar { flex-wrap: wrap; }
+#terminal-copy-status { color: #d4d4d8; font-size: 12px; margin-left: auto; }
+#terminal-context-menu { position: fixed; z-index: 10; padding: 4px; background: #27272a; border: 1px solid #52525b; border-radius: 6px; box-shadow: 0 4px 16px #0006; }
+#terminal-context-menu button { font: inherit; color: #fff; background: transparent; border: 0; border-radius: 3px; padding: 6px 24px; cursor: pointer; }
+#terminal-context-menu button:hover, #terminal-context-menu button:focus-visible { background: #3f3f46; }
+#terminal { flex: 1; min-height: 0; padding: 8px; overflow: hidden; }
+.terminal-toolbar { flex: none; }
+#terminal-status { flex: 1 1 180px; min-width: 0; overflow-wrap: anywhere; }
+#terminal-copy-status:empty { display: none; }
+.terminal-touch-keys, #terminal-keys-toggle, #terminal-keyboard { display: none; }
+@media (max-width: 600px), (pointer: coarse) {
+  .terminal-toolbar { gap: 6px; padding: 4px 8px; font-size: 11px; border-bottom: 1px solid #27272a; }
+  #terminal-status { flex-basis: 80px; }
+  .terminal-toolbar button { min-height: 32px; padding: 4px 8px; background: transparent; color: #d4d4d8; }
+  #terminal-keys-toggle, #terminal-keyboard { display: inline-flex; align-items: center; justify-content: center; }
+  #terminal-keys-toggle[aria-expanded="true"] { background: #3f3f46; color: white; }
+  #terminal-copy-status { flex-basis: 100%; order: 1; }
+  #terminal { padding: 8px; }
+  .terminal-touch-keys:not([hidden]) { display: flex; flex: none; gap: 4px; padding: 6px 8px; border-top: 1px solid #3f3f46; }
+  .terminal-touch-keys button { flex: 1; min-width: 0; min-height: 36px; padding: 4px; font: 12px "Segoe UI", system-ui, sans-serif; color: #d4d4d8; background: #27272a; border: 1px solid #3f3f46; border-radius: 4px; touch-action: manipulation; }
+  .terminal-touch-keys button:active { background: #52525b; }
+}

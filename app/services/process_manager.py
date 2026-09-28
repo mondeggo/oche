@@ -1,6 +1,7 @@
 import subprocess
 import threading
 import time
+from collections import deque
 from pathlib import Path
 from typing import Optional
 
@@ -54,8 +55,9 @@ class ManagedProcess:
                 )
             except OSError as e:
                 log_fp.write(f"Failed to start: {e}\n")
-                log_fp.close()
                 raise RuntimeError(f"Failed to start {self.name}: {e}") from e
+            finally:
+                log_fp.close()
             return True
 
     def stop(self, timeout: float = 5.0) -> bool:
@@ -75,12 +77,20 @@ class ManagedProcess:
         time.sleep(0.5)
         return self.start()
 
+    def clear_log(self) -> None:
+        # Truncate in place so a running process keeps writing to the same file.
+        with self._lock:
+            try:
+                with self._log_file.open("r+b") as log:
+                    log.truncate(0)
+            except FileNotFoundError:
+                pass
+
     def tail_log(self, lines: int = 200) -> str:
         if not self._log_file.exists():
             return ""
         with open(self._log_file, "r", errors="replace") as f:
-            content = f.readlines()
-        return "".join(content[-lines:])
+            return "".join(deque(f, maxlen=lines))
 
 
 class ProcessRegistry:

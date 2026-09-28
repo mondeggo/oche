@@ -1,5 +1,6 @@
 {% extends "base.html" %} {% block title %}Oche - Supervisor{% endblock %} {%
 block content %}
+<section class="supervisor-page">
 <div class="embed-toggle supervisor-selector" aria-label="Service">
   <a class="view-toggle-btn {{ 'active' if service == 'autodarts' }}" href="/supervisor?service=autodarts">Autodarts</a>
   <a class="view-toggle-btn {{ 'active' if service == 'autoglow' }}" href="/supervisor?service=autoglow">AutoGlow 2</a>
@@ -14,7 +15,7 @@ block content %}
 </div>
 {% else %}<h1>AutoGlow 2</h1>{% endif %}
 <p class="subtitle">
-  Manage {{ "the Autodarts board manager" if service == "autodarts" else "AutoGlow lighting services" }} running inside this container.
+  Manage {{ "Autodarts headless" if service == "autodarts" else "AutoGlow lighting services" }} running inside this container.
 </p>
 
 <div class="status-panel">
@@ -29,6 +30,9 @@ block content %}
         >
           {{ status.status }}
         </span>
+      </span>
+      <span class="status-item">
+        Version: {{ status.version or 'unknown' }}
       </span>
       <span class="status-item">
         {{ "PID" if service == "autodarts" else "Processes" }}: <span id="ad-pid">{{ status.pid or '-' }}</span>
@@ -117,7 +121,7 @@ block content %}
       class="view-toggle-btn active"
       onclick="showView('board')"
     >
-      {{ "Board" if service == "autodarts" else "AutoGlow 2" }}
+      {{ "Autodarts" if service == "autodarts" else "AutoGlow 2" }}
     </button>
     <button
       id="toggle-play-btn"
@@ -137,6 +141,12 @@ block content %}
     {% endif %}
   </div>
 
+    <div id="log-actions" hidden>
+      <div class="btn-row">
+        <button id="clear-terminal" type="button" class="btn-neutral" onclick="clearTerminal()" title="Clear the saved log for this service" disabled>Clear logs</button>
+        <a class="btn-link btn-neutral" href="/{{ service }}/logs/export" download>Export logs</a>
+      </div>
+    </div>
   <div class="embed-body">
     <div id="board-disconnected" class="board-placeholder" hidden>
       <div class="board-placeholder-inner">
@@ -153,7 +163,7 @@ block content %}
     <iframe
       id="board-frame"
       class="board-frame"
-      title="{{ 'Autodarts Board' if service == 'autodarts' else 'AutoGlow 2 configuration' }}"
+      title="{{ 'Autodarts setup terminal' if service == 'autodarts' else 'AutoGlow 2 configuration' }}"
       hidden
     ></iframe>
 
@@ -168,8 +178,30 @@ block content %}
   </div>
 </div>
 
+</section>
 <script>
   let currentView = "board";
+  let clearingLogs = false;
+  let logRequest = 0;
+
+  async function clearTerminal() {
+    if (clearingLogs) return;
+    clearingLogs = true;
+    ++logRequest; // Discard any poll that began before clearing.
+    const button = document.getElementById('clear-terminal');
+    button.disabled = true;
+    try {
+      const res = await fetch('/{{ service }}/logs/clear', { method: 'POST' });
+      if (!res.ok) throw new Error('Failed to clear logs. Please try again.');
+      document.getElementById('ad-logs').textContent = '';
+    } catch (error) {
+      alert(error.message || 'Failed to clear logs. Please try again.');
+    } finally {
+      clearingLogs = false;
+      button.disabled = false;
+    }
+    await refreshLogs();
+  }
 
   function showView(view) {
     currentView = view;
@@ -184,6 +216,7 @@ block content %}
       .getElementById("toggle-logs-btn")
       ?.classList.toggle("active", view === "logs");
     document.getElementById("ad-logs").hidden = !isLogs;
+    document.getElementById("log-actions").hidden = !isLogs;
 
     if (isLogs) {
       document.getElementById("board-frame").hidden = true;
@@ -200,8 +233,7 @@ block content %}
     }
   }
 
-  // --- Embedded Play view (play.autodarts.com, the actual game/lobby app -
-  // separate from the local board manager UI on :3180 above) ---
+  // Embedded online game/lobby view.
   const playFrame = document.getElementById("play-frame");
 
   function showPlay() {
@@ -209,7 +241,7 @@ block content %}
       playFrame.addEventListener(
         "load",
         () => {
-          playFrame.hidden = false;
+          playFrame.hidden = currentView !== "play";
         },
         { once: true },
       );
@@ -220,8 +252,10 @@ block content %}
   }
 
   async function refreshStatus() {
-    const res = await fetch("/{{ service }}/status");
-    const data = await res.json();
+    const res = await fetch("/{{ service }}/status").catch(() => null);
+    if (!res?.ok) return;
+    const data = await res.json().catch(() => null);
+    if (!data) return;
     if (data.processes) {
       const state = data.processes['autoglow-web'];
       const badge = document.getElementById('ag-web-status');
@@ -233,40 +267,49 @@ block content %}
     document.getElementById("ad-status").textContent = data.status;
     document.getElementById("ad-status").className =
       "badge " + (data.status === "running" ? "badge-green" : "badge-red");
-    document.getElementById("ad-pid").textContent = data.processes
-      ? `Server: ${data.processes['autoglow-web']}`
-      : data.pid || "-";
+    document.getElementById("ad-pid").textContent = data.pid || "-";
   }
 
   async function postAction(url) {
-    const res = await fetch(url, { method: "POST" });
+    const res = await fetch(url, { method: "POST" }).catch(() => null);
+    if (!res) { alert("Could not reach the service. Please try again."); return; }
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       alert(err.detail || "Action failed");
+      return;
     }
     await refreshStatus();
     await refreshLogs();
+    {% if service == "autodarts" %}
+    if (boardLoaded) boardFrame.contentWindow.location.reload();
+    {% endif %}
     await pollBoardStatus();
   }
 
   async function refreshLogs() {
-    if (!["logs", "web-logs"].includes(currentView)) return;
+    if (clearingLogs || !["logs", "web-logs"].includes(currentView)) return;
     const requestedView = currentView;
+    const request = ++logRequest;
     const box = document.getElementById("ad-logs");
-    const res = await fetch("/{{ service }}/logs");
-    const text = requestedView === 'logs' ? await res.text()
-      : (await res.json())['autoglow-web'];
-    if (currentView !== requestedView) return;
-    box.textContent = text || "(no logs yet)";
+    let text;
+    try {
+      const res = await fetch("/{{ service }}/logs", { cache: 'no-store' });
+      if (!res.ok) return;
+      text = (requestedView === 'logs' ? await res.text()
+        : (await res.json())['autoglow-web']) || '';
+    } catch (error) {
+      return;
+    }
+    if (currentView !== requestedView || request !== logRequest) return;
+    document.getElementById('clear-terminal').disabled = false;
+    box.textContent = text || '(no logs yet)';
     box.scrollTop = box.scrollHeight;
   }
 
-  // --- Embedded Board view (the only place with online/offline detection -
-  // the pinned Board panel elsewhere in the app is a plain iframe) ---
-  const boardUrl = `${location.protocol}//${location.hostname}:{{ status.web_port if service == "autoglow" else 3180 }}/`;
+  const boardUrl = {% if service == "autoglow" %}`${location.protocol}//${location.hostname}:{{ status.web_port }}/`{% else %}'/autodarts/terminal'{% endif %};
   const boardFrame = document.getElementById("board-frame");
   const boardDisconnected = document.getElementById("board-disconnected");
-  let boardPid = null;
+  {% if service == "autoglow" %}let boardPid = null;{% endif %}
   let boardLoaded = false;
 
   function showBoardOffline() {
@@ -294,6 +337,7 @@ block content %}
     boardDisconnected.hidden = true;
   }
 
+  {% if service == "autoglow" %}
   async function isBoardReachable() {
     try {
       await fetch(boardUrl, { mode: "no-cors", cache: "no-store" });
@@ -302,22 +346,27 @@ block content %}
       return false;
     }
   }
+  {% endif %}
 
   async function pollBoardStatus() {
     if (currentView !== "board") return;
+    {% if service == "autodarts" %}
+    showBoardOnline();
+    {% else %}
     const res = await fetch("/{{ service }}/status").catch(() => null);
     const data = res ? await res.json().catch(() => null) : null;
-    const reachable = data && (data.processes ? data.processes["autoglow-web"] === "running" : data.status === "running") && await isBoardReachable();
+    const reachable = data && data.processes["autoglow-web"] === "running" && await isBoardReachable();
     // A tab switch may happen while the health requests are in flight.
     if (currentView !== "board") return;
     if (!reachable) {
       showBoardOffline();
     } else {
-      const pid = data.pids ? data.pids["autoglow-web"] : data.pid;
+      const pid = data.pids["autoglow-web"];
       if (boardPid !== null && pid !== boardPid) boardLoaded = false;
       boardPid = pid;
       showBoardOnline();
     }
+    {% endif %}
   }
 
   refreshStatus();

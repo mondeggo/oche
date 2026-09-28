@@ -63,13 +63,11 @@ class PanelTests(unittest.TestCase):
         response = self.client.post("/config/data", json={
             "autostart_autodarts": False,
             "autostart_autoglow": False,
-            "autohide_navbar_on_board": True,
             "autohide_navbar_on_play": False,
             "autohide_navbar_on_autodarts": False,
             "autohide_navbar_on_autoglow": False,
             "autohide_navbar_on_panels": False,
             "show_play_in_navbar": True,
-            "show_board_in_navbar": True,
             "show_autodarts_in_navbar": True,
             "show_autoglow_in_navbar": True,
             "show_panels_in_navbar": True,
@@ -109,7 +107,7 @@ class PanelTests(unittest.TestCase):
         # live without a reload) and hidden via the `hidden` attribute.
         def hidden_ids(page):
             return {
-                nav_id for nav_id in ("nav-link-play", "nav-link-board", "nav-link-autodarts", "nav-link-autoglow")
+                nav_id for nav_id in ("nav-link-play", "nav-link-autodarts", "nav-link-autoglow")
                 if re.search(rf'id="{nav_id}"[^>]*\bhidden\b', page)
             }
 
@@ -119,13 +117,11 @@ class PanelTests(unittest.TestCase):
         response = self.client.post("/config/data", json={
             "autostart_autodarts": False,
             "autostart_autoglow": False,
-            "autohide_navbar_on_board": False,
             "autohide_navbar_on_play": False,
             "autohide_navbar_on_autodarts": False,
             "autohide_navbar_on_autoglow": False,
             "autohide_navbar_on_panels": False,
             "show_play_in_navbar": False,
-            "show_board_in_navbar": False,
             "show_autodarts_in_navbar": True,
             "show_autoglow_in_navbar": True,
             "show_panels_in_navbar": True,
@@ -133,7 +129,7 @@ class PanelTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
 
         page = self.client.get("/").text
-        self.assertEqual(hidden_ids(page), {"nav-link-play", "nav-link-board"})
+        self.assertEqual(hidden_ids(page), {"nav-link-play"})
         # Hiding a nav item doesn't take down its page.
         self.assertEqual(self.client.get("/play").status_code, 200)
         self.assertEqual(self.client.get("/autodarts").status_code, 200)

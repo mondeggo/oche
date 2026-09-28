@@ -28,10 +28,10 @@ jobs:
         run: |
           set -euo pipefail
           [[ -n "$GH_TOKEN" ]] || { echo "Set AUTOGLOW_TOKEN with Contents read access to mondeggo/AutoGlow2." >&2; exit 1; }
+          releases=$(curl -fsSL --retry 3 "https://releases.autodarts.com/headless/downloads/latest.stable.json")
           for arch in amd64 arm64; do
-            version=$(curl -fsSL --retry 3 "https://get.autodarts.io/detection/latest/linux/$arch/RELEASES.json" | jq -er '.currentVersion')
-            version=${version#v}
-            [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Invalid Autodarts version: $version" >&2; exit 1; }
+            version=$(jq -er --arg platform "linux-$arch" '.platforms[$platform].version' <<< "$releases")
+            [[ "$version" =~ ^2\.[0-9]+\.[0-9]+$ ]] || { echo "Unsupported Autodarts version: $version" >&2; exit 1; }
             if [[ "$arch" == amd64 ]]; then
               autodarts_version=$version
             elif [[ "$version" != "$autodarts_version" ]]; then

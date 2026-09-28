@@ -5,18 +5,15 @@ ARG TARGETARCH
 ARG AUTODARTS_VERSION
 ARG AUTOGLOW_VERSION
 
-# Runtime libs Autodarts' bundled browser/vision stack needs, plus udev for
-# serial/camera device enumeration.
+# Runtime vision/USB libraries and udev for serial/camera device enumeration.
 RUN apt-get update && apt-get install -y --no-install-recommends \
   curl ca-certificates \
   libgl1 libglib2.0-0 libusb-1.0-0 \
   udev libcap2-bin \
   && rm -rf /var/lib/apt/lists/*
 
-# Fetch the pre-compiled Autodarts binary for the container's architecture,
-# mirroring what get.autodarts.io does minus the systemd/sudo setup it
-# normally performs on a host — Oche supervises the binary as a subprocess
-# instead (see app/services/autodarts.py).
+# Fetch the official v2 headless bundle. Oche supervises `autodarts run`;
+# the host installer and its systemd service are not needed in the image.
 RUN set -eux; \
   case "${TARGETARCH:-amd64}" in \
   amd64) AD_ARCH="amd64" ;; \
@@ -25,14 +22,17 @@ RUN set -eux; \
   esac; \
   VERSION="${AUTODARTS_VERSION:-}"; \
   if [ -z "$VERSION" ]; then \
-  VERSION=$(curl -fsSL "https://get.autodarts.io/detection/latest/linux/${AD_ARCH}/RELEASES.json" \
-  | python -c 'import json, sys; print(json.load(sys.stdin)["currentVersion"].removeprefix("v"))'); \
+  VERSION=$(curl -fsSL --retry 3 "https://releases.autodarts.com/headless/downloads/latest.stable.json" \
+  | python -c 'import json, sys; print(json.load(sys.stdin)["platforms"]["linux-" + sys.argv[1]]["version"])' "$AD_ARCH"); \
   fi; \
-  echo "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; \
+  echo "$VERSION" | grep -Eq '^2\.[0-9]+\.[0-9]+$'; \
   mkdir -p /opt/autodarts; \
-  curl -fsSL "https://get.autodarts.io/detection/latest/linux/${AD_ARCH}/autodarts${VERSION}.linux-${AD_ARCH}.tar.gz" \
-  | tar -xz -C /opt/autodarts; \
-  chmod +x /opt/autodarts/autodarts
+  curl -fsSL --retry 3 "https://releases.autodarts.com/headless/downloads/autodarts_${VERSION}_linux-${AD_ARCH}.tar.gz" -o /tmp/autodarts.tar.gz; \
+  tar -xzf /tmp/autodarts.tar.gz --strip-components=1 -C /opt/autodarts; \
+  rm /tmp/autodarts.tar.gz; \
+  chmod +x /opt/autodarts/autodarts; \
+  echo "$VERSION" > /opt/autodarts/VERSION; \
+  ln -s /opt/autodarts/autodarts /usr/local/bin/autodarts
 
 # CI pins the SHA; local builds default to the repository's default branch.
 # Credentials are mounted only for this step and never saved in an image layer.

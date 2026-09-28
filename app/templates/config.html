@@ -74,30 +74,6 @@
 </div>
 
 <div class="card">
-  <h2>Autodarts</h2>
-  <div class="toggle-row">
-    <div class="toggle-label">
-      <span>Show in navbar</span>
-      <p class="hint">Show the Autodarts tab in the top navigation.</p>
-    </div>
-    <label class="toggle">
-      <input type="checkbox" aria-label="Show Autodarts in navbar" id="cfg-show-board" {{ 'checked' if config.show_board_in_navbar }}>
-      <span class="toggle-track"><span class="toggle-thumb"></span></span>
-    </label>
-  </div>
-  <div class="toggle-row">
-    <div class="toggle-label">
-      <span>Auto-hide navbar</span>
-      <p class="hint">Default the Autodarts page's header to hidden. Can still be toggled per-browser from that page.</p>
-    </div>
-    <label class="toggle">
-      <input type="checkbox" aria-label="Auto-hide navbar on Autodarts" id="cfg-autohide-navbar" {{ 'checked' if config.autohide_navbar_on_board }}>
-      <span class="toggle-track"><span class="toggle-thumb"></span></span>
-    </label>
-  </div>
-</div>
-
-<div class="card">
   <h2>AutoGlow 2</h2>
   <div class="toggle-row">
     <div class="toggle-label">
@@ -187,13 +163,11 @@
 <script>
 const autostartInput = document.getElementById('cfg-autostart-autodarts');
 const autostartAutoglowInput = document.getElementById('cfg-autostart-autoglow');
-const autohideInput = document.getElementById('cfg-autohide-navbar');
 const autohidePlayInput = document.getElementById('cfg-autohide-navbar-play');
 const autohideAutodartsInput = document.getElementById('cfg-autohide-navbar-autodarts');
 const autohideAutoglowInput = document.getElementById('cfg-autohide-navbar-autoglow');
 const autohidePanelsInput = document.getElementById('cfg-autohide-navbar-panels');
 const showPlayInput = document.getElementById('cfg-show-play');
-const showBoardInput = document.getElementById('cfg-show-board');
 const showAutodartsInput = document.getElementById('cfg-show-autodarts');
 const showAutoglowInput = document.getElementById('cfg-show-autoglow');
 const showPanelsInput = document.getElementById('cfg-show-panels');
@@ -205,13 +179,11 @@ async function saveConfig() {
     body: JSON.stringify({
       autostart_autodarts: autostartInput.checked,
       autostart_autoglow: autostartAutoglowInput.checked,
-      autohide_navbar_on_board: autohideInput.checked,
       autohide_navbar_on_play: autohidePlayInput.checked,
       autohide_navbar_on_autodarts: autohideAutodartsInput.checked,
       autohide_navbar_on_autoglow: autohideAutoglowInput.checked,
       autohide_navbar_on_panels: autohidePanelsInput.checked,
       show_play_in_navbar: showPlayInput.checked,
-      show_board_in_navbar: showBoardInput.checked,
       show_autodarts_in_navbar: showAutodartsInput.checked,
       show_autoglow_in_navbar: showAutoglowInput.checked,
       show_panels_in_navbar: showPanelsInput.checked,
@@ -223,7 +195,6 @@ async function saveConfig() {
 // on this same page, so there's no need to wait for the next page load.
 [
   [showPlayInput, 'nav-link-play'],
-  [showBoardInput, 'nav-link-board'],
   [showAutodartsInput, 'nav-link-autodarts'],
   [showAutoglowInput, 'nav-link-autoglow'],
 ].forEach(([input, linkId]) => {
@@ -231,7 +202,7 @@ async function saveConfig() {
   input.addEventListener('change', () => { link.hidden = !input.checked; });
 });
 
-[autostartInput, autostartAutoglowInput, autohideInput, autohidePlayInput, autohideAutodartsInput, autohideAutoglowInput, autohidePanelsInput, showPlayInput, showBoardInput, showAutodartsInput, showAutoglowInput, showPanelsInput]
+[autostartInput, autostartAutoglowInput, autohidePlayInput, autohideAutodartsInput, autohideAutoglowInput, autohidePanelsInput, showPlayInput, showAutodartsInput, showAutoglowInput, showPanelsInput]
   .forEach((input) => input.addEventListener('change', saveConfig));
 </script>
 {% endblock %}

@@ -29,6 +29,7 @@ body {
   display: flex;
   flex-direction: column;
   height: 100vh;
+  height: 100dvh;
   overflow: auto;
 }
 
@@ -38,7 +39,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 32px;
+  padding: 8px 32px;
   background: var(--card);
   border-bottom: 1px solid var(--header);
   flex: none;
@@ -49,7 +50,7 @@ body {
 #oche-page {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  min-height: 100%;
   height: 100%;
 }
 #oche-page[hidden], .oche-page-frame[hidden] { display: none; }
@@ -137,6 +138,8 @@ body {
 }
 
 .container {
+  position: relative;
+  min-width: 0;
   max-width: 900px;
   margin: 0 auto;
   padding: 32px 20px;
@@ -144,6 +147,7 @@ body {
 }
 
 .container-full {
+  min-width: 0;
   flex: 1;
   min-height: 0; /* let flex children (iframe) actually shrink/grow inside */
   padding: 0;
@@ -206,6 +210,12 @@ body {
 /* Persistent toggle: sits just under the header, top-right, so it lands
    over the iframe's corner once the header is collapsed. */
 .header-toggle-btn { right: 24px; }
+
+@media (min-width: 901px) {
+  .container > .header-toggle-btn {
+    right: calc(24px + (100% - 100vw) / 2);
+  }
+}
 
 .header-toggle-btn.header-is-hidden svg {
   transform: rotate(180deg);
@@ -337,7 +347,7 @@ a.card:hover { border-color: var(--accent); }
 
 .status-panel {
   display: grid;
-  grid-template-columns: 1fr minmax(200px, 260px);
+  grid-template-columns: minmax(0, 1fr) minmax(180px, 240px);
   gap: 20px;
   align-items: stretch;
   margin-bottom: 8px;
@@ -351,6 +361,8 @@ a.card:hover { border-color: var(--accent); }
   display: flex;
   justify-content: space-between;
   padding: 6px 0;
+  flex-wrap: wrap;
+  gap: 12px 16px;
 }
 
 .status-item {
@@ -429,6 +441,7 @@ a.card:hover { border-color: var(--accent); }
 .controls-card .btn-row { margin: 0; }
 
 button, .btn-link {
+  font-family: inherit;
   flex: 1;
   padding: 14px;
   border-radius: 10px;
@@ -465,6 +478,7 @@ button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 
 .embed-toggle {
   display: flex;
+  flex-wrap: wrap;
   gap: 4px;
   padding: 8px;
   background: var(--card);
@@ -474,6 +488,18 @@ button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 .embed-body {
   position: relative;
   height: 60vh;
+}
+
+#log-actions { padding: 8px; background: var(--card); }
+#log-actions .btn-row { margin: 0; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+#log-actions button, #log-actions .btn-link {
+  flex: none;
+  font-family: inherit;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  font-weight: 600;
 }
 
 .view-toggle-btn {
@@ -685,11 +711,6 @@ button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 .panel-view { display: flex; flex-direction: column; height: 100%; }
 .panel-frame { flex: 1; width: 100%; min-height: 0; border: 0; background: white; }
 @media (max-width: 760px) {
-  .topbar { flex-wrap: wrap; gap: 12px; padding: 12px; }
-  .topbar nav { width: 100%; flex-wrap: wrap; gap: 8px 14px; }
-  .topbar nav a, .panels-menu { margin-left: 0; }
-  .panels-menu { position: static; }
-  .panels-dropdown { right: 0; }
   .settings-page .card { padding: 18px; }
   .panel-row { grid-template-columns: 1fr; padding: 14px; }
   .panel-row .remove-panel { justify-self: end; }
@@ -706,9 +727,6 @@ button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 .topbar nav .pinned-panel {max-width: 180px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .panel-options { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
 .panel-option-toggle { display: flex; align-items: center; gap: 10px; font-size: .875rem; font-weight: 500; color: var(--fg-dim); }
-@media (max-width: 760px) {
-  .topbar nav { justify-content: flex-start; }
-}
 
 /* Fill the available AutoGlow view. */
 .autoglow-viewport {
@@ -720,7 +738,7 @@ button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
   min-height: 0;
 }
 
-.supervisor-selector { margin-bottom: 24px; }
+.supervisor-selector { margin-bottom: 24px; padding-right: 64px; }
 .supervisor-selector a { text-decoration: none; }
 
 .autoglow-community-links { display: grid; gap: 12px; }
@@ -728,3 +746,89 @@ button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 .community-logo { width: 140px; max-width: 75%; height: 34px; object-fit: contain; }
 .community-tile:first-child .community-logo { width: 150px; max-width: 90%; height: 35px; }
 .community-tile .play-tile-label { font-size: 0.75rem; white-space: nowrap; }
+
+/* Compact navigation stays in the document flow so it cannot cover controls. */
+.nav-toggle, .nav-settings-label { display: none; }
+.card, .controls-card, .metric-card { min-width: 0; }
+.card-head { flex-wrap: wrap; }
+.metric-value, .metric-sub, .toggle-label, .subtitle { overflow-wrap: anywhere; }
+.btn-row, .link-row { flex-wrap: wrap; }
+.panel-actions { flex-wrap: wrap; }
+.page-logo { max-width: 100%; object-fit: contain; object-position: left; }
+
+@media (max-width: 900px) {
+  .topbar { flex-wrap: wrap; gap: 8px; padding: 8px 20px; }
+  .topbar.nav-ready .nav-toggle {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    flex: none; width: 36px; height: 36px; padding: 8px; background: transparent; color: var(--fg-dim);
+  }
+  .topbar nav { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; gap: 4px; padding: 8px 0; border-top: 1px solid var(--header); }
+  .topbar.nav-ready .nav-toggle[aria-expanded="false"] + nav { display: none; }
+  .topbar nav > a, .topbar nav .pinned-panel, .panels-menu { margin: 0; }
+  .topbar nav > a, .topbar nav .pinned-panel {
+    min-height: 40px; padding: 10px 12px; border-radius: 6px; font-size: .875rem;
+  }
+  .nav-settings-label { display: inline; margin-left: 8px; }
+  .topbar nav > a.active { border: 0; padding-bottom: 10px; background: var(--header); }
+  .topbar nav a.nav-cta, .topbar nav a.nav-cta.active { padding: 10px 12px; background: transparent; color: var(--cream); }
+  .topbar nav a.nav-cta.active { background: var(--header); }
+  .topbar nav a.nav-cta.active::after { display: none; }
+  .topbar nav .pinned-panel { display: inline-flex; max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+  .panels-menu { position: static; width: auto; }
+  .panels-menu summary { min-height: 40px; justify-content: flex-start; font-size: .875rem; }
+  .panels-menu-label { max-width: 180px; }
+  .panels-dropdown { left: 0; right: auto; top: 100%; width: 100%; max-height: 60dvh; }
+  .container { padding: 20px; }
+  .view-toggle-btn { display: inline-flex; align-items: center; justify-content: center; }
+  .glass-icon-btn { width: 32px; height: 32px; top: 16px; border-radius: 8px; }
+  .header-toggle-btn { right: 12px; }
+  .panel-open-tab-btn { right: 52px; }
+  .supervisor-selector { padding-right: 44px; }
+  .panel-row input { font-size: 16px; }
+}
+
+@media (max-width: 600px) {
+  .topbar { padding: 6px 16px; }
+  .brand { font-size: 1.25rem; }
+  .container { padding: 16px; }
+  .grid, .services-grid { grid-template-columns: minmax(0, 1fr); }
+  .metrics-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .metric-card { padding: 14px 12px; }
+  .metric-value { font-size: 1.5rem; }
+  .metric-value-sm { font-size: 1.05rem; }
+  .card, .controls-card, .settings-page .card { padding: 14px; border-radius: 10px; }
+  .status-panel { gap: 8px; }
+  .controls-card { gap: 12px; }
+  .controls-card .btn-row { gap: 6px; }
+  .controls-card .btn-row button { flex: none; padding: 8px 16px; border-radius: 6px; font-size: .8rem; }
+  .status-row { gap: 10px 16px; font-size: .8rem; }
+  .status-row .badge { font-size: .75rem; padding: 2px 8px; }
+  .status-row .status-item { flex-wrap: wrap; }
+  .supervisor-page > .page-header { margin-top: 18px; }
+  .supervisor-page .page-logo { height: 28px; }
+  .supervisor-page > .subtitle { font-size: .8rem; line-height: 1.5; margin: 8px 0 16px; }
+  .play-tile:not(.community-tile) { flex-direction: row; justify-content: flex-end; padding: 4px 2px; border: 0; background: transparent; gap: 8px; }
+  .play-tile-logo { max-width: 72px; }
+  .play-tile-label { font-size: .75rem; }
+  .embed-panel { margin-top: 12px; border-radius: 8px; }
+  .embed-body { height: 55vh; height: 55dvh; min-height: 280px; }
+  .embed-toggle { gap: 4px; padding: 4px; }
+  .supervisor-selector { margin: 0; padding: 0 40px 0 0; background: transparent; }
+  .view-toggle-btn { padding: 8px 12px; font-size: .8rem; border-radius: 5px; }
+  .supervisor-selector .view-toggle-btn { border-radius: 0; padding: 8px 4px 10px; margin-right: 16px; }
+  .supervisor-selector .view-toggle-btn.active { background: transparent; box-shadow: inset 0 -2px var(--accent); }
+  #log-actions button, #log-actions .btn-link { padding: 6px 10px; }
+  .settings-page h1 { font-size: 1.5rem; margin: 0 0 4px; }
+  .settings-page h2 { font-size: .95rem; margin-bottom: 6px; }
+  .settings-page .subtitle { font-size: .85rem; margin-bottom: 18px; }
+  .settings-page .toggle-label { font-size: .85rem; }
+  .settings-page .hint { font-size: .75rem; line-height: 1.5; }
+  .settings-page .toggle-row { padding: 10px 0; }
+  .toggle-row { gap: 12px; }
+  .panel-actions { gap: 10px; }
+  .panel-option-toggle { width: 100%; justify-content: space-between; }
+  .board-placeholder-inner { max-width: 100%; }
+  .board-placeholder button { min-width: 0; max-width: 100%; }
+  .board-placeholder-title { font-size: 1.5rem; }
+  .community-tile .play-tile-label { white-space: normal; text-align: center; }
+}

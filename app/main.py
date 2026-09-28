@@ -2,7 +2,8 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse
+from starlette.concurrency import run_in_threadpool
 
 from app.config import load_config
 from app.routers import autodarts, autoglow, config, panels, system
@@ -10,6 +11,7 @@ from app.services import autodarts as autodarts_service
 from app.services import autoglow as autoglow_service
 from app.services import system_metrics
 from app.templating import templates
+from app.security import same_origin
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -21,10 +23,23 @@ async def lifespan(app: FastAPI):
             autodarts_service.start()
         yield
     finally:
-        autoglow_service.stop()
+        try:
+            await run_in_threadpool(autodarts_service.stop)
+        finally:
+            await run_in_threadpool(autoglow_service.stop)
 
 
 app = FastAPI(title="Oche", lifespan=lifespan)
+
+
+@app.middleware("http")
+async def check_write_origin(request: Request, call_next):
+    if request.method not in ("GET", "HEAD", "OPTIONS"):
+        origin = request.headers.get("origin")
+        if ((origin is not None and not same_origin(origin, request.url.scheme, request.headers.get("host", "")))
+                or request.headers.get("sec-fetch-site") == "cross-site"):
+            return JSONResponse({"detail": "Cross-origin changes are not allowed."}, status_code=403)
+    return await call_next(request)
 
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
@@ -54,25 +69,9 @@ async def supervisor(request: Request):
 
 
 @app.get("/board", include_in_schema=False)
+@app.get("/autodarts", include_in_schema=False)
 async def legacy_board():
-    return RedirectResponse("/autodarts", status_code=308)
-
-
-@app.get("/autodarts")
-async def board(request: Request):
-    return templates.TemplateResponse(
-        "board.html",
-        {
-            "request": request,
-            "status": autodarts_service.get_status(),
-            "active_nav": "board",
-            "full_width": True,
-            "allow_header_autohide": True,
-            "autohide_navbar_default": load_config().get(
-                "autohide_navbar_on_board", False
-            ),
-        },
-    )
+    return RedirectResponse("/supervisor?service=autodarts", status_code=308)
 
 
 @app.get("/play")

@@ -4,8 +4,7 @@ from pathlib import Path
 from app.config import AUTODARTS_DIR
 from app.services.process_manager import ManagedProcess, registry
 
-# The Autodarts board-manager binary, installed into the image at build time
-# (see Dockerfile) rather than via the host `get.autodarts.io` installer.
+# The v2 headless binary, installed into the image at build time.
 AUTODARTS_BIN = Path("/opt/autodarts/autodarts")
 HOST_CONFIG_DIR = Path("/app/host-autodarts")
 CONFIG_LINK = Path("/home/oche/.config/autodarts")
@@ -25,14 +24,17 @@ def configure_config_source() -> None:
 _process = registry.register(
     ManagedProcess(
         name="autodarts",
-        command=[str(AUTODARTS_BIN)],
+        command=[str(AUTODARTS_BIN), "run"],
         cwd=AUTODARTS_DIR,
     )
 )
 
 
 def get_status() -> dict:
+    version_file = AUTODARTS_BIN.parent / "VERSION"
     return {
+        "version": version_file.read_text().strip() if version_file.is_file() else None,
+        "headless": True,
         "installed": AUTODARTS_BIN.exists(),
         "status": _process.status if AUTODARTS_BIN.exists() else "nofile",
         "pid": _process.pid,
@@ -55,3 +57,7 @@ def restart() -> bool:
 
 def logs(lines: int = 200) -> str:
     return _process.tail_log(lines)
+
+
+def clear_logs() -> None:
+    _process.clear_log()

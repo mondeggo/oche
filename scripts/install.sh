@@ -528,7 +528,7 @@ echo "Oche containers started. The application may take a moment to initialize."
 web_port=$("${sudo_cmd[@]}" docker compose config | sed -n 's/^[[:space:]]*OCHE_PORT:[[:space:]]*["\x27]*\([0-9][0-9]*\).*/\1/p' | head -n 1)
 web_port="${web_port:-8180}"
 echo "Oche web UI: http://localhost:$web_port"
-echo "Autodarts board manager: http://localhost:3180"
+echo "Autodarts v2 setup: docker exec -it oche autodarts remote -H 127.0.0.1"
 echo "Camera choices are saved in docker-compose.override.yml."
 printf '\n'
 echo "Manage Oche from $install_dir with: ./oche.sh {start|stop|restart|update|pull|cameras}"

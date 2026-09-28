@@ -2,7 +2,7 @@
 
 An all-in-one Docker app with one-line installation for a hassle-free darts setup. Manage Autodarts and AutoGlow/WLED lighting, play online, and keep your tools together in one web interface.
 
-- **Board & Autodarts:** set up your board and manage detection.
+- **Supervisor:** manage headless detection and set up Autodarts in an interactive terminal.
 - **AutoGlow/WLED:** manage your board lighting.
 - **Play:** access online Autodarts games inside Oche.
 - **Panels:** add website URLs in Settings to open your own tools from the Panels menu.
@@ -48,7 +48,7 @@ Open **http://localhost**. From another device, use your Oche machine's IP addre
 
 Compose uses host networking so Autodarts can access the host network directly.
 Oche listens on port `80`; set `OCHE_PORT=8180` in `.env` to use another port,
-then recreate the container. Autodarts still uses port `3180`. These ports must
+then recreate the container. Autodarts v2 uses port `3180` for its API. These ports must
 be available on the host. Existing Compose files without `OCHE_PORT` retain
 port `8180`.
 
@@ -75,6 +75,50 @@ The host directory stays mounted but is unused when the flag is `false`. Existin
 installations need to rerun the updated installer once to generate the
 configurable mount. If no existing setup is detected, Oche already uses
 `data/autodarts` by default.
+
+### Autodarts v2 headless
+
+Images use the official stable v2 headless release (2.0.2 when this integration
+was updated), resolved for AMD64 and ARM64 during the image build. Oche runs
+`autodarts run` and manages its lifecycle. Updates arrive through the Oche image.
+
+V2 replaces the browser Board Manager on port 3180 with a terminal interface.
+Start Autodarts in **Supervisor**, then open its **Autodarts** tab to use the
+interactive setup terminal. Use the keyboard to sign in, claim the board, set up
+cameras, and calibrate. The terminal reconnects to the existing daemon; closing
+the page leaves detection running. A **Reconnect** button opens a new setup session.
+
+On phones and tablets, use the menu icon to reach navigation. Tap **Keys** in the
+terminal to reveal arrows, Tab, Esc, and Enter, or the keyboard icon to type. Rotating
+the device resizes the terminal without reconnecting. Embedded external pages
+(Play, AutoGlow, and custom panels) use their own layouts inside the available space.
+
+You can also open the same interface from a terminal on the Docker host:
+
+```bash
+docker exec -it oche autodarts remote -H 127.0.0.1
+```
+
+From another machine with the headless client installed, use
+`autodarts remote -H <oche-host-ip>`. Oche already starts the daemon; do not
+install another Autodarts service inside the container.
+
+The daemon uses `~/.config/autodarts/config.toml`. In the container that directory
+links to persistent storage or the reused host configuration. The adjacent
+`ad-board.log` remains in that directory. The browser terminal runs the fixed
+Autodarts remote client over Oche's WebSocket connection and requires Linux.
+Up to four setup clients can connect at once.
+
+Oche has no login or authentication: anyone who can reach its port can control
+the board and read logs. Keep access restricted to a trusted network, or use
+an authenticated reverse proxy for remote access. Browser-origin checks prevent
+cross-site writes but do not authenticate API clients. Reverse proxies must
+preserve the public Host and scheme and forward WebSocket connections.
+
+Back up your existing configuration before upgrading. The official migration
+reuses sign-in from `~/.config/autodarts`; check camera setup and calibration
+afterwards. AutoGlow connectivity with v2 still needs validation on a real board.
+See the [official headless guide](https://docs.autodarts.com/getting-started/detection/headless-installation/).
 
 Compose mounts the Linux Docker host's `/etc/localtime` read-only so Oche uses
 the host's timezone. Development inherits this mount. With Docker Desktop, the
@@ -147,5 +191,6 @@ This builds and launches a local image, shows logs, and reloads Python changes a
 Open **Supervisor** to start, stop, or restart Autodarts and AutoGlow 2 and
 view their logs. AutoGlow runs its configuration server and lighting engine together, with one
 Start/Stop/Restart control and combined logs. Configuration, presets, flows, and
-backups are stored in `data/autoglow/`. Update AutoGlow through the Oche image. **Autodarts** in the navigation
-opens the full board interface; **AutoGlow 2** opens its lighting configuration.
+backups are stored in `data/autoglow/`. Update AutoGlow through the Oche image.
+The **Autodarts** tab inside Supervisor opens board setup; **AutoGlow 2** in the
+navigation opens its lighting configuration.

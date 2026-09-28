@@ -1,3 +1,32 @@
+// Keep the compact navigation accessible and close it before a cached page is left.
+(() => {
+  const topbar = document.getElementById('topbar');
+  if (!topbar || !document.getElementById('nav-toggle')) return;
+  topbar.classList.add('nav-ready');
+  const compact = matchMedia('(max-width: 900px)');
+  function close() {
+    const toggle = document.getElementById('nav-toggle');
+    toggle.setAttribute('aria-expanded', 'false');
+    const panels = topbar.querySelector('.panels-menu');
+    if (panels) panels.open = false;
+  }
+  topbar.addEventListener('click', event => {
+    const toggle = event.target.closest('#nav-toggle');
+    if (toggle) toggle.setAttribute('aria-expanded', String(toggle.getAttribute('aria-expanded') !== 'true'));
+  });
+  document.addEventListener('click', event => {
+    if (!topbar.contains(event.target) || event.target.closest('a')) close();
+  }, true);
+  document.addEventListener('keydown', event => {
+    const toggle = document.getElementById('nav-toggle');
+    if (event.key === 'Escape' && toggle.getAttribute('aria-expanded') === 'true') {
+      close();
+      toggle.focus();
+    }
+  });
+  compact.addEventListener('change', close);
+})();
+
 // Close the panels dropdown when leaving it or pressing Escape.
 (() => {
   document.addEventListener('click', (event) => {
