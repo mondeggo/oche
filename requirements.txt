@@ -6,3 +6,6 @@ pyserial==3.5
 psutil==6.0.0
 websockets==15.0.1
 zeroconf==0.148.0
+certbot==5.8.0
+dnspython==2.8.0
+cryptography==50.0.2

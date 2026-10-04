@@ -52,6 +52,89 @@ then recreate the container. Autodarts v2 uses port `3180` for its API. These po
 be available on the host. Existing Compose files without `OCHE_PORT` retain
 port `8180`.
 
+### Local HTTPS for embedded Play
+
+Open **Settings → Local HTTPS → Configure HTTPS** (`/config/https`). The page
+shows the active method, correct address, certificate expiry, and errors. Each
+method has its own activation button; there is no separate enable toggle.
+
+**Local certificate:** choose **Enable local HTTPS**. Oche generates a
+self-signed certificate, saves it in `data/https/local.pem`, and starts HTTPS
+immediately. Click **Open HTTPS** to switch this tab, then accept the browser's
+certificate warning with **Advanced → Continue** (wording varies by browser).
+Other devices can open `https://<oche-host-ip>` and accept the warning there too.
+No domain, browser extension, or certificate installation is needed for this method.
+
+**Trusted domain certificate with acme-dns:**
+
+1. Reserve Oche's local IP in your router's DHCP settings. The setup page suggests
+   an IP and lets you correct it, including when Docker reports a VM address.
+2. Enter your domain, local IPv4 address, and email, accept the Let's Encrypt
+   Subscriber Agreement, and select **Prepare DNS records**. Oche registers with
+   acme-dns automatically and keeps the credentials on the server. This works
+   from HTTP; you do not need to enable local HTTPS first. Preparation does not
+   change the current HTTPS method. Repeating it reuses the saved registration.
+3. At your existing DNS provider, add the displayed **A record** pointing to
+   Oche's local IP and **CNAME** delegating `_acme-challenge.<domain>` to the unique
+   acme-dns address. These records stay unchanged during renewals. In Cloudflare,
+   use **DNS only** (gray cloud). This setup uses IPv4; remove any AAAA record for
+   this hostname. If your router filters domains resolving to private IPs, add a
+   local DNS entry for the domain.
+4. Select **Verify and activate domain HTTPS**. Oche checks the public DNS records,
+   then uses Certbot with an acme-dns authentication hook to obtain the certificate.
+   Successful issuance activates domain HTTPS automatically. Open the **domain
+   address** for Play without certificate warnings; accessing the IP still uses
+   the local certificate. A failed request leaves the current method running.
+
+No inbound router ports are needed. Issuance and renewal require outbound access
+to the acme-dns API and Let's Encrypt over HTTPS, plus public DNS lookups. No DNS
+provider API token or manual service signup is required. The domain can stay with
+its current DNS provider. See the [acme-dns documentation](https://github.com/acme-dns/acme-dns#usage).
+
+The default validation service is `https://auth.acme-dns.io`, a free public testing
+instance. Its operator can validate certificates for the delegated hostname;
+availability and stored registrations are not guaranteed. Under **About the
+validation service and renewals**, **Create replacement CNAME** can recover a lost
+registration. Update the CNAME in your DNS and verify again; the currently served
+certificate remains in use during this process. Administrators can set
+`OCHE_ACME_DNS_URL` to another trusted HTTPS acme-dns server before preparing a new
+registration. Existing registrations remain bound to their original service.
+
+Oche checks the active domain certificate at startup and every **12 hours**.
+Certbot decides when renewal is due using the CA's renewal information or its
+expiry rules; checks do not force a fresh certificate each time. Successful
+renewals reload TLS without restarting Oche. Failed requests preserve the existing
+certificate and show an error with a retry control. Failed automatic checks retry
+after **one hour**. Switching to the local method
+or disabling HTTPS stops automatic domain renewal checks.
+
+The acme-dns credentials are stored in a private, domain-specific `.credentials.json` file under `data/https/`,
+separate from the general config, and is never returned by the settings API.
+Certbot accounts, certificates, renewal configuration, and private logs are in
+`data/https/acme/`. Keep the entire `data/https/` directory private and back it up
+with your persistent data. A rebuilt image is required for the bundled Certbot
+and DNS dependencies. Live issuance requires your own domain and the two DNS records.
+
+HTTPS lets embedded Autodarts use browser features such as `crypto.randomUUID`
+that fail when Oche is opened over HTTP on a LAN IP. The warning/secure-context
+workaround was checked in Firefox and Edge; authenticated gameplay and mobile
+browsers still need validation.
+
+The settings and certificates survive restarts. Turning HTTPS off keeps the
+certificate for reuse; turning it off from HTTPS returns this tab to HTTP.
+HTTP stays available at its original address. Use HTTPS for Play and Oche's HTTP
+address for AutoGlow and custom HTTP panels. Those services keep their existing
+connections; browsers cannot embed them in an HTTPS page. HTTPS does not add
+a login to Oche.
+
+Port `443` must be free. To use another port, set `OCHE_HTTPS_PORT=8443` in `.env`
+and recreate the container (older Compose files also need the environment entry
+from `docker-compose.yml`). Settings shows the resulting address. Startup or
+generation failures appear in Settings and leave HTTP available. The local certificate
+is reused until it is invalid or within seven days of expiry, when it is replaced
+on the next HTTPS start. A replaced certificate needs another browser exception.
+Keep `data/https/local.pem` private: it contains the private key as well as the certificate.
+
 For USB lighting controllers, choose `all` during device setup, or configure an
 explicit `devices` mapping and the device's host group ID in `group_add` in
 `docker-compose.override.yml`. Mounting `/dev` alone does not grant the non-root

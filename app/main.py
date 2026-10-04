@@ -10,23 +10,29 @@ from app.routers import autodarts, autoglow, config, panels, system
 from app.services import autodarts as autodarts_service
 from app.services import autoglow as autoglow_service
 from app.services import system_metrics
+from app.services.local_https import LocalHTTPS
 from app.templating import templates
 from app.security import same_origin
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    app.state.local_https = LocalHTTPS()
     try:
         config = load_config()
         if config.get("autostart_autoglow"):
             autoglow_service.start()
         if config.get("autostart_autodarts"):
             autodarts_service.start()
+        await app.state.local_https.restore(app)
         yield
     finally:
         try:
-            await run_in_threadpool(autodarts_service.stop)
+            await app.state.local_https.close()
         finally:
-            await run_in_threadpool(autoglow_service.stop)
+            try:
+                await run_in_threadpool(autodarts_service.stop)
+            finally:
+                await run_in_threadpool(autoglow_service.stop)
 
 
 app = FastAPI(title="Oche", lifespan=lifespan)

@@ -7,7 +7,7 @@ ARG AUTOGLOW_VERSION
 
 # Runtime vision/USB libraries and udev for serial/camera device enumeration.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-  curl ca-certificates \
+  curl ca-certificates openssl \
   libgl1 libglib2.0-0 libusb-1.0-0 \
   udev libcap2-bin \
   && rm -rf /var/lib/apt/lists/*
@@ -72,6 +72,6 @@ RUN groupadd --gid 1000 oche \
 RUN setcap 'cap_net_bind_service=+ep' "$(readlink -f /usr/local/bin/python)"
 USER oche
 
-EXPOSE 80 8180 3180 8080
+EXPOSE 80 443 8180 3180 8080
 
 CMD ["python", "-m", "app.server"]

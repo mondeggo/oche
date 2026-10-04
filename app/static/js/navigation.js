@@ -6,7 +6,7 @@
     ? '/supervisor?service=' + (url.searchParams.get('service') === 'autoglow' ? 'autoglow' : 'autodarts')
     : url.pathname + url.search;
   const internal = url => url.origin === location.origin &&
-    (/^\/(?:board|autodarts|supervisor|play|autoglow|config)?$/.test(url.pathname) ||
+    (/^\/(?:board|autodarts|supervisor|play|autoglow|config(?:\/https)?)?$/.test(url.pathname) ||
      /^\/panels\/[^/]+$/.test(url.pathname));
   let shell = window;
   try {

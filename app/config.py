@@ -13,6 +13,7 @@ AUTODARTS_DIR.mkdir(exist_ok=True)
 
 DEFAULTS = {
     "lang": "en",
+    "https_enabled": False,
     "autostart_autodarts": True,
     "autostart_autoglow": True,
     "autohide_navbar_on_play": False,

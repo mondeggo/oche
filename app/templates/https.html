@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block title %}Oche - HTTPS{% endblock %}
+{% block content %}
+<div class="settings-page https-page">
+  <a href="/config">← Settings</a>
+  <h1>HTTPS for Play</h1>
+  <p class="subtitle">To connect to Autodarts Play inside Oche, open Oche over HTTPS. Choose how you would like to set it up below.</p>
+
+  <section class="card https-summary" aria-labelledby="https-connection-title">
+    <div class="https-card-heading">
+      <h2 id="https-connection-title">HTTPS status</h2>
+      <span id="https-state" class="https-badge">Checking</span>
+    </div>
+    <p id="https-status" role="status" aria-live="polite">Checking HTTPS…</p>
+    <p id="https-connection" class="hint"></p>
+    <p id="https-expiry" class="hint" hidden></p>
+    <div class="https-actions">
+      <a id="https-open" class="btn-link" target="_top" hidden>Open HTTPS</a>
+      <a id="http-open" class="btn-link btn-neutral" target="_top" hidden>Return to HTTP</a>
+      <button id="https-retry" type="button" hidden>Retry HTTPS</button>
+      <button id="https-disable" class="btn-neutral" type="button" hidden>Turn HTTPS off</button>
+    </div>
+    <p class="hint">You can still open Oche at its original HTTP address to use AutoGlow and custom HTTP panels.</p>
+  </section>
+
+  <h2 class="https-method-heading">Choose your HTTPS method</h2>
+  <section class="card" aria-labelledby="https-local-title">
+    <div class="https-card-heading">
+      <h2 id="https-local-title">Local IP address · browser warning</h2>
+      <span id="https-local-active" class="https-badge" hidden>Selected</span>
+    </div>
+    <p>Connect using Oche's local IP address. Select <strong>Enable local HTTPS</strong> to create a certificate and turn HTTPS on straight away.</p>
+    <p class="hint">The first time you connect, each browser will ask you to accept a certificate warning. Check that the address is your Oche device, then choose <strong>Advanced → Continue</strong> (in Firefox, <strong>Accept the Risk and Continue</strong>). No domain or certificate installation is needed.</p>
+    <div class="https-actions"><button id="https-local" type="button" disabled>Enable local HTTPS</button></div>
+    <p class="hint">Oche saves the certificate for future visits. You may see the warning again if the certificate changes or you clear your browser's saved exception.</p>
+  </section>
+
+  <section class="card" aria-labelledby="https-domain-title">
+    <div class="https-card-heading">
+      <h2 id="https-domain-title">Domain name · no browser warning</h2>
+      <span id="https-domain-active" class="https-badge" hidden>Selected</span>
+    </div>
+    <p>Use a domain you own to open Oche without a certificate warning on your devices. Add two DNS records once, and Oche will get and renew a trusted certificate using Let's Encrypt and <a href="https://github.com/acme-dns/acme-dns" target="_blank" rel="noopener noreferrer">acme-dns</a>.</p>
+    <p class="hint">Oche handles registration with acme-dns. You do not need to share your DNS provider's API token or open ports on your router.</p>
+
+    <div class="https-setup-step">
+      <h3><span class="https-step-number">1</span> Prepare your domain</h3>
+      <form id="https-domain-form">
+        <fieldset id="https-domain-fields" disabled>
+          <div class="https-fields">
+            <label>Oche domain name<input id="https-domain" type="text" required maxlength="253" placeholder="oche.example.com" autocomplete="off" spellcheck="false"></label>
+            <label>Oche's local IPv4 address<input id="https-lan-ip" type="text" required list="https-local-ips" placeholder="192.168.1.24" spellcheck="false"></label>
+            <label>Email for the certificate account<input id="https-email" type="email" required maxlength="254" autocomplete="email" placeholder="you@example.com"></label>
+          </div>
+          <datalist id="https-local-ips"></datalist>
+          <p class="hint">Use the local IP address you normally open Oche with. Keep it fixed by reserving it in your router's DHCP settings. If Oche runs in Docker, use the host device's address.</p>
+          <label class="https-consent"><input id="https-terms" type="checkbox" required> <span>I agree to the <a href="https://letsencrypt.org/repository/" target="_blank" rel="noopener noreferrer">Let's Encrypt Subscriber Agreement</a>.</span></label>
+          <button id="https-prepare" type="submit">Prepare DNS records</button>
+        </fieldset>
+      </form>
+      <p class="hint">This step prepares the DNS records to copy. Domain HTTPS turns on in step 3, after Oche verifies your records and gets the certificate.</p>
+    </div>
+
+    <p id="https-next-steps" class="hint">Prepare your domain to see the DNS records and the next steps.</p>
+    <div id="https-dns-step" class="https-setup-step" hidden>
+      <h3><span class="https-step-number">2</span> Add the DNS records</h3>
+      <p class="hint">Add both records in your domain's DNS settings and keep them there for automatic renewals. If you use Cloudflare, set both to <strong>DNS only</strong> (gray cloud).</p>
+      <div class="https-dns-record" aria-label="A record to create">
+        <div><span>Type</span><strong>A</strong></div>
+        <div><span>Name</span><code id="https-record-name"></code></div>
+        <div><span>Value</span><code id="https-record-ip"></code></div>
+        <button type="button" class="btn-neutral" data-copy="https-record-ip" aria-label="Copy A record value">Copy value</button>
+      </div>
+      <div class="https-dns-record" aria-label="CNAME record to create">
+        <div><span>Type</span><strong>CNAME</strong></div>
+        <div><span>Name</span><code id="https-cname-name"></code></div>
+        <div><span>Target</span><code id="https-cname-target"></code></div>
+        <button type="button" class="btn-neutral" data-copy="https-cname-target" aria-label="Copy CNAME target">Copy target</button>
+      </div>
+      <p class="hint">The A record points your domain to Oche. The CNAME lets acme-dns handle certificate verification, so you will not need to add a new TXT record each time Oche renews the certificate.</p>
+      <p class="hint">This setup uses IPv4. Remove any AAAA record for the same Oche domain. DNS changes may take a few minutes to appear.</p>
+      <p class="hint">If your router blocks domains that point to local IP addresses, add your Oche domain to its local DNS settings.</p>
+    </div>
+
+    <div id="https-activate-step" class="https-setup-step" hidden>
+      <h3><span class="https-step-number">3</span> Verify and activate HTTPS</h3>
+      <p>Select the button below to check your DNS records and request a certificate. Oche turns on domain HTTPS as soon as the certificate is ready.</p>
+      <div class="https-actions">
+        <button id="https-domain-submit" type="button">Verify and activate domain HTTPS</button>
+        <a id="https-domain-open" class="btn-link" target="_top" hidden>Open Play using your domain</a>
+      </div>
+      <p class="hint">Then open Oche using your domain name on each device. Using the local IP address will still show a certificate warning.</p>
+    </div>
+
+    <p id="https-domain-status" class="https-feedback" role="status" aria-live="polite"></p>
+    <p id="https-renewal-status" class="hint"></p>
+    <details class="https-service-details">
+      <summary>About the validation service and renewals</summary>
+      <p class="hint">Validation service: <code id="https-service">auth.acme-dns.io</code>. The default service is free and intended for testing. It can approve certificate requests for your Oche domain, so use a service you trust. If it is unavailable, Oche must wait to get or renew a certificate. If it loses your registration, you will need to replace the CNAME record.</p>
+      <p class="hint">While domain HTTPS is enabled, Oche checks for renewal at startup and every 12 hours. It retries failed checks after one hour and applies renewed certificates automatically. Keep Oche running so it can renew before the certificate expires.</p>
+      <p class="hint">Oche saves its settings, certificates and acme-dns credentials in its persistent data folder. Keep this folder or Docker volume when updating or reinstalling Oche.</p>
+      <div id="https-replace-registration" hidden>
+        <p class="hint">If acme-dns no longer recognizes your registration, create a replacement below. Update the CNAME in your DNS settings, then verify again. Your current certificate stays active while you do this.</p>
+        <button id="https-replace" type="button" class="btn-neutral">Create replacement CNAME</button>
+      </div>
+    </details>
+  </section>
+</div>
+<script src="/static/js/local-https.js" defer></script>
+{% endblock %}

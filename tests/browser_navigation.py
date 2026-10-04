@@ -117,7 +117,7 @@ class NavigationTests(unittest.TestCase):
             {'name': 'A long pinned panel name for a small screen',
              'url': 'https://example.com/dashboard', 'pinned': True}
         ]}).json()['panels']
-        paths = ('/', '/config', '/supervisor', '/supervisor?service=autoglow',
+        paths = ('/', '/config', '/config/https', '/supervisor', '/supervisor?service=autoglow',
                  '/play', '/autoglow', '/panels/' + panels[0]['id'])
         for width, height in ((320, 740), (390, 844), (768, 1024), (1024, 768), (1440, 900)):
             self.page.set_viewport_size({'width': width, 'height': height})
@@ -360,6 +360,105 @@ class NavigationTests(unittest.TestCase):
         self.go('/supervisor')
         self.view().locator('#nav-link-play').wait_for(state='hidden')
         self.assertEqual(self.view().evaluate('window.pageMarker'), 'retained')
+        self.assertEqual(self.errors, [])
+
+    def test_https_setting_reports_failure_and_switches_the_whole_tab(self):
+        data = {'enabled': False, 'running': False, 'port': 8443,
+                'http_port': 8180, 'error': None}
+        fail = True
+
+        def https_request(route):
+            if route.request.method == 'POST':
+                if fail:
+                    route.fulfill(status=503, json={'detail': 'HTTPS port is busy.'})
+                    return
+                data['enabled'] = data['running'] = route.request.post_data_json['enabled']
+                data['mode'] = route.request.post_data_json['mode']
+            route.fulfill(json=data)
+
+        self.page.route('**/config/https/status', https_request)
+        self.page.goto('http://oche.test/play')
+        self.go('/config')  # Settings is inside Oche's retained navigation frame.
+        self.view().get_by_role('link', name='Configure HTTPS', exact=True).click()
+        self.page.wait_for_url('http://oche.test/config/https')
+        self.view().locator('#https-local:not([disabled])').wait_for()
+        self.assertEqual(self.view().locator('#cfg-https').count(), 0)
+        self.view().locator('#https-local').click()
+        self.view().get_by_text('HTTPS port is busy.', exact=True).wait_for()
+        self.assertEqual(self.view().locator('#https-state').inner_text(), 'Off')
+        self.assertTrue(self.view().locator('#https-open').is_hidden())
+        fail = False
+        self.view().locator('#https-local').click()
+        self.view().locator('#https-open').wait_for()
+        self.assertEqual(self.view().locator('#https-open').get_attribute('href'),
+                         'https://oche.test:8443/config/https')
+        self.view().locator('#https-open').click()
+        self.page.wait_for_url('https://oche.test:8443/config/https')
+        self.page.get_by_text('Local HTTPS is active. Accept the certificate warning when you first connect in each browser.', exact=True).wait_for()
+        self.assertEqual(data['mode'], 'local')
+        self.assertEqual(len(self.page.context.pages), 1)
+        self.page.locator('#https-disable').click()
+        self.page.wait_for_url('http://oche.test:8180/config/https')
+        self.page.get_by_text('HTTPS is off. Choose a method below to enable it.', exact=True).wait_for()
+        self.assertEqual(self.errors, [])
+
+    def test_acmedns_setup_from_http_prepares_records_then_activates_domain_https(self):
+        data = {'enabled': False, 'running': False, 'mode': 'local', 'port': 443,
+                'http_port': 8180, 'error': None, 'local_ip': '192.168.1.24',
+                'local_ips': ['192.168.1.24'], 'acme_dns': {
+                    'available': True, 'busy': False, 'prepared': False, 'domain': '', 'email': ''}}
+        submitted = []
+        self.page.route('**/config/https/status', lambda route: route.fulfill(json=data))
+
+        def prepare(route):
+            submitted.append(route.request.post_data_json)
+            data['acme_dns'].update(busy=False, prepared=True, domain='oche.example.com',
+                local_ip='192.168.1.24', email='owner@example.com', cname_name='_acme-challenge.oche.example.com',
+                cname_target='12345678-1234-1234-1234-123456789012.auth.acme-dns.io')
+            route.fulfill(status=202, json={'started': True})
+
+        def issue(route):
+            submitted.append(route.request.post_data_json)
+            data['acme_dns'].update(busy=True, phase='issuing')
+            route.fulfill(status=202, json={'started': True})
+
+        self.page.route('**/config/https/prepare', prepare)
+        self.page.route('**/config/https/certificate', issue)
+        self.page.goto('http://oche.test/config/https')
+        self.page.locator('#https-domain-fields:not([disabled])').wait_for()
+        self.page.locator('#https-domain').fill('oche.example.com')
+        self.page.locator('#https-email').fill('owner@example.com')
+        self.assertEqual(self.page.locator('#https-token').count(), 0)
+        self.assertTrue(self.page.locator('#https-domain-submit').is_hidden())
+        self.page.locator('#https-prepare').click()
+        self.assertEqual(submitted, [])  # Terms must be explicitly accepted.
+        self.page.locator('#https-terms').check()
+        self.page.locator('#https-prepare').click()
+        self.page.locator('#https-dns-step').wait_for()
+        self.assertEqual(len(submitted), 1)
+        self.assertFalse(data['enabled'])  # Preparation does not turn on local HTTPS.
+        self.assertEqual(self.page.locator('#https-record-name').inner_text(), 'oche.example.com')
+        self.assertEqual(self.page.locator('#https-record-ip').inner_text(), '192.168.1.24')
+        self.assertEqual(self.page.locator('#https-cname-target').inner_text(), data['acme_dns']['cname_target'])
+        for width in (320, 390, 768, 1280):
+            self.page.set_viewport_size({'width': width, 'height': 900})
+            self.assertLessEqual(self.page.evaluate('document.documentElement.scrollWidth'), width)
+        self.page.screenshot(path=str(Path(tempfile.gettempdir()) / 'oche-acmedns-desktop.png'), full_page=True)
+        self.page.set_viewport_size({'width': 390, 'height': 844})
+        self.page.screenshot(path=str(Path(tempfile.gettempdir()) / 'oche-acmedns-mobile.png'), full_page=True)
+        self.page.locator('#https-domain').fill('different.example.com')
+        self.assertTrue(self.page.locator('#https-domain-submit').is_hidden())
+        self.page.locator('#https-domain').fill('oche.example.com')
+        self.page.locator('#https-domain-submit').click()
+        self.page.get_by_text('Checking DNS and requesting your certificate.', exact=False).wait_for()
+        self.assertEqual(len(submitted), 2)
+        self.assertEqual(submitted[0]['domain'], 'oche.example.com')
+        data.update(enabled=True, running=True, mode='letsencrypt', domain='oche.example.com')
+        data['acme_dns'].update(busy=False, last_success='2026-10-04T10:00:00+00:00')
+        self.page.locator('#https-domain-open').wait_for(timeout=8000)
+        self.assertEqual(self.page.locator('#https-domain-open').get_attribute('href'), 'https://oche.example.com/play')
+        self.assertEqual(self.page.locator('#https-domain-open').get_attribute('target'), '_top')
+        self.assertEqual(self.page.locator('#https-state').inner_text(), 'Domain HTTPS')
         self.assertEqual(self.errors, [])
 
 
