@@ -1,28 +1,32 @@
 * { box-sizing: border-box; }
-html, body { height: 100%; margin: 0; background: #18181b; color: #d4d4d8; }
+html, body { height: 100%; margin: 0; background: var(--bg); color: var(--fg); }
 body { display: flex; flex-direction: column; font: 14px "Segoe UI", system-ui, sans-serif; }
-.terminal-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 12px; }
-.terminal-toolbar button { font: inherit; padding: 5px 12px; background: #3f3f46; color: white; border: 0; border-radius: 6px; cursor: pointer; }
+.terminal-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 12px; background: var(--card); border-bottom: 1px solid var(--border); }
+.terminal-toolbar button { font: inherit; padding: 5px 12px; background: var(--card); color: var(--fg); border: 1px solid var(--input-border); border-radius: 6px; cursor: pointer; }
+.terminal-toolbar button:hover:not(:disabled) { background: var(--surface-hover); }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+#terminal-reconnect { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+#terminal-reconnect:hover:not(:disabled) { background: var(--accent-hover); border-color: var(--accent-hover); }
 .terminal-toolbar button:disabled { opacity: .5; cursor: default; }
 .terminal-toolbar { flex-wrap: wrap; }
-#terminal-copy-status { color: #d4d4d8; font-size: 12px; margin-left: auto; }
-#terminal-context-menu { position: fixed; z-index: 10; padding: 4px; background: #27272a; border: 1px solid #52525b; border-radius: 6px; box-shadow: 0 4px 16px #0006; }
-#terminal-context-menu button { font: inherit; color: #fff; background: transparent; border: 0; border-radius: 3px; padding: 6px 24px; cursor: pointer; }
-#terminal-context-menu button:hover, #terminal-context-menu button:focus-visible { background: #3f3f46; }
+#terminal-copy-status { color: var(--fg-dim); font-size: 12px; margin-left: auto; }
+#terminal-context-menu { position: fixed; z-index: 10; padding: 4px; background: var(--card); border: 1px solid var(--border); border-radius: 6px; box-shadow: 0 4px 16px var(--shadow); }
+#terminal-context-menu button { font: inherit; color: var(--fg); background: transparent; border: 0; border-radius: 3px; padding: 6px 24px; cursor: pointer; }
+#terminal-context-menu button:hover, #terminal-context-menu button:focus-visible { background: var(--surface-hover); }
 #terminal { flex: 1; min-height: 0; padding: 8px; overflow: hidden; }
 .terminal-toolbar { flex: none; }
 #terminal-status { flex: 1 1 180px; min-width: 0; overflow-wrap: anywhere; }
 #terminal-copy-status:empty { display: none; }
 .terminal-touch-keys, #terminal-keys-toggle, #terminal-keyboard { display: none; }
 @media (max-width: 600px), (pointer: coarse) {
-  .terminal-toolbar { gap: 6px; padding: 4px 8px; font-size: 11px; border-bottom: 1px solid #27272a; }
+  .terminal-toolbar { gap: 6px; padding: 4px 8px; font-size: 11px; }
   #terminal-status { flex-basis: 80px; }
-  .terminal-toolbar button { min-height: 32px; padding: 4px 8px; background: transparent; color: #d4d4d8; }
+  .terminal-toolbar button { min-height: 32px; padding: 4px 8px; }
   #terminal-keys-toggle, #terminal-keyboard { display: inline-flex; align-items: center; justify-content: center; }
-  #terminal-keys-toggle[aria-expanded="true"] { background: #3f3f46; color: white; }
+  #terminal-keys-toggle[aria-expanded="true"] { background: var(--surface-hover); }
   #terminal-copy-status { flex-basis: 100%; order: 1; }
   #terminal { padding: 8px; }
-  .terminal-touch-keys:not([hidden]) { display: flex; flex: none; gap: 4px; padding: 6px 8px; border-top: 1px solid #3f3f46; }
-  .terminal-touch-keys button { flex: 1; min-width: 0; min-height: 36px; padding: 4px; font: 12px "Segoe UI", system-ui, sans-serif; color: #d4d4d8; background: #27272a; border: 1px solid #3f3f46; border-radius: 4px; touch-action: manipulation; }
-  .terminal-touch-keys button:active { background: #52525b; }
+  .terminal-touch-keys:not([hidden]) { display: flex; flex: none; gap: 4px; padding: 6px 8px; background: var(--card); border-top: 1px solid var(--border); }
+  .terminal-touch-keys button { flex: 1; min-width: 0; min-height: 36px; padding: 4px; font: 12px "Segoe UI", system-ui, sans-serif; color: var(--fg); background: var(--card); border: 1px solid var(--input-border); border-radius: 4px; touch-action: manipulation; }
+  .terminal-touch-keys button:active { background: var(--surface-hover); }
 }

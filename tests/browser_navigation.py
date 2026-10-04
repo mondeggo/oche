@@ -31,7 +31,7 @@ class NavigationTests(unittest.TestCase):
         self.addCleanup(self.playwright.stop)
         self.browser = self.playwright.chromium.launch(channel='msedge', headless=True)
         self.addCleanup(self.browser.close)
-        self.page = self.browser.new_page()
+        self.page = self.browser.new_context().new_page()
         self.errors = []
         self.page.on('pageerror', lambda error: self.errors.append(str(error)))
         self.pid = 100
@@ -82,6 +82,78 @@ class NavigationTests(unittest.TestCase):
         self.page.wait_for_url('http://oche.test' + path)
         self.view().locator('#topbar').wait_for()
 
+    def test_theme_follows_system_and_uses_requested_palette(self):
+        palettes = {
+            'dark': ['rgb(28, 28, 33)', 'rgb(41, 41, 48)', 'rgb(228, 228, 233)',
+                     'rgb(165, 165, 177)', 'rgb(68, 68, 79)', 'rgb(119, 119, 131)',
+                     'rgb(185, 65, 73)', 'rgb(172, 57, 65)', 'rgb(219, 196, 165)'],
+            'light': ['rgb(245, 244, 241)', 'rgb(255, 255, 255)', 'rgb(48, 48, 56)',
+                      'rgb(102, 102, 113)', 'rgb(221, 219, 215)', 'rgb(139, 137, 145)',
+                      'rgb(172, 53, 61)', 'rgb(151, 46, 53)', 'rgb(101, 78, 56)'],
+        }
+        for theme, expected in palettes.items():
+            with self.subTest(theme=theme):
+                self.page.emulate_media(color_scheme=theme)
+                self.page.goto('http://oche.test/config/https')
+                self.page.locator('#https-local:not([disabled])').wait_for()
+                self.assertEqual(self.page.locator('html').get_attribute('data-theme'), theme)
+                self.assertIsNone(self.page.evaluate('localStorage.getItem("oche.theme")'))
+                actual = self.page.evaluate('''() => {
+                    const css = selector => getComputedStyle(document.querySelector(selector));
+                    return [css('body').backgroundColor, css('.card').backgroundColor,
+                        css('body').color, css('.hint').color, css('.card').borderTopColor,
+                        css('#https-domain').borderTopColor, css('#https-local').backgroundColor,
+                        css('.brand').color];
+                }''')
+                self.assertEqual(actual, expected[:7] + expected[8:])
+                self.page.locator('#https-local').hover()
+                self.page.wait_for_function('color => getComputedStyle(document.querySelector("#https-local")).backgroundColor === color',
+                                            arg=expected[7])
+                opposite = 'light' if theme == 'dark' else 'dark'
+                self.assertEqual(self.page.locator('#theme-toggle').get_attribute('aria-label'),
+                                 'Switch to ' + opposite + ' theme')
+                self.page.mouse.move(0, 0)
+        self.assertEqual(self.errors, [])
+
+    def test_theme_persists_and_syncs_retained_pages_terminal_and_other_tabs(self):
+        def wait_theme(frame, theme):
+            frame.wait_for_function('theme => document.documentElement.dataset.theme === theme', arg=theme)
+
+        self.page.emulate_media(color_scheme='dark')
+        self.page.goto('http://oche.test/supervisor')
+        terminal = self.view().locator('#board-frame').element_handle().content_frame()
+        terminal.locator('.xterm-screen').wait_for()
+        self.view().evaluate('window.themePageMarker = "retained"')
+        terminal.evaluate('window.themeTerminalMarker = "retained"')
+        self.go('/config')
+        self.view().locator('#theme-toggle').click()
+        wait_theme(self.view(), 'light')
+        self.assertEqual(self.page.evaluate('localStorage.getItem("oche.theme")'), 'light')
+        self.go('/supervisor')
+        wait_theme(self.view(), 'light')
+        wait_theme(terminal, 'light')
+        terminal.wait_for_function('getComputedStyle(document.querySelector(".xterm-viewport")).backgroundColor === "rgb(245, 244, 241)"')
+        self.assertEqual(self.view().evaluate('window.themePageMarker'), 'retained')
+        self.assertEqual(terminal.evaluate('window.themeTerminalMarker'), 'retained')
+
+        other_tab = self.page.context.new_page()
+        self.addCleanup(other_tab.close)
+        other_tab.on('pageerror', lambda error: self.errors.append(str(error)))
+        other_tab.route('**/*', self.route)
+        other_tab.goto('http://oche.test/config')
+        wait_theme(other_tab.main_frame, 'light')
+        other_tab.locator('#theme-toggle').click()
+        wait_theme(self.view(), 'dark')
+        wait_theme(terminal, 'dark')
+        terminal.wait_for_function('getComputedStyle(document.querySelector(".xterm-viewport")).backgroundColor === "rgb(28, 28, 33)"')
+        self.assertEqual(len(self.terminal_connections), 1)
+        self.view().locator('#theme-toggle').click()
+        wait_theme(other_tab.main_frame, 'light')
+        self.page.reload()
+        wait_theme(self.view(), 'light')
+        self.assertEqual(self.page.evaluate('localStorage.getItem("oche.theme")'), 'light')
+        self.assertEqual(self.errors, [])
+
     def test_terminal_navigation_preserves_session_and_keyboard(self):
         self.page.goto('http://oche.test/supervisor')
         frame = self.view().frame_locator('#board-frame')
@@ -126,6 +198,10 @@ class NavigationTests(unittest.TestCase):
                     self.page.goto('http://oche.test' + path)
                     self.page.locator('.topbar.nav-ready').wait_for()
                     self.assertLessEqual(self.page.evaluate('document.documentElement.scrollWidth'), width)
+                    self.assertTrue(self.page.locator('#theme-toggle').is_visible())
+                    theme_toggle = self.page.locator('#theme-toggle').bounding_box()
+                    self.assertGreaterEqual(theme_toggle['x'], 0)
+                    self.assertLessEqual(theme_toggle['x'] + theme_toggle['width'], width + 1)
                     if width <= 900:
                         self.page.locator('#nav-toggle').click()
                         self.page.locator('.panels-menu summary').click()

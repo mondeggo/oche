@@ -61,9 +61,34 @@
     hover: (_event, uri) => { hoveredLink = webUrl(uri); container.title = uri; },
     leave: () => { hoveredLink = null; container.removeAttribute('title'); },
   };
+  function terminalTheme() {
+    const styles = getComputedStyle(document.documentElement);
+    const color = name => styles.getPropertyValue(name).trim();
+    const light = document.documentElement.dataset.theme === 'light';
+    // ANSI colors need their own contrast against each terminal background.
+    const palette = light ? {
+      black: '#303038', red: '#AC353D', green: '#24653C', yellow: '#7B590E',
+      blue: '#315CA0', magenta: '#8B3B82', cyan: '#176C75', white: '#525260',
+      brightBlack: '#666671', brightRed: '#972E35', brightGreen: '#1C5831',
+      brightYellow: '#6C4B06', brightBlue: '#244C90', brightMagenta: '#77316E',
+      brightCyan: '#115B65', brightWhite: '#303038',
+    } : {
+      black: '#777783', red: '#EE848B', green: '#86CBA0', yellow: '#DCC17A',
+      blue: '#90B6EE', magenta: '#D89BCD', cyan: '#7BCAD2', white: '#E4E4E9',
+      brightBlack: '#A5A5B1', brightRed: '#F49DA3', brightGreen: '#A0DEB6',
+      brightYellow: '#EAD599', brightBlue: '#A9C9F5', brightMagenta: '#E5B3DD',
+      brightCyan: '#A0DDE3', brightWhite: '#FFFFFF',
+    };
+    return {
+      ...palette,
+      background: color('--bg'), foreground: color('--fg'),
+      cursor: color('--fg'), cursorAccent: color('--bg'),
+      selectionBackground: light ? '#AC353D33' : '#DBC4A54D',
+    };
+  }
   const terminal = new Terminal({
     cursorBlink: true, fontSize: 14, scrollback: 2000,
-    theme: { background: '#18181b', foreground: '#ffffff' },
+    theme: terminalTheme(),
     linkHandler,
     macOptionClickForcesSelection: true,
   });
@@ -71,6 +96,9 @@
   terminal.loadAddon(fit);
   terminal.loadAddon(new WebLinksAddon.WebLinksAddon(openLink, linkHandler));
   terminal.open(container);
+  window.addEventListener('oche:themechange', () => {
+    terminal.options.theme = terminalTheme();
+  });
   terminal.onSelectionChange(() => {
     // Keep selected text available if the live TUI repaints before Copy is clicked.
     if (terminal.hasSelection()) selectedText = terminal.getSelection();

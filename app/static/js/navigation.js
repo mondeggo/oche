@@ -59,7 +59,10 @@
         }).then(html => {
           const updated = new DOMParser().parseFromString(html, 'text/html');
           const header = updated.getElementById('topbar');
-          if (header) doc.getElementById('topbar').innerHTML = header.innerHTML;
+          if (header) {
+            doc.getElementById('topbar').innerHTML = header.innerHTML;
+            doc.defaultView.ocheTheme?.refresh();
+          }
         }).catch(() => { /* Keep usable navigation when temporarily offline. */ });
       }
       return true;

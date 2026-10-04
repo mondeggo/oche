@@ -7,6 +7,11 @@ An all-in-one Docker app with one-line installation for a hassle-free darts setu
 - **Play:** access online Autodarts games inside Oche.
 - **Panels:** add website URLs in Settings to open your own tools from the Panels menu.
 
+Use the sun or moon button in the header to switch between dark and light themes.
+Oche initially follows your device's appearance and remembers your choice in this
+browser for each Oche address. The theme also updates open Oche pages and the
+setup terminal. Embedded websites use their own appearance settings.
+
 ## Install
 
 The image is Linux-based (AMD64 and ARM64, including 64-bit Raspberry Pi OS). It can also run on Windows with [Docker Desktop and WSL 2](https://docs.docker.com/desktop/features/wsl/); camera and USB access need extra setup there.
