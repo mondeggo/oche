@@ -126,8 +126,10 @@ and DNS dependencies. Live issuance requires your own domain and the two DNS rec
 
 The settings and certificates survive restarts. Turning HTTPS off keeps the
 certificate for reuse; turning it off from HTTPS returns this tab to HTTP.
-Use Oche's HTTP address for AutoGlow and custom HTTP panels, which browsers
-cannot embed in an HTTPS page.
+AutoGlow automatically uses Oche's connection, including HTTPS, for its controls,
+live updates, and Supervisor preview. No separate AutoGlow certificate is needed.
+Custom panels need their own HTTPS address when Oche uses HTTPS. For sites that
+only support HTTP, select **Open in a new tab** in the panel's settings.
 
 Port `443` must be free. To use another port, set `OCHE_HTTPS_PORT=8443` in `.env`
 and recreate the container (older Compose files also need the environment entry

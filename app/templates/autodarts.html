@@ -306,7 +306,7 @@ block content %}
     box.scrollTop = box.scrollHeight;
   }
 
-  const boardUrl = {% if service == "autoglow" %}`${location.protocol}//${location.hostname}:{{ status.web_port }}/`{% else %}'/autodarts/terminal'{% endif %};
+  const boardUrl = {% if service == "autoglow" %}'/autoglow/ui/'{% else %}'/autodarts/terminal'{% endif %};
   const boardFrame = document.getElementById("board-frame");
   const boardDisconnected = document.getElementById("board-disconnected");
   {% if service == "autoglow" %}let boardPid = null;{% endif %}
@@ -340,8 +340,8 @@ block content %}
   {% if service == "autoglow" %}
   async function isBoardReachable() {
     try {
-      await fetch(boardUrl, { mode: "no-cors", cache: "no-store" });
-      return true;
+      const response = await fetch(boardUrl, { cache: "no-store" });
+      return response.ok;
     } catch (e) {
       return false;
     }

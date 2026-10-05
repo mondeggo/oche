@@ -60,7 +60,7 @@ class NavigationTests(unittest.TestCase):
                 route.fulfill(json={'status': 'running', 'pid': self.pid})
         elif url.hostname == 'oche.test':
             response = self.client.request(route.request.method,
-                url.path + ('?' + url.query if url.query else ''),
+                route.request.url,
                 content=route.request.post_data,
                 headers={'content-type': route.request.headers.get('content-type', '')})
             route.fulfill(status=response.status_code, body=response.content,
@@ -81,6 +81,62 @@ class NavigationTests(unittest.TestCase):
         self.view().locator(f'#topbar a[href="{path}"]').first.click()
         self.page.wait_for_url('http://oche.test' + path)
         self.view().locator('#topbar').wait_for()
+
+    def test_autoglow_embeds_same_origin_with_https_assets_api_and_websocket(self):
+        from test_autoglow_proxy import FakeAutoGlow
+
+        upstream = FakeAutoGlow()
+        self.addCleanup(upstream.close)
+        status = {'installed': True, 'status': 'running', 'web_port': upstream.port,
+                  'autodarts_connected': False, 'processes': {'autoglow-web': 'running'},
+                  'pids': {'autoglow-web': 123}}
+        requests, sockets = [], []
+        self.page.on('request', lambda request: requests.append(request.url))
+
+        def socket_connected(socket):
+            sockets.append(socket.url)
+            socket.send('lighting connected')
+
+        self.page.route_web_socket('**/autoglow/ui/ws/**', socket_connected)
+        with patch('app.services.autoglow.PORT', upstream.port), \
+             patch('app.services.autoglow.get_status', return_value=status):
+            for path, frame_id in (('/autoglow', '#ag-frame'),
+                                   ('/supervisor?service=autoglow', '#board-frame')):
+                with self.subTest(path=path):
+                    self.page.goto('https://oche.test' + path)
+                    frame = self.page.locator(frame_id)
+                    frame.wait_for(state='visible')
+                    self.assertEqual(frame.get_attribute('src'), '/autoglow/ui/')
+                    embedded = frame.element_handle().content_frame()
+                    embedded.get_by_text('Lighting controls', exact=True).wait_for()
+                    embedded.locator('#api-result').filter(has_text='ready').wait_for()
+                    embedded.locator('#socket-result').filter(has_text='lighting connected').wait_for()
+                    self.assertEqual(embedded.url, 'https://oche.test/autoglow/ui/')
+            self.assertEqual(sockets, ['wss://oche.test/autoglow/ui/ws/events'] * 2)
+            self.assertTrue(all(url.startswith('https://oche.test/') for url in requests), requests)
+            self.assertIn('https://oche.test/autoglow/ui/app.js', requests)
+            self.assertIn('https://oche.test/autoglow/ui/api/status?check=1', requests)
+            self.page.route('**/autoglow/ui/', lambda route: route.fulfill(status=502, body='Unavailable'))
+            self.page.goto('https://oche.test/autoglow')
+            self.page.get_by_text('Waiting for AutoGlow 2. Check its service logs if this persists.', exact=True).wait_for()
+            self.assertTrue(self.page.locator('#ag-frame').is_hidden())
+        self.assertEqual(self.errors, [])
+
+    def test_http_panel_explains_https_requirement_without_blocked_iframe(self):
+        panels = self.client.put('/panels/data', json={'panels': [
+            {'name': 'Local tool', 'url': 'http://device.test/control', 'pinned': True}
+        ]}).json()['panels']
+        path = '/panels/' + panels[0]['id']
+        self.page.goto('https://oche.test' + path)
+        self.page.locator('#panel-https-required').wait_for()
+        self.assertEqual(self.page.locator('iframe.panel-frame').count(), 0)
+        self.assertEqual(self.page.get_by_role('link', name='Edit panel settings').get_attribute('href'), '/config#panels')
+        self.assertEqual(self.page.get_by_role('link', name='Open in a new tab').get_attribute('href'),
+                         'http://device.test/control')
+        self.page.goto('http://oche.test' + path)
+        self.page.locator('iframe.panel-frame').wait_for()
+        self.assertEqual(self.page.locator('#panel-https-required').count(), 0)
+        self.assertEqual(self.errors, [])
 
     def test_theme_follows_system_and_uses_requested_palette(self):
         palettes = {

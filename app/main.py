@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse, RedirectResponse
 from starlette.concurrency import run_in_threadpool
 
 from app.config import load_config
-from app.routers import autodarts, autoglow, config, panels, system
+from app.routers import autodarts, autoglow, autoglow_proxy, config, panels, system
 from app.services import autodarts as autodarts_service
 from app.services import autoglow as autoglow_service
 from app.services import system_metrics
@@ -51,6 +51,7 @@ app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 app.include_router(autodarts.router)
 app.include_router(autoglow.router)
+app.include_router(autoglow_proxy.router)
 app.include_router(config.router)
 app.include_router(panels.router)
 app.include_router(system.router)

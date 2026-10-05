@@ -37,20 +37,19 @@
       if (!response.ok) throw new Error('Could not read AutoGlow status.');
       const status = await response.json();
       if (status.processes['autoglow-web'] === 'running') {
-        const url = new URL(location.href);
-        url.port = status.web_port;
-        url.pathname = '/'; url.search = ''; url.hash = '';
-        await fetch(url, {mode: 'no-cors', cache: 'no-store'});
+        const url = '/autoglow/ui/';
+        const preview = await fetch(url, {cache: 'no-store'});
+        if (!preview.ok) throw new Error('AutoGlow is not ready.');
         online = true;
         if (!loaded) {
           ready = false;
           loaded = true;
-          frame.src = url.href;
+          frame.src = url;
         }
         frame.hidden = !ready;
         placeholder.hidden = ready;
         button.hidden = true;
-        message.textContent = 'Loading lighting controls?';
+        message.textContent = 'Loading lighting controls…';
       } else {
         online = false; ready = false;
         frame.hidden = true; placeholder.hidden = false; loaded = false;

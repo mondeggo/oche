@@ -14,6 +14,16 @@
       <path d="M7 17 17 7M9 7h8v8"></path>
     </svg>
   </a>
+  {% if request.url.scheme == 'https' and panel.url.lower().startswith('http://') %}
+  <div class="board-placeholder" id="panel-https-required">
+    <div class="board-placeholder-inner">
+      <h1 class="board-placeholder-title">This panel needs HTTPS</h1>
+      <p class="board-placeholder-text">Oche is using HTTPS. To show this panel here, enter the panel's own HTTPS address in Settings. You can also open its current address with the new-tab button.</p>
+      <a class="btn-link" href="/config#panels">Edit panel settings</a>
+    </div>
+  </div>
+  {% else %}
   <iframe class="panel-frame" title="{{ panel.name }}" src="{{ panel.url }}" allowfullscreen></iframe>
+  {% endif %}
 </section>
 {% endblock %}
