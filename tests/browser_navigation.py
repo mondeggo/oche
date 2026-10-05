@@ -86,10 +86,10 @@ class NavigationTests(unittest.TestCase):
         palettes = {
             'dark': ['rgb(28, 28, 33)', 'rgb(41, 41, 48)', 'rgb(228, 228, 233)',
                      'rgb(165, 165, 177)', 'rgb(68, 68, 79)', 'rgb(119, 119, 131)',
-                     'rgb(185, 65, 73)', 'rgb(172, 57, 65)', 'rgb(219, 196, 165)'],
+                     'rgb(47, 116, 81)', 'rgb(40, 99, 68)', 'rgb(219, 196, 165)'],
             'light': ['rgb(245, 244, 241)', 'rgb(255, 255, 255)', 'rgb(48, 48, 56)',
                       'rgb(102, 102, 113)', 'rgb(221, 219, 215)', 'rgb(139, 137, 145)',
-                      'rgb(172, 53, 61)', 'rgb(151, 46, 53)', 'rgb(101, 78, 56)'],
+                      'rgb(43, 112, 76)', 'rgb(36, 95, 65)', 'rgb(101, 78, 56)'],
         }
         for theme, expected in palettes.items():
             with self.subTest(theme=theme):

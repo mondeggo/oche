@@ -8,6 +8,9 @@
   --input-border: #777783;
   --accent: #B94149;
   --accent-hover: #AC3941;
+  --primary: #2F7451;
+  --primary-hover: #286344;
+  --on-primary: #FFFFFF;
   --brand: #DBC4A5;
   --on-brand: #303038;
   --on-accent: #FFFFFF;
@@ -34,6 +37,8 @@
   --input-border: #8B8991;
   --accent: #AC353D;
   --accent-hover: #972E35;
+  --primary: #2B704C;
+  --primary-hover: #245F41;
   --brand: #654E38;
   --on-brand: #E4E4E9;
   --surface-hover: #ECEAE6;

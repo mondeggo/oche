@@ -4,8 +4,8 @@
 <div class="settings-page https-page">
   <a href="/config">← Settings</a>
   <h1>HTTPS for Play</h1>
-  <p class="subtitle">To use <a href="https://play.autodarts.com/" target="_blank" rel="noopener noreferrer">Autodarts Play</a> inside Oche on your local network, keep Oche open over HTTPS, even after connecting.</p>
-  <p class="subtitle">Browsers allow HTTP at <code>127.0.0.1</code> or <code>localhost</code> on the device running Oche. This exception does not apply to Oche's network IP address or to access from other devices.</p>
+  <p class="subtitle">Use HTTPS to open <a href="https://play.autodarts.com/" target="_blank" rel="noopener noreferrer">Autodarts Play</a> inside Oche on your local network.</p>
+  <p class="hint">HTTP also works at <code>127.0.0.1</code> or <code>localhost</code> on the device running Oche.</p>
 
   <section class="card https-summary" aria-labelledby="https-connection-title">
     <div class="https-card-heading">
@@ -21,7 +21,7 @@
       <button id="https-retry" type="button" hidden>Retry HTTPS</button>
       <button id="https-disable" class="btn-neutral" type="button" hidden>Turn HTTPS off</button>
     </div>
-    <p class="hint">Keep using HTTPS for Play. Oche's original HTTP address remains available for AutoGlow and custom HTTP panels.</p>
+    <p class="hint">Oche's HTTP address is available for AutoGlow and custom HTTP panels.</p>
   </section>
 
   <h2 class="https-method-heading">Choose your HTTPS method</h2>
@@ -90,7 +90,7 @@
         <button id="https-domain-submit" type="button">Verify and activate domain HTTPS</button>
         <a id="https-domain-open" class="btn-link" target="_top" hidden>Open Play using your domain</a>
       </div>
-      <p class="hint">Keep using your domain's HTTPS address for Play without a certificate warning. Opening HTTPS at the local IP address will still show a certificate warning.</p>
+      <p class="hint">Open Oche using your domain's HTTPS address to avoid certificate warnings. Using HTTPS at the local IP address shows a warning.</p>
     </div>
 
     <p id="https-domain-status" class="https-feedback" role="status" aria-live="polite"></p>
