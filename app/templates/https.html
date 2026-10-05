@@ -3,8 +3,9 @@
 {% block content %}
 <div class="settings-page https-page">
   <a href="/config">← Settings</a>
-  <h1>HTTPS to connect to Play</h1>
-  <p class="subtitle">Open Oche over HTTPS to connect to <a href="https://play.autodarts.com/" target="_blank" rel="noopener noreferrer">Autodarts Play</a>. Once connected, you can return to Oche over HTTP. If Play asks you to connect again, reopen Oche over HTTPS.</p>
+  <h1>HTTPS for Play</h1>
+  <p class="subtitle">To use <a href="https://play.autodarts.com/" target="_blank" rel="noopener noreferrer">Autodarts Play</a> inside Oche on your local network, keep Oche open over HTTPS, even after connecting.</p>
+  <p class="subtitle">Browsers allow HTTP at <code>127.0.0.1</code> or <code>localhost</code> on the device running Oche. This exception does not apply to Oche's network IP address or to access from other devices.</p>
 
   <section class="card https-summary" aria-labelledby="https-connection-title">
     <div class="https-card-heading">
@@ -20,13 +21,13 @@
       <button id="https-retry" type="button" hidden>Retry HTTPS</button>
       <button id="https-disable" class="btn-neutral" type="button" hidden>Turn HTTPS off</button>
     </div>
-    <p class="hint">Use HTTP for AutoGlow and custom HTTP panels. Returning to HTTP keeps HTTPS available when you need to reconnect to Play.</p>
+    <p class="hint">Keep using HTTPS for Play. Oche's original HTTP address remains available for AutoGlow and custom HTTP panels.</p>
   </section>
 
   <h2 class="https-method-heading">Choose your HTTPS method</h2>
   <section class="card" aria-labelledby="https-local-title">
     <div class="https-card-heading">
-      <h2 id="https-local-title">Local IP address · browser warning</h2>
+      <h2 id="https-local-title">Easy method · Local IP address · browser warning</h2>
       <span id="https-local-active" class="https-badge" hidden>Selected</span>
     </div>
     <p>Connect using Oche's local IP address. Select <strong>Enable local HTTPS</strong> to create a certificate and turn HTTPS on straight away.</p>
@@ -89,7 +90,7 @@
         <button id="https-domain-submit" type="button">Verify and activate domain HTTPS</button>
         <a id="https-domain-open" class="btn-link" target="_top" hidden>Open Play using your domain</a>
       </div>
-      <p class="hint">Use your domain's HTTPS address to connect to Play without a certificate warning. Once connected, you can return to Oche over HTTP. Opening HTTPS at the local IP address will still show a certificate warning.</p>
+      <p class="hint">Keep using your domain's HTTPS address for Play without a certificate warning. Opening HTTPS at the local IP address will still show a certificate warning.</p>
     </div>
 
     <p id="https-domain-status" class="https-feedback" role="status" aria-live="polite"></p>

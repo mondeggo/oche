@@ -57,19 +57,24 @@ then recreate the container. Autodarts v2 uses port `3180` for its API. These po
 be available on the host. Existing Compose files without `OCHE_PORT` retain
 port `8180`.
 
-### HTTPS for connecting to Autodarts Play
+### HTTPS for embedded Autodarts Play
 
-Use Oche's HTTPS address to connect to the embedded
-[Autodarts Play website](https://play.autodarts.com/). Once connected, you can
-return to Oche's HTTP address. Use HTTPS again if Play asks you to reconnect.
-The local Autodarts service keeps its existing connection.
+When accessing Oche over your local network, keep Oche open over HTTPS to use the
+embedded [Autodarts Play website](https://play.autodarts.com/), including after
+connecting. The local Autodarts service keeps its existing connection.
+
+Browsers make an exception for `http://127.0.0.1` and `http://localhost`, treating
+them as secure local addresses. This works on the device running Oche itself.
+From another device, those addresses refer to that other device, so use Oche's
+HTTPS address instead.
 
 Open **Settings → Local HTTPS → Configure HTTPS** (`/config/https`). The page
 shows the active method, correct address, certificate expiry, and errors. Each
 method has its own activation button; there is no separate enable toggle.
 
-**Local certificate:** choose **Enable local HTTPS**. Oche generates a
-self-signed certificate, saves it in `data/https/local.pem`, and starts HTTPS
+**Easy method: local IP address with a browser warning.** Choose
+**Enable local HTTPS**. Oche generates a self-signed certificate, saves it in
+`data/https/local.pem`, and starts HTTPS
 immediately. Click **Open HTTPS** to switch this tab, then accept the browser's
 certificate warning with **Advanced → Continue** (wording varies by browser).
 Other devices can open `https://<oche-host-ip>` and accept the warning there too.
@@ -93,7 +98,7 @@ No domain, browser extension, or certificate installation is needed for this met
 4. Select **Verify and activate domain HTTPS**. Oche checks the public DNS records,
    then uses Certbot with an acme-dns authentication hook to obtain the certificate.
    Successful issuance activates domain HTTPS automatically. Open the **domain
-   address** to connect to Play without certificate warnings; accessing the IP
+   address** to use Play without certificate warnings; accessing the IP
    still uses the local certificate. A failed request leaves the current method running.
 
 No inbound router ports are needed. Issuance and renewal require outbound access
@@ -126,18 +131,18 @@ with your persistent data. A rebuilt image is required for the bundled Certbot
 and DNS dependencies. Live issuance requires your own domain and the two DNS records.
 
 Opening Oche over HTTPS gives the embedded Autodarts Play website access to
-browser features such as `crypto.randomUUID`, which are needed when connecting
-and fail on Oche's local HTTP address. Browser checks in Firefox and Edge
-confirmed that HTTPS enables these features after accepting the local certificate
-warning. Returning to HTTP after connecting is a user-reported workflow;
-authenticated gameplay and mobile browsers have not been independently verified.
+browser features such as `crypto.randomUUID`, which fail when Oche uses HTTP on a
+LAN IP address. Signing in does not remove this requirement. Browser checks in
+Firefox and Edge confirmed that HTTPS enables these features after accepting the
+local certificate warning. Authenticated gameplay and mobile browsers have not
+been independently verified.
 
 The settings and certificates survive restarts. Turning HTTPS off keeps the
 certificate for reuse; turning it off from HTTPS returns this tab to HTTP.
-HTTP stays available at its original address. After connecting to Play over HTTPS,
-return to Oche's HTTP address to use AutoGlow and custom HTTP panels as well.
+HTTP stays available at its original address for AutoGlow and custom HTTP panels.
 Those services keep their existing connections; browsers cannot embed them in
-an HTTPS page. HTTPS does not add a login to Oche.
+an HTTPS page. Use Oche over HTTPS when opening embedded Play on your local
+network. HTTPS does not add a login to Oche.
 
 Port `443` must be free. To use another port, set `OCHE_HTTPS_PORT=8443` in `.env`
 and recreate the container (older Compose files also need the environment entry
