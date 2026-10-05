@@ -9,6 +9,7 @@
   --accent: #B94149;
   --accent-hover: #AC3941;
   --brand: #DBC4A5;
+  --on-brand: #303038;
   --on-accent: #FFFFFF;
   --surface-hover: #35353E;
   --link: #DBC4A5;
@@ -34,6 +35,7 @@
   --accent: #AC353D;
   --accent-hover: #972E35;
   --brand: #654E38;
+  --on-brand: #E4E4E9;
   --surface-hover: #ECEAE6;
   --link: #654E38;
   --success-bright: #2B704C;

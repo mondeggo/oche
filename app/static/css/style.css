@@ -120,16 +120,16 @@ input::placeholder, textarea::placeholder { color: var(--fg-dim); opacity: 1; }
 .topbar nav a.nav-cta {
   position: relative;
   background: var(--brand);
-  color: var(--accent);
+  color: var(--on-brand);
   padding: 7px 18px;
   border-radius: 999px;
   transition: box-shadow 0.15s ease, transform 0.1s ease;
 }
 
-.topbar nav a.nav-cta:hover { color: var(--accent); background: var(--brand); box-shadow: inset 0 0 0 1px var(--accent); }
+.topbar nav a.nav-cta:hover { color: var(--on-brand); background: var(--brand); box-shadow: inset 0 0 0 1px var(--accent); }
 .topbar nav a.nav-cta:active { transform: scale(0.97); }
 .topbar nav a.nav-cta.active {
-  color: var(--accent);
+  color: var(--on-brand);
   border-bottom: none;
   padding-bottom: 7px;
 }
@@ -805,7 +805,7 @@ button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
   }
   .nav-settings-label { display: inline; margin-left: 8px; }
   .topbar nav > a.active { border: 0; padding-bottom: 10px; background: var(--border); }
-  .topbar nav a.nav-cta, .topbar nav a.nav-cta.active { padding: 10px 12px; background: var(--brand); color: var(--accent); }
+  .topbar nav a.nav-cta, .topbar nav a.nav-cta.active { padding: 10px 12px; background: var(--brand); color: var(--on-brand); }
   .topbar nav a.nav-cta.active::after { display: none; }
   .topbar nav .pinned-panel { display: inline-flex; max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
   .panels-menu { position: static; width: auto; }
