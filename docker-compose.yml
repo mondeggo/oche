@@ -8,6 +8,7 @@ services:
 
     environment:
       OCHE_AUTOGLOW_PORT: "${OCHE_AUTOGLOW_PORT:-8080}"
+      OCHE_OCHECORE_PORT: "${OCHE_OCHECORE_PORT:-9180}"
       OCHE_PORT: "${OCHE_PORT:-80}"
       OCHE_HTTPS_PORT: "${OCHE_HTTPS_PORT:-443}"
       OCHE_ACME_DNS_URL: "${OCHE_ACME_DNS_URL:-https://auth.acme-dns.io}"

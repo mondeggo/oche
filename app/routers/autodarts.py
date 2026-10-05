@@ -98,14 +98,18 @@ async def terminal_socket(websocket: WebSocket):
 
 
 async def page(request: Request):
-    service = "autoglow" if request.query_params.get("service") == "autoglow" else "autodarts"
+    from app.services import ochecore
+    services = {"autodarts": autodarts, "autoglow": autoglow, "ochecore": ochecore}
+    service = request.query_params.get("service", "autodarts")
+    if service not in services:
+        service = "autodarts"
     config = load_config()
     return templates.TemplateResponse(
         "autodarts.html",
         {
             "request": request,
             "service": service,
-            "status": autoglow.get_status() if service == "autoglow" else autodarts.get_status(),
+            "status": services[service].get_status(),
             "config": config,
             "active_nav": "autodarts",
             "allow_header_autohide": True,

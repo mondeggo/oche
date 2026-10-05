@@ -70,6 +70,16 @@
   </div>
   <div class="toggle-row">
     <div class="toggle-label">
+      <span>Start OcheCore on boot</span>
+      <p class="hint">Launches OcheCore automatically on container boot.</p>
+    </div>
+    <label class="toggle">
+      <input type="checkbox" aria-label="Start OcheCore on boot" id="cfg-autostart-ochecore" {{ 'checked' if config.autostart_ochecore }}>
+      <span class="toggle-track"><span class="toggle-thumb"></span></span>
+    </label>
+  </div>
+  <div class="toggle-row">
+    <div class="toggle-label">
       <span>Auto-hide navbar</span>
       <p class="hint">Default the Supervisor page's header to hidden. Can still be toggled per-browser from that page.</p>
     </div>
@@ -80,29 +90,31 @@
   </div>
 </div>
 
+{% for key, name in [('autoglow', 'AutoGlow 2'), ('ochecore', 'OcheCore')] %}
 <div class="card">
-  <h2>AutoGlow 2</h2>
+  <h2>{{ name }}</h2>
   <div class="toggle-row">
     <div class="toggle-label">
       <span>Show in navbar</span>
-      <p class="hint">Show the AutoGlow 2 tab in the top navigation.</p>
+      <p class="hint">Show the {{ name }} tab in the top navigation.</p>
     </div>
     <label class="toggle">
-      <input type="checkbox" aria-label="Show AutoGlow 2 in navbar" id="cfg-show-autoglow" {{ 'checked' if config.show_autoglow_in_navbar }}>
+      <input type="checkbox" aria-label="Show {{ name }} in navbar" id="cfg-show-{{ key }}" {{ 'checked' if config['show_' ~ key ~ '_in_navbar'] }}>
       <span class="toggle-track"><span class="toggle-thumb"></span></span>
     </label>
   </div>
   <div class="toggle-row">
     <div class="toggle-label">
       <span>Auto-hide navbar</span>
-      <p class="hint">Default the AutoGlow 2 page's header to hidden. Can still be toggled per-browser from that page.</p>
+      <p class="hint">Default the {{ name }} page's header to hidden. Can still be toggled per-browser from that page.</p>
     </div>
     <label class="toggle">
-      <input type="checkbox" aria-label="Auto-hide navbar on AutoGlow 2" id="cfg-autohide-navbar-autoglow" {{ 'checked' if config.autohide_navbar_on_autoglow }}>
+      <input type="checkbox" aria-label="Auto-hide navbar on {{ name }}" id="cfg-autohide-navbar-{{ key }}" {{ 'checked' if config['autohide_navbar_on_' ~ key] }}>
       <span class="toggle-track"><span class="toggle-thumb"></span></span>
     </label>
   </div>
 </div>
+{% endfor %}
 
 <section class="card" id="panels">
   <h2>Panels</h2>
@@ -170,13 +182,16 @@
 <script>
 const autostartInput = document.getElementById('cfg-autostart-autodarts');
 const autostartAutoglowInput = document.getElementById('cfg-autostart-autoglow');
+const autostartOchecoreInput = document.getElementById('cfg-autostart-ochecore');
 const autohidePlayInput = document.getElementById('cfg-autohide-navbar-play');
 const autohideAutodartsInput = document.getElementById('cfg-autohide-navbar-autodarts');
 const autohideAutoglowInput = document.getElementById('cfg-autohide-navbar-autoglow');
+const autohideOchecoreInput = document.getElementById('cfg-autohide-navbar-ochecore');
 const autohidePanelsInput = document.getElementById('cfg-autohide-navbar-panels');
 const showPlayInput = document.getElementById('cfg-show-play');
 const showAutodartsInput = document.getElementById('cfg-show-autodarts');
 const showAutoglowInput = document.getElementById('cfg-show-autoglow');
+const showOchecoreInput = document.getElementById('cfg-show-ochecore');
 const showPanelsInput = document.getElementById('cfg-show-panels');
 
 async function saveConfig() {
@@ -186,13 +201,16 @@ async function saveConfig() {
     body: JSON.stringify({
       autostart_autodarts: autostartInput.checked,
       autostart_autoglow: autostartAutoglowInput.checked,
+      autostart_ochecore: autostartOchecoreInput.checked,
       autohide_navbar_on_play: autohidePlayInput.checked,
       autohide_navbar_on_autodarts: autohideAutodartsInput.checked,
       autohide_navbar_on_autoglow: autohideAutoglowInput.checked,
+      autohide_navbar_on_ochecore: autohideOchecoreInput.checked,
       autohide_navbar_on_panels: autohidePanelsInput.checked,
       show_play_in_navbar: showPlayInput.checked,
       show_autodarts_in_navbar: showAutodartsInput.checked,
       show_autoglow_in_navbar: showAutoglowInput.checked,
+      show_ochecore_in_navbar: showOchecoreInput.checked,
       show_panels_in_navbar: showPanelsInput.checked,
     }),
   });
@@ -204,12 +222,13 @@ async function saveConfig() {
   [showPlayInput, 'nav-link-play'],
   [showAutodartsInput, 'nav-link-autodarts'],
   [showAutoglowInput, 'nav-link-autoglow'],
+  [showOchecoreInput, 'nav-link-ochecore'],
 ].forEach(([input, linkId]) => {
   const link = document.getElementById(linkId);
   input.addEventListener('change', () => { link.hidden = !input.checked; });
 });
 
-[autostartInput, autostartAutoglowInput, autohidePlayInput, autohideAutodartsInput, autohideAutoglowInput, autohidePanelsInput, showPlayInput, showAutodartsInput, showAutoglowInput, showPanelsInput]
+[autostartInput, autostartAutoglowInput, autostartOchecoreInput, autohidePlayInput, autohideAutodartsInput, autohideAutoglowInput, autohideOchecoreInput, autohidePanelsInput, showPlayInput, showAutodartsInput, showAutoglowInput, showOchecoreInput, showPanelsInput]
   .forEach((input) => input.addEventListener('change', saveConfig));
 </script>
 {% endblock %}

@@ -6,9 +6,10 @@ from fastapi.responses import JSONResponse, RedirectResponse
 from starlette.concurrency import run_in_threadpool
 
 from app.config import load_config
-from app.routers import autodarts, autoglow, autoglow_proxy, config, panels, system
+from app.routers import autodarts, autoglow, autoglow_proxy, config, ochecore, ochecore_proxy, panels, system
 from app.services import autodarts as autodarts_service
 from app.services import autoglow as autoglow_service
+from app.services import ochecore as ochecore_service
 from app.services import system_metrics
 from app.services.local_https import LocalHTTPS
 from app.templating import templates
@@ -23,6 +24,8 @@ async def lifespan(app: FastAPI):
             autoglow_service.start()
         if config.get("autostart_autodarts"):
             autodarts_service.start()
+        if config.get("autostart_ochecore"):
+            ochecore_service.start()
         await app.state.local_https.restore(app)
         yield
     finally:
@@ -32,7 +35,10 @@ async def lifespan(app: FastAPI):
             try:
                 await run_in_threadpool(autodarts_service.stop)
             finally:
-                await run_in_threadpool(autoglow_service.stop)
+                try:
+                    await run_in_threadpool(autoglow_service.stop)
+                finally:
+                    await run_in_threadpool(ochecore_service.stop)
 
 
 app = FastAPI(title="Oche", lifespan=lifespan)
@@ -52,6 +58,8 @@ app.mount("/static", StaticFiles(directory="app/static"), name="static")
 app.include_router(autodarts.router)
 app.include_router(autoglow.router)
 app.include_router(autoglow_proxy.router)
+app.include_router(ochecore.router)
+app.include_router(ochecore_proxy.router)
 app.include_router(config.router)
 app.include_router(panels.router)
 app.include_router(system.router)
@@ -66,6 +74,7 @@ async def index(request: Request):
             "system": system_metrics.get_status(),
             "autodarts_status": autodarts_service.get_status(),
             "autoglow_status": autoglow_service.get_status(),
+            "ochecore_status": ochecore_service.get_status(),
         },
     )
 

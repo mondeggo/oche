@@ -45,10 +45,13 @@ class LocalHTTPSTests(unittest.TestCase):
             patch("app.services.local_https.shutil.which", return_value=OPENSSL),
             patch("app.main.autodarts_service.stop"),
             patch("app.main.autoglow_service.stop"),
+            patch("app.main.ochecore_service.start"),
+            patch("app.main.ochecore_service.stop"),
         ):
             patcher.start()
             self.addCleanup(patcher.stop)
-        save_config({"autostart_autodarts": False, "autostart_autoglow": False})
+        save_config({"autostart_autodarts": False, "autostart_autoglow": False,
+                     "autostart_ochecore": False})
 
     def test_toggle_serves_tls_disables_from_https_and_reuses_certificate_after_restart(self):
         with TestClient(app, base_url="http://127.0.0.1:8180") as client:

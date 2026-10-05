@@ -1,9 +1,10 @@
 # Oche
 
-An all-in-one Docker app with one-line installation for a hassle-free darts setup. Manage Autodarts and AutoGlow/WLED lighting, play online, and keep your tools together in one web interface.
+An all-in-one Docker app with one-line installation for a hassle-free darts setup. Manage Autodarts, board lighting, and audio calls, play online, and keep your tools together in one web interface.
 
 - **Supervisor:** manage headless detection and set up Autodarts in an interactive terminal.
 - **AutoGlow/WLED:** manage your board lighting.
+- **OcheCore:** connect your Autodarts account, configure WLED lighting and callers, and inspect game events.
 - **Play:** access online Autodarts games inside Oche.
 - **Panels:** add website URLs in Settings to open your own tools from the Panels menu.
 
@@ -261,6 +262,14 @@ the Docker build context. You can also set the token in your shell environment;
 shell values take precedence over `.env`. Compose passes it as a temporary
 BuildKit secret; it is not included in the running container.
 
+The image also bundles [OcheCore](https://github.com/mondeggo/oche-core), with its
+locked Python dependencies in a separate environment. Local builds pin version
+`0.1.1` at commit `18b136dc5be0548e4af85f1c64b925b440b9f16c`; set
+`OCHECORE_VERSION` to a full commit SHA to build another revision. CI resolves
+OcheCore's `main` commit before each image build and records it in the image label
+`io.oche.ochecore.revision`. OcheCore is public; the existing build secret is also
+used for its GitHub download.
+
 With Docker running and the token set, open a terminal in your local copy of this repository and run:
 
 ```bash
@@ -275,9 +284,43 @@ This builds and launches a local image, shows logs, and reloads Python changes a
 
 ## Supervisor
 
-Open **Supervisor** to start, stop, or restart Autodarts and AutoGlow 2 and
+Open **Supervisor** to start, stop, or restart Autodarts, AutoGlow 2, and OcheCore and
 view their logs. AutoGlow runs its configuration server and lighting engine together, with one
 Start/Stop/Restart control and combined logs. Configuration, presets, flows, and
 backups are stored in `data/autoglow/`. Update AutoGlow through the Oche image.
 The **Autodarts** tab inside Supervisor opens board setup; **AutoGlow 2** in the
 navigation opens its lighting configuration.
+
+### OcheCore
+
+[OcheCore](https://github.com/mondeggo/oche-core) runs inside the same container as
+a separate managed process. Open **OcheCore** in the navigation to configure its
+Autodarts account, WLED lighting, and caller voices. Its controls, event streams,
+and browser audio use Oche's connection, including HTTPS. Settings let you choose
+whether it starts automatically and appears in the navigation.
+
+On first use, enter your Autodarts OAuth client ID in OcheCore's connection settings,
+then connect your account and choose a board. The client must support device
+authorization. Oche does not force the upstream development client ID, so these
+settings remain editable in the interface.
+
+All OcheCore settings and downloads are stored in `/app/data/ochecore`: connection
+settings, OAuth tokens, WLED configuration, caller settings, installed voices, and
+debug captures. This is part of Oche's existing persistent data mount. Production
+uses `./data/ochecore`; development keeps it in the existing `dev-data` volume.
+Process logs are stored in `/app/data/logs/ochecore.log`. Updating or recreating the
+container preserves these files when the data mount is kept. Update OcheCore by
+updating the Oche image.
+
+OcheCore listens only on loopback port `9180`; no additional browser-facing port
+is required. If another host process uses that port, set `OCHE_OCHECORE_PORT` in
+`.env` and recreate Oche. Its Python environment is isolated from Oche and AutoGlow.
+
+For callers, **browser output** plays through the device displaying OcheCore after
+you enable sound there. Audio continues when you switch to Play in the same Oche
+tab; after reloading the tab, enable sound again. Docker Desktop needs no sound
+device for this mode. Linux
+host playback additionally needs access and permissions for `/dev/snd`; the image
+includes the ALSA and PulseAudio libraries. See the
+[OcheCore caller guide](https://github.com/mondeggo/oche-core/blob/main/docs/CALLER.md#docker-audio)
+for host audio setup.

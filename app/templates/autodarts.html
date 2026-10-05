@@ -1,9 +1,14 @@
 {% extends "base.html" %} {% block title %}Oche - Supervisor{% endblock %} {%
 block content %}
+{% set service_name = {'autodarts': 'Autodarts', 'autoglow': 'AutoGlow 2', 'ochecore': 'OcheCore'}[service] %}
+{% set control_prefix = {'autodarts': 'ad', 'autoglow': 'ag', 'ochecore': 'oc'}[service] %}
+{% set status_prefix = 'ag-web' if service == 'autoglow' else control_prefix %}
+{% set process_key = 'autoglow-web' if service == 'autoglow' else 'ochecore' %}
 <section class="supervisor-page">
 <div class="embed-toggle supervisor-selector" aria-label="Service">
   <a class="view-toggle-btn {{ 'active' if service == 'autodarts' }}" href="/supervisor?service=autodarts">Autodarts</a>
   <a class="view-toggle-btn {{ 'active' if service == 'autoglow' }}" href="/supervisor?service=autoglow">AutoGlow 2</a>
+  <a class="view-toggle-btn {{ 'active' if service == 'ochecore' }}" href="/supervisor?service=ochecore">OcheCore</a>
 </div>
 {% if service == "autodarts" %}
 <div class="page-header">
@@ -13,19 +18,19 @@ block content %}
     class="page-logo"
   />
 </div>
-{% else %}<h1>AutoGlow 2</h1>{% endif %}
+{% else %}<h1>{{ service_name }}</h1>{% endif %}
 <p class="subtitle">
-  Manage {{ "Autodarts headless" if service == "autodarts" else "AutoGlow lighting services" }} running inside this container.
+  Manage {{ "Autodarts headless" if service == "autodarts" else service_name }} running inside this container.
 </p>
 
 <div class="status-panel">
-  {% if service == "autodarts" %}
+  {% if service != "autoglow" %}
   <div class="controls-card">
     <div class="status-row">
       <span class="status-item">
         Status:
         <span
-          id="ad-status"
+          id="{{ status_prefix }}-status"
           class="badge {{ 'badge-green' if status.status == 'running' else 'badge-red' }}"
         >
           {{ status.status }}
@@ -35,12 +40,12 @@ block content %}
         Version: {{ status.version or 'unknown' }}
       </span>
       <span class="status-item">
-        {{ "PID" if service == "autodarts" else "Processes" }}: <span id="ad-pid">{{ status.pid or '-' }}</span>
+        PID: <span id="{{ status_prefix }}-pid">{{ status.pid or '-' }}</span>
       </span>
       <span class="status-item">
         Start on boot
         <label class="toggle">
-          <input type="checkbox" id="ad-autostart-boot" aria-label="Start Autodarts on boot" {{ 'checked' if config.autostart_autodarts }}>
+          <input type="checkbox" id="{{ control_prefix }}-autostart-boot" aria-label="Start {{ service_name }} on boot" {{ 'checked' if config['autostart_' ~ service] }}>
           <span class="toggle-track"><span class="toggle-thumb"></span></span>
         </label>
       </span>
@@ -100,7 +105,7 @@ block content %}
     <span class="play-tile-label"
       >Play Online <span class="play-tile-arrow">↗</span></span
     >
-  </a>{% else %}
+  </a>{% elif service == "autoglow" %}
   <div class="autoglow-community-links">
     {% for name, caption, logo, url in [
       ('GitHub', 'Visit IteraThor on GitHub', 'github_logo.svg', 'https://github.com/IteraThor')
@@ -121,7 +126,7 @@ block content %}
       class="view-toggle-btn active"
       onclick="showView('board')"
     >
-      {{ "Autodarts" if service == "autodarts" else "AutoGlow 2" }}
+      {{ service_name }}
     </button>
     <button
       id="toggle-play-btn"
@@ -150,12 +155,12 @@ block content %}
   <div class="embed-body">
     <div id="board-disconnected" class="board-placeholder" hidden>
       <div class="board-placeholder-inner">
-        <img src="/static/img/autodarts_logo.svg" alt="" class="board-placeholder-icon">
+        {% if service == "autodarts" %}<img src="/static/img/autodarts_logo.svg" alt="" class="board-placeholder-icon">{% endif %}
         <h2 id="board-placeholder-title" class="board-placeholder-title">
-          {{ "Autodarts" if service == "autodarts" else "AutoGlow 2" }} is offline
+          {{ service_name }} is offline
         </h2>
         <p id="board-placeholder-text" class="board-placeholder-text">
-          Start it above to bring your board online.
+          Start {{ service_name }} above to open its controls.
         </p>
       </div>
     </div>
@@ -163,7 +168,8 @@ block content %}
     <iframe
       id="board-frame"
       class="board-frame"
-      title="{{ 'Autodarts setup terminal' if service == 'autodarts' else 'AutoGlow 2 configuration' }}"
+      title="{{ 'Autodarts setup terminal' if service == 'autodarts' else service_name ~ ' configuration' }}"
+      {% if service == "ochecore" %}allow="autoplay"{% endif %}
       hidden
     ></iframe>
 
@@ -256,18 +262,12 @@ block content %}
     if (!res?.ok) return;
     const data = await res.json().catch(() => null);
     if (!data) return;
-    if (data.processes) {
-      const state = data.processes['autoglow-web'];
-      const badge = document.getElementById('ag-web-status');
-      badge.textContent = state;
-      badge.className = 'badge ' + (state === 'running' ? 'badge-green' : 'badge-red');
-      document.getElementById('ag-web-pid').textContent = data.pids['autoglow-web'] || '-';
-      return;
-    }
-    document.getElementById("ad-status").textContent = data.status;
-    document.getElementById("ad-status").className =
-      "badge " + (data.status === "running" ? "badge-green" : "badge-red");
-    document.getElementById("ad-pid").textContent = data.pid || "-";
+    const state = {% if service == 'autoglow' %}data.processes?.['{{ process_key }}']{% else %}data.status{% endif %} || 'stopped';
+    const pid = {% if service == 'autoglow' %}data.pids?.['{{ process_key }}']{% else %}data.pid{% endif %};
+    const badge = document.getElementById('{{ status_prefix }}-status');
+    badge.textContent = state;
+    badge.className = 'badge ' + (state === 'running' ? 'badge-green' : 'badge-red');
+    document.getElementById('{{ status_prefix }}-pid').textContent = pid || '-';
   }
 
   async function postAction(url) {
@@ -296,7 +296,7 @@ block content %}
       const res = await fetch("/{{ service }}/logs", { cache: 'no-store' });
       if (!res.ok) return;
       text = (requestedView === 'logs' ? await res.text()
-        : (await res.json())['autoglow-web']) || '';
+        : (await res.json())['{{ process_key }}']) || '';
     } catch (error) {
       return;
     }
@@ -306,10 +306,10 @@ block content %}
     box.scrollTop = box.scrollHeight;
   }
 
-  const boardUrl = {% if service == "autoglow" %}'/autoglow/ui/'{% else %}'/autodarts/terminal'{% endif %};
+  const boardUrl = {% if service == "autodarts" %}'/autodarts/terminal'{% else %}'/{{ service }}/ui/'{% endif %};
   const boardFrame = document.getElementById("board-frame");
   const boardDisconnected = document.getElementById("board-disconnected");
-  {% if service == "autoglow" %}let boardPid = null;{% endif %}
+  {% if service != "autodarts" %}let boardPid = null;{% endif %}
   let boardLoaded = false;
 
   function showBoardOffline() {
@@ -337,7 +337,7 @@ block content %}
     boardDisconnected.hidden = true;
   }
 
-  {% if service == "autoglow" %}
+  {% if service != "autodarts" %}
   async function isBoardReachable() {
     try {
       const response = await fetch(boardUrl, { cache: "no-store" });
@@ -355,13 +355,13 @@ block content %}
     {% else %}
     const res = await fetch("/{{ service }}/status").catch(() => null);
     const data = res ? await res.json().catch(() => null) : null;
-    const reachable = data && data.processes["autoglow-web"] === "running" && await isBoardReachable();
+    const reachable = data && data.processes?.['{{ process_key }}'] === "running" && await isBoardReachable();
     // A tab switch may happen while the health requests are in flight.
     if (currentView !== "board") return;
     if (!reachable) {
       showBoardOffline();
     } else {
-      const pid = data.pids["autoglow-web"];
+      const pid = data.pids?.['{{ process_key }}'];
       if (boardPid !== null && pid !== boardPid) boardLoaded = false;
       boardPid = pid;
       showBoardOnline();
@@ -377,8 +377,8 @@ block content %}
   setInterval(refreshLogs, 5000);
   setInterval(pollBoardStatus, 5000);
 
-  const autostartConfigKey = "{{ 'autostart_autodarts' if service == 'autodarts' else 'autostart_autoglow' }}";
-  document.getElementById("{{ 'ad-autostart-boot' if service == 'autodarts' else 'ag-autostart-boot' }}")
+  const autostartConfigKey = "autostart_{{ service }}";
+  document.getElementById("{{ control_prefix }}-autostart-boot")
     ?.addEventListener("change", (event) => {
       const body = {};
       body[autostartConfigKey] = event.target.checked;

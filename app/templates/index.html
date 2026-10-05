@@ -111,6 +111,16 @@ block content %}
     </div>
     <p>Board lighting status &amp; controls.</p>
   </a>
+  <a class="card" href="/supervisor?service=ochecore">
+    <div class="card-head">
+      <h2>OcheCore</h2>
+      <span
+        id="svc-ochecore-badge"
+        class="badge {{ 'badge-green' if ochecore_status.status == 'running' else ('badge-yellow' if not ochecore_status.installed else 'badge-red') }}"
+      >{{ 'running' if ochecore_status.status == 'running' else ('not installed' if not ochecore_status.installed else 'stopped') }}</span>
+    </div>
+    <p>Caller, board tools &amp; service controls.</p>
+  </a>
 </div>
 
 <script>
@@ -122,14 +132,16 @@ block content %}
 
   async function refreshDashboard() {
     try {
-      const [sysRes, adRes, agRes] = await Promise.all([
+      const [sysRes, adRes, agRes, ocRes] = await Promise.all([
         fetch("/system/status"),
         fetch("/autodarts/status"),
         fetch("/autoglow/status"),
+        fetch("/ochecore/status"),
       ]);
       const sys = await sysRes.json();
       const ad = await adRes.json();
       const ag = await agRes.json();
+      const oc = await ocRes.json();
 
       document.getElementById("m-cpu").textContent = sys.cpu_percent + "%";
       const cpuBar = document.getElementById("m-cpu-bar");
@@ -187,6 +199,11 @@ block content %}
         : (ag.status === "running")
           ? "idle"
           : "not found";
+
+      const ocBadge = document.getElementById('svc-ochecore-badge');
+      const ocRunning = oc.status === 'running';
+      ocBadge.className = 'badge ' + (ocRunning ? 'badge-green' : oc.installed ? 'badge-red' : 'badge-yellow');
+      ocBadge.textContent = ocRunning ? 'running' : oc.installed ? 'stopped' : 'not installed';
     } catch (e) {
       // Ignore transient poll failures - values just stay stale until the next tick.
     }

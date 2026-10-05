@@ -16,6 +16,7 @@ class SupervisorTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn('/supervisor?service=autodarts', response.text)
         self.assertIn('/supervisor?service=autoglow', response.text)
+        self.assertIn('/supervisor?service=ochecore', response.text)
         self.assertIn('<iframe', response.text)
         self.assertIn('/autodarts/start', response.text)
         self.assertIn('/autodarts/terminal', response.text)
@@ -39,6 +40,16 @@ class SupervisorTests(unittest.TestCase):
         self.assertIn('>Supervisor</a', response.text)
         self.assertNotIn('id="nav-link-board"', response.text)
         self.assertEqual(self.client.get('/autodarts').status_code, 200)
+
+    def test_ochecore_supervisor_controls_preview_and_logs(self):
+        response = self.client.get('/supervisor?service=ochecore')
+        self.assertEqual(response.status_code, 200)
+        for action in ('start', 'stop', 'restart'):
+            self.assertIn('/ochecore/' + action, response.text)
+        self.assertIn("const boardUrl = '/ochecore/ui/'", response.text)
+        self.assertIn('allow="autoplay"', response.text)
+        self.assertIn('oc-autostart-boot', response.text)
+        self.assertIn('/ochecore/logs', response.text)
 
     def test_autoglow_stop_controls_service(self):
         with patch('app.routers.autoglow.autoglow.stop') as stop:

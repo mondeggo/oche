@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}Oche - OcheCore{% endblock %}
+{% block content %}
+<div class="service-viewport">
+  <div id="oc-placeholder" class="board-placeholder">
+    <div class="board-placeholder-inner">
+      <h1>OcheCore</h1>
+      <p id="oc-message">Loading OcheCore…</p>
+      <button id="oc-start" type="button" hidden>Start OcheCore</button>
+    </div>
+  </div>
+  <iframe id="oc-frame" class="board-frame" title="OcheCore configuration" allow="autoplay" hidden></iframe>
+</div>
+<script>
+(() => {
+  const frame = document.getElementById('oc-frame');
+  const placeholder = document.getElementById('oc-placeholder');
+  const message = document.getElementById('oc-message');
+  const button = document.getElementById('oc-start');
+  let loaded = false;
+  let ready = false;
+  let online = false;
+  let refreshing = false;
+  let processId = null;
+
+  frame.addEventListener('load', () => {
+    if (!loaded) return;
+    ready = true;
+    if (online) {
+      frame.hidden = false;
+      placeholder.hidden = true;
+    }
+  });
+
+  async function refresh() {
+    if (refreshing) return;
+    refreshing = true;
+    try {
+      const response = await fetch('/ochecore/status', {cache: 'no-store'});
+      if (!response.ok) throw new Error('Could not read OcheCore status.');
+      const status = await response.json();
+      if (status.status === 'running') {
+        const url = '/ochecore/ui/';
+        const preview = await fetch(url, {cache: 'no-store'});
+        if (!preview.ok) throw new Error('OcheCore is not ready.');
+        online = true;
+        if (processId !== null && processId !== status.pid) loaded = false;
+        processId = status.pid;
+        if (!loaded) {
+          ready = false;
+          loaded = true;
+          frame.src = url;
+        }
+        frame.hidden = !ready;
+        placeholder.hidden = ready;
+        button.hidden = true;
+        message.textContent = 'Loading OcheCore…';
+      } else {
+        online = false;
+        ready = false;
+        loaded = false;
+        frame.hidden = true;
+        placeholder.hidden = false;
+        message.textContent = status.installed ? 'OcheCore is stopped.' :
+          'OcheCore is not installed. Rebuild the Oche image to include it.';
+        button.hidden = !status.installed;
+      }
+    } catch (_) {
+      online = false;
+      frame.hidden = true;
+      placeholder.hidden = false;
+      message.textContent = 'Waiting for OcheCore. Check its service logs if this persists.';
+    } finally {
+      refreshing = false;
+    }
+  }
+
+  button.addEventListener('click', async () => {
+    button.disabled = true;
+    try {
+      const response = await fetch('/ochecore/start', {method: 'POST'});
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.detail || 'Could not start OcheCore.');
+      }
+      await refresh();
+    } catch (error) {
+      message.textContent = error.message || 'Could not reach OcheCore.';
+    } finally {
+      button.disabled = false;
+    }
+  });
+  refresh();
+  setInterval(refresh, 5000);
+})();
+</script>
+{% endblock %}

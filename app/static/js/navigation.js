@@ -1,12 +1,14 @@
-// Keep Supervisor terminals and previews attached for this browser tab.
+// Keep Supervisor previews and OcheCore's Caller audio attached in this tab.
 // Moving an iframe between DOM parents also reloads it, so each view stays put.
 (() => {
-  const persistent = path => path === '/supervisor';
-  const viewKey = url => persistent(url.pathname)
-    ? '/supervisor?service=' + (url.searchParams.get('service') === 'autoglow' ? 'autoglow' : 'autodarts')
+  const persistent = path => path === '/supervisor' || path === '/ochecore';
+  const supervisorService = url => ['autoglow', 'ochecore'].includes(url.searchParams.get('service'))
+    ? url.searchParams.get('service') : 'autodarts';
+  const viewKey = url => url.pathname === '/supervisor'
+    ? '/supervisor?service=' + supervisorService(url)
     : url.pathname + url.search;
   const internal = url => url.origin === location.origin &&
-    (/^\/(?:board|autodarts|supervisor|play|autoglow|config(?:\/https)?)?$/.test(url.pathname) ||
+    (/^\/(?:board|autodarts|supervisor|play|autoglow|ochecore|config(?:\/https)?)?$/.test(url.pathname) ||
      /^\/panels\/[^/]+$/.test(url.pathname));
   let shell = window;
   try {
@@ -31,6 +33,7 @@
         frame.className = 'oche-page-frame';
         frame.title = 'Oche';
         frame.allowFullscreen = true;
+        frame.allow = 'autoplay';
         frame.hidden = true;
         frame.src = url.href;
         next = { element: frame, url };

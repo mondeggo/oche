@@ -62,7 +62,8 @@ class NavigationTests(unittest.TestCase):
             response = self.client.request(route.request.method,
                 route.request.url,
                 content=route.request.post_data,
-                headers={'content-type': route.request.headers.get('content-type', '')})
+                headers={key: value for key, value in route.request.headers.items()
+                         if key in ('content-type', 'origin', 'sec-fetch-site')})
             route.fulfill(status=response.status_code, body=response.content,
                           headers=dict(response.headers))
         else:
@@ -79,7 +80,8 @@ class NavigationTests(unittest.TestCase):
         if toggle.is_visible() and toggle.get_attribute('aria-expanded') == 'false':
             toggle.click()
         self.view().locator(f'#topbar a[href="{path}"]').first.click()
-        self.page.wait_for_url('http://oche.test' + path)
+        origin = urlsplit(self.page.url)
+        self.page.wait_for_url(origin.scheme + '://' + origin.netloc + path)
         self.view().locator('#topbar').wait_for()
 
     def test_autoglow_embeds_same_origin_with_https_assets_api_and_websocket(self):
@@ -136,6 +138,61 @@ class NavigationTests(unittest.TestCase):
         self.page.goto('http://oche.test' + path)
         self.page.locator('iframe.panel-frame').wait_for()
         self.assertEqual(self.page.locator('#panel-https-required').count(), 0)
+        self.assertEqual(self.errors, [])
+
+    def test_ochecore_https_controls_and_caller_frame_survive_navigation(self):
+        from test_ochecore import FakeOcheCore
+
+        upstream = FakeOcheCore()
+        self.addCleanup(upstream.close)
+        status = {'installed': True, 'status': 'running', 'web_port': upstream.port,
+                  'version': '0.1.1', 'pid': 123, 'processes': {'ochecore': 'running'},
+                  'pids': {'ochecore': 123}}
+        requests, sockets = [], []
+        self.page.on('request', lambda request: requests.append(request.url))
+
+        def audio_connected(socket):
+            sockets.append(socket.url)
+            socket.send(json.dumps(FakeOcheCore.audio))
+
+        self.page.route_web_socket('**/ochecore/ui/caller/audio', audio_connected)
+        with patch('app.services.ochecore.PORT', upstream.port), \
+             patch('app.services.ochecore.get_status', return_value=status):
+            self.page.goto('https://oche.test/ochecore')
+            frame = self.view().locator('#oc-frame')
+            frame.wait_for(state='visible')
+            self.assertEqual(frame.get_attribute('src'), '/ochecore/ui/')
+            self.assertIn('autoplay', frame.get_attribute('allow'))
+            embedded = frame.element_handle().content_frame()
+            embedded.locator('#api-result').filter(has_text='saved').wait_for()
+            embedded.locator('#socket-result').filter(has_text='audio connected').wait_for()
+            embedded.evaluate('window.callerMarker = "retained"')
+            self.go('/play')
+            self.go('/ochecore')
+            self.assertEqual(self.view().locator('#oc-frame').element_handle().content_frame()
+                             .evaluate('window.callerMarker'), 'retained')
+            self.assertEqual(len(sockets), 1)
+
+            self.go('/supervisor')
+            self.view().locator('a[href="/supervisor?service=ochecore"]').click()
+            self.page.wait_for_url('https://oche.test/supervisor?service=ochecore')
+            board = self.view().locator('#board-frame')
+            board.wait_for(state='visible')
+            self.assertEqual(board.get_attribute('src'), '/ochecore/ui/')
+            self.assertIn('autoplay', board.get_attribute('allow'))
+            board.content_frame.locator('#api-result').filter(has_text='saved').wait_for()
+            self.assertFalse(any(url.startswith('http:') for url in requests), requests)
+            self.assertTrue(all(urlsplit(url).port != upstream.port for url in requests), requests)
+            self.assertIn('https://oche.test/ochecore/ui/static/app.js', requests)
+
+            self.go('/config')
+            with self.page.expect_response('**/config/data'):
+                self.view().locator('#cfg-show-ochecore').uncheck()
+            with self.page.expect_response('**/config/data'):
+                self.view().locator('#cfg-autostart-ochecore').uncheck()
+            self.go('/supervisor')
+            self.view().locator('#nav-link-ochecore').wait_for(state='hidden')
+            self.assertFalse(self.client.get('/config/data').json()['autostart_ochecore'])
         self.assertEqual(self.errors, [])
 
     def test_theme_follows_system_and_uses_requested_palette(self):
@@ -246,7 +303,7 @@ class NavigationTests(unittest.TestCase):
              'url': 'https://example.com/dashboard', 'pinned': True}
         ]}).json()['panels']
         paths = ('/', '/config', '/config/https', '/supervisor', '/supervisor?service=autoglow',
-                 '/play', '/autoglow', '/panels/' + panels[0]['id'])
+                 '/supervisor?service=ochecore', '/play', '/autoglow', '/ochecore', '/panels/' + panels[0]['id'])
         for width, height in ((320, 740), (390, 844), (768, 1024), (1024, 768), (1440, 900)):
             self.page.set_viewport_size({'width': width, 'height': height})
             for path in paths:
@@ -266,7 +323,7 @@ class NavigationTests(unittest.TestCase):
                         self.assertLessEqual(dropdown['x'] + dropdown['width'], width + 1)
                         self.assertLessEqual(self.page.evaluate('document.documentElement.scrollWidth'), width)
                         self.page.keyboard.press('Escape')
-                    if path in ('/play', '/autoglow') or path.startswith('/panels/'):
+                    if path in ('/play', '/autoglow', '/ochecore') or path.startswith('/panels/'):
                         box = self.page.locator('main').bounding_box()
                         self.assertAlmostEqual(box['y'] + box['height'], height, delta=1)
         self.assertEqual(self.errors, [])
