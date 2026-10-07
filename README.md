@@ -4,14 +4,16 @@ An all-in-one Docker app with one-line installation for a hassle-free darts setu
 
 - **Supervisor:** manage headless detection and set up Autodarts in an interactive terminal.
 - **AutoGlow/WLED:** manage your board lighting.
-- **OcheCore:** connect your Autodarts account, configure WLED lighting and callers, and inspect game events.
+- **Home:** use OcheCore to connect your Autodarts account, configure WLED lighting and callers, and inspect game events.
 - **Play:** access online Autodarts games inside Oche.
 - **Panels:** add website URLs in Settings to open your own tools from the Panels menu.
+- **Settings:** configure Oche and open the system dashboard for CPU, memory, storage, and service status.
 
 Use the sun or moon button in the header to switch between dark and light themes.
-Oche initially follows your device's appearance and remembers your choice in this
-browser for each Oche address. The theme also updates open Oche pages and the
-setup terminal. Embedded websites use their own appearance settings.
+Oche saves your choice with OcheCore and shares it across connected devices. The
+theme updates Oche, OcheCore, and the setup terminal, and survives service restarts.
+Your browser remembers the last theme while pages load or OcheCore is unavailable.
+Other embedded websites use their own appearance settings.
 
 ## Install
 
@@ -264,7 +266,7 @@ BuildKit secret; it is not included in the running container.
 
 The image also bundles [OcheCore](https://github.com/mondeggo/oche-core), with its
 locked Python dependencies in a separate environment. Local builds pin version
-`0.1.1` at commit `18b136dc5be0548e4af85f1c64b925b440b9f16c`; set
+`0.1.2` at commit `6cb3622917cb2cdbda813984268b3cf6e2e8f0e8`; set
 `OCHECORE_VERSION` to a full commit SHA to build another revision. CI resolves
 OcheCore's `main` commit before each image build and records it in the image label
 `io.oche.ochecore.revision`. OcheCore is public; the existing build secret is also
@@ -294,10 +296,12 @@ navigation opens its lighting configuration.
 ### OcheCore
 
 [OcheCore](https://github.com/mondeggo/oche-core) runs inside the same container as
-a separate managed process. Open **OcheCore** in the navigation to configure its
+a separate managed process. **Home** opens its embedded interface to configure your
 Autodarts account, WLED lighting, and caller voices. Its controls, event streams,
-and browser audio use Oche's connection, including HTTPS. Settings let you choose
-whether it starts automatically and appears in the navigation.
+and browser audio use Oche's connection, including HTTPS. Oche starts it in
+embedded mode, which hides OcheCore's own branding and theme switch. The header
+theme button controls its appearance. Settings let you choose whether it starts
+automatically; Oche's system dashboard is also available from Settings.
 
 On first use, enter your Autodarts OAuth client ID in OcheCore's connection settings,
 then connect your account and choose a board. The client must support device
@@ -305,8 +309,9 @@ authorization. Oche does not force the upstream development client ID, so these
 settings remain editable in the interface.
 
 All OcheCore settings and downloads are stored in `/app/data/ochecore`: connection
-settings, OAuth tokens, WLED configuration, caller settings, installed voices, and
-debug captures. This is part of Oche's existing persistent data mount. Production
+settings, OAuth tokens, WLED configuration, shared profiles, caller settings,
+installed voices, UI settings in `ui.json`, and debug captures. This is part of
+Oche's existing persistent data mount. Production
 uses `./data/ochecore`; development keeps it in the existing `dev-data` volume.
 Process logs are stored in `/app/data/logs/ochecore.log`. Updating or recreating the
 container preserves these files when the data mount is kept. Update OcheCore by

@@ -1,4 +1,4 @@
-"""Adapt OcheCore's interface, framing policy and Caller audio for embedding."""
+"""Adapt OcheCore's interface and Caller audio URLs for Oche's service proxy."""
 
 import json
 import re
@@ -16,17 +16,6 @@ def rewrite_asset(body: bytes) -> bytes:
         body = body.replace(b"${location.host}" + endpoint,
                             b"${location.host}" + PREFIX.encode() + endpoint)
     return body
-
-
-def embedding_headers(headers):
-    result = []
-    for key, value in headers:
-        if key.lower() == "content-security-policy":
-            value = re.sub(r"(?i)frame-ancestors\s+[^;]+", "frame-ancestors 'self'", value)
-        elif key.lower() == "x-frame-options":
-            value = "SAMEORIGIN"
-        result.append((key, value))
-    return result
 
 
 def rewrite_socket(path: str, message: str) -> str:
@@ -50,5 +39,5 @@ def rewrite_socket(path: str, message: str) -> str:
 
 router = create_service_proxy(
     PREFIX, lambda: ochecore.PORT, "OcheCore", rewrite_asset,
-    adjust_headers=embedding_headers, rewrite_socket=rewrite_socket, rebase_origin=True,
+    rewrite_socket=rewrite_socket, rebase_origin=True,
 )

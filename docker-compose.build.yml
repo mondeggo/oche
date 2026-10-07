@@ -5,7 +5,7 @@ services:
       context: .
       args:
         AUTOGLOW_VERSION: ${AUTOGLOW_VERSION:-}
-        OCHECORE_VERSION: ${OCHECORE_VERSION:-18b136dc5be0548e4af85f1c64b925b440b9f16c}
+        OCHECORE_VERSION: ${OCHECORE_VERSION:-6cb3622917cb2cdbda813984268b3cf6e2e8f0e8}
       secrets:
         - autoglow_token
     image: oche:dev

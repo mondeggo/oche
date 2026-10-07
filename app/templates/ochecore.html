@@ -1,15 +1,15 @@
 {% extends "base.html" %}
-{% block title %}Oche - OcheCore{% endblock %}
+{% block title %}Oche - Home{% endblock %}
 {% block content %}
 <div class="service-viewport">
   <div id="oc-placeholder" class="board-placeholder">
     <div class="board-placeholder-inner">
-      <h1>OcheCore</h1>
-      <p id="oc-message">Loading OcheCore…</p>
+      <h1>Home</h1>
+      <p id="oc-message">Loading Home…</p>
       <button id="oc-start" type="button" hidden>Start OcheCore</button>
     </div>
   </div>
-  <iframe id="oc-frame" class="board-frame" title="OcheCore configuration" allow="autoplay" hidden></iframe>
+  <iframe id="oc-frame" class="board-frame" title="Oche Home" allow="autoplay" hidden></iframe>
 </div>
 <script>
 (() => {
@@ -54,7 +54,7 @@
         frame.hidden = !ready;
         placeholder.hidden = ready;
         button.hidden = true;
-        message.textContent = 'Loading OcheCore…';
+        message.textContent = 'Loading Home…';
       } else {
         online = false;
         ready = false;

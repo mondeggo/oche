@@ -67,10 +67,16 @@ app.include_router(system.router)
 
 @app.get("/")
 async def index(request: Request):
+    return await ochecore.page(request)
+
+
+@app.get("/config/system")
+async def system_page(request: Request):
     return templates.TemplateResponse(
         "index.html",
         {
             "request": request,
+            "active_nav": "config",
             "system": system_metrics.get_status(),
             "autodarts_status": autodarts_service.get_status(),
             "autoglow_status": autoglow_service.get_status(),

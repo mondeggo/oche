@@ -12,7 +12,7 @@
   <body>
     <div id="oche-page">
     <header id="topbar" class="topbar">
-      <a class="brand" href="/">
+      <a class="brand" href="/" aria-label="Oche Home" title="Home">
         Oche
       </a>
       <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Switch to light theme" title="Switch to light theme">
@@ -36,13 +36,6 @@
           class="{{ 'active' if active_nav == 'autoglow' }}"
           {{ 'hidden' if not nav_visibility.autoglow }}
           >AutoGlow 2</a
-        >
-        <a
-          id="nav-link-ochecore"
-          href="/ochecore"
-          class="{{ 'active' if active_nav == 'ochecore' }}"
-          {{ 'hidden' if not nav_visibility.ochecore }}
-          >OcheCore</a
         >
         {% if nav_visibility.panels %}
         <span id="nav-pinned-panels">{%- for item in nav_panels if item.pinned %}

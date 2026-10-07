@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException, Request
+from fastapi.responses import RedirectResponse
 
 from app.config import LOG_DIR, load_config
 from app.log_download import log_download
@@ -9,11 +10,15 @@ router = APIRouter(prefix="/ochecore", tags=["ochecore"])
 
 
 @router.get("")
+async def legacy_page():
+    return RedirectResponse("/", status_code=308)
+
+
 async def page(request: Request):
     return templates.TemplateResponse("ochecore.html", {
         "request": request,
         "status": ochecore.get_status(),
-        "active_nav": "ochecore",
+        "active_nav": "home",
         "full_width": True,
         "allow_header_autohide": True,
         "autohide_navbar_default": load_config().get("autohide_navbar_on_ochecore", False),

@@ -1,14 +1,19 @@
-// Keep Supervisor previews and OcheCore's Caller audio attached in this tab.
+// Keep Home's Caller audio and Supervisor previews attached in this tab.
 // Moving an iframe between DOM parents also reloads it, so each view stays put.
 (() => {
-  const persistent = path => path === '/supervisor' || path === '/ochecore';
+  const canonicalUrl = href => {
+    const url = new URL(href, location.href);
+    if (url.pathname === '/ochecore') url.pathname = '/';
+    return url;
+  };
+  const persistent = path => path === '/supervisor' || path === '/';
   const supervisorService = url => ['autoglow', 'ochecore'].includes(url.searchParams.get('service'))
     ? url.searchParams.get('service') : 'autodarts';
   const viewKey = url => url.pathname === '/supervisor'
     ? '/supervisor?service=' + supervisorService(url)
-    : url.pathname + url.search;
+    : url.pathname === '/' ? '/' : url.pathname + url.search;
   const internal = url => url.origin === location.origin &&
-    (/^\/(?:board|autodarts|supervisor|play|autoglow|ochecore|config(?:\/https)?)?$/.test(url.pathname) ||
+    (/^\/(?:board|autodarts|supervisor|play|autoglow|ochecore|config(?:\/(?:https|system))?)?$/.test(url.pathname) ||
      /^\/panels\/[^/]+$/.test(url.pathname));
   let shell = window;
   try {
@@ -17,13 +22,13 @@
 
   if (shell === window) {
     const original = document.getElementById('oche-page');
-    const initialUrl = new URL(location.href);
+    const initialUrl = canonicalUrl(location.href);
     const views = new Map();
     let active = { element: original, url: initialUrl, original: true, title: document.title };
     if (persistent(initialUrl.pathname)) views.set(viewKey(initialUrl), active);
 
     function navigate(href, push = true) {
-      const url = new URL(href, location.href);
+      const url = canonicalUrl(href);
       if (!internal(url)) return false;
       if (push && url.href === location.href) return true;
       let next = views.get(viewKey(url));
@@ -50,6 +55,7 @@
       active = next;
       active.element.hidden = false;
       if (push) history.pushState(null, '', url.href);
+      else if (url.href !== location.href) history.replaceState(null, '', url.href);
       const doc = active.original ? document : active.element.contentDocument;
       if (active.original) document.title = active.title;
       else if (doc && doc.title) document.title = doc.title;

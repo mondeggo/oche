@@ -58,16 +58,19 @@ class NavigationTests(unittest.TestCase):
                 route.fulfill(status=503, body='Unavailable')
             else:
                 route.fulfill(json={'status': 'running', 'pid': self.pid})
+        elif url.path == '/ochecore/ui/api/ui':
+            route.fulfill(status=503, json={'detail': 'Core UI settings unavailable in this fixture.'})
         elif url.hostname == 'oche.test':
-            response = self.client.request(route.request.method,
-                route.request.url,
-                content=route.request.post_data,
-                headers={key: value for key, value in route.request.headers.items()
-                         if key in ('content-type', 'origin', 'sec-fetch-site')})
-            route.fulfill(status=response.status_code, body=response.content,
-                          headers=dict(response.headers))
+            self.route_app(route)
         else:
             route.fulfill(content_type='text/html', body='<h1>External page</h1>')
+
+    def route_app(self, route):
+        response = self.client.request(route.request.method, route.request.url,
+            content=route.request.post_data,
+            headers={key: value for key, value in route.request.headers.items()
+                     if key in ('content-type', 'origin', 'sec-fetch-site')})
+        route.fulfill(status=response.status_code, body=response.content, headers=dict(response.headers))
 
     def view(self):
         element = self.page.locator('.oche-page-frame:not([hidden])')
@@ -140,13 +143,14 @@ class NavigationTests(unittest.TestCase):
         self.assertEqual(self.page.locator('#panel-https-required').count(), 0)
         self.assertEqual(self.errors, [])
 
-    def test_ochecore_https_controls_and_caller_frame_survive_navigation(self):
+    def test_core_home_theme_and_caller_frame_survive_navigation(self):
         from test_ochecore import FakeOcheCore
 
         upstream = FakeOcheCore()
+        upstream.ui['theme'] = 'light'
         self.addCleanup(upstream.close)
         status = {'installed': True, 'status': 'running', 'web_port': upstream.port,
-                  'version': '0.1.1', 'pid': 123, 'processes': {'ochecore': 'running'},
+                  'version': '0.1.2', 'pid': 123, 'processes': {'ochecore': 'running'},
                   'pids': {'ochecore': 123}}
         requests, sockets = [], []
         self.page.on('request', lambda request: requests.append(request.url))
@@ -156,9 +160,11 @@ class NavigationTests(unittest.TestCase):
             socket.send(json.dumps(FakeOcheCore.audio))
 
         self.page.route_web_socket('**/ochecore/ui/caller/audio', audio_connected)
+        self.page.route('**/ochecore/ui/api/ui', self.route_app)
+        self.page.emulate_media(color_scheme='dark')
         with patch('app.services.ochecore.PORT', upstream.port), \
              patch('app.services.ochecore.get_status', return_value=status):
-            self.page.goto('https://oche.test/ochecore')
+            self.page.goto('https://oche.test/')
             frame = self.view().locator('#oc-frame')
             frame.wait_for(state='visible')
             self.assertEqual(frame.get_attribute('src'), '/ochecore/ui/')
@@ -166,12 +172,31 @@ class NavigationTests(unittest.TestCase):
             embedded = frame.element_handle().content_frame()
             embedded.locator('#api-result').filter(has_text='saved').wait_for()
             embedded.locator('#socket-result').filter(has_text='audio connected').wait_for()
+            self.view().wait_for_function('document.documentElement.dataset.theme === "light"')
+            embedded.wait_for_function('document.documentElement.dataset.theme === "light"')
+            self.assertFalse(any(request['method'] == 'PATCH' and request['path'] == '/api/ui'
+                                 for request in upstream.requests))
+            for theme in ('dark', 'light'):
+                with self.page.expect_response(lambda response: response.url.endswith('/ochecore/ui/api/ui')
+                                                and response.request.method == 'PATCH'):
+                    self.view().locator('#theme-toggle').click()
+                embedded.wait_for_function('theme => document.documentElement.dataset.theme === theme', arg=theme)
+                self.assertEqual(upstream.ui['theme'], theme)
+                self.assertEqual(embedded.locator('html').get_attribute('data-embedded'), 'true')
             embedded.evaluate('window.callerMarker = "retained"')
             self.go('/play')
-            self.go('/ochecore')
+            with self.page.expect_response(lambda response: response.url.endswith('/ochecore/ui/api/ui')
+                                            and response.request.method == 'PATCH'):
+                self.view().locator('#theme-toggle').click()
+            self.go('/')
+            embedded.wait_for_function('document.documentElement.dataset.theme === "dark"')
             self.assertEqual(self.view().locator('#oc-frame').element_handle().content_frame()
                              .evaluate('window.callerMarker'), 'retained')
             self.assertEqual(len(sockets), 1)
+            # A change from Core's UI or another device reaches the retained Home.
+            upstream.ui['theme'] = 'light'
+            self.view().wait_for_function('document.documentElement.dataset.theme === "light"', timeout=8000)
+            embedded.wait_for_function('document.documentElement.dataset.theme === "light"')
 
             self.go('/supervisor')
             self.view().locator('a[href="/supervisor?service=ochecore"]').click()
@@ -186,13 +211,17 @@ class NavigationTests(unittest.TestCase):
             self.assertIn('https://oche.test/ochecore/ui/static/app.js', requests)
 
             self.go('/config')
-            with self.page.expect_response('**/config/data'):
-                self.view().locator('#cfg-show-ochecore').uncheck()
+            self.assertEqual(self.view().locator('#cfg-show-ochecore').count(), 0)
+            self.assertEqual(self.view().locator('#nav-link-ochecore').count(), 0)
             with self.page.expect_response('**/config/data'):
                 self.view().locator('#cfg-autostart-ochecore').uncheck()
-            self.go('/supervisor')
-            self.view().locator('#nav-link-ochecore').wait_for(state='hidden')
             self.assertFalse(self.client.get('/config/data').json()['autostart_ochecore'])
+            self.view().locator('a[href="/config/system"]').click()
+            self.page.wait_for_url('https://oche.test/config/system')
+            self.view().locator('#m-cpu').wait_for()
+            self.go('/')
+            self.assertEqual(self.view().locator('#oc-frame').element_handle().content_frame()
+                             .evaluate('window.callerMarker'), 'retained')
         self.assertEqual(self.errors, [])
 
     def test_theme_follows_system_and_uses_requested_palette(self):
@@ -226,6 +255,103 @@ class NavigationTests(unittest.TestCase):
                 self.assertEqual(self.page.locator('#theme-toggle').get_attribute('aria-label'),
                                  'Switch to ' + opposite + ' theme')
                 self.page.mouse.move(0, 0)
+        self.assertEqual(self.errors, [])
+
+    def test_latest_theme_choice_across_tabs_wins_when_core_recovers(self):
+        online = False
+        settings = {'embedded': True, 'theme': 'dark', 'parent_origin': '', 'error': None}
+        saved_themes = []
+
+        def ui_settings(route):
+            if not online:
+                route.fulfill(status=503, json={'detail': 'Core is stopped.'})
+                return
+            if route.request.method == 'PATCH':
+                settings.update(route.request.post_data_json)
+                saved_themes.append(settings['theme'])
+            route.fulfill(json=settings)
+
+        self.page.route('**/ochecore/ui/api/ui', ui_settings)
+        self.page.emulate_media(color_scheme='dark')
+        self.page.goto('http://oche.test/config')
+        with self.page.expect_response('**/ochecore/ui/api/ui'):
+            self.page.locator('#theme-toggle').click()  # Older choice: light, queued offline.
+        other_tab = self.page.context.new_page()
+        self.addCleanup(other_tab.close)
+        other_tab.on('pageerror', lambda error: self.errors.append(str(error)))
+        other_tab.route('**/*', self.route)
+        other_tab.route('**/ochecore/ui/api/ui', ui_settings)
+        other_tab.goto('http://oche.test/config')
+        self.assertEqual(other_tab.locator('html').get_attribute('data-theme'), 'light')
+        with other_tab.expect_response('**/ochecore/ui/api/ui'):
+            other_tab.locator('#theme-toggle').click()  # Latest choice: dark.
+        self.page.wait_for_function('document.documentElement.dataset.theme === "dark"')
+        online = True
+        with other_tab.expect_response('**/ochecore/ui/api/ui'):
+            other_tab.evaluate('window.dispatchEvent(new Event("focus"))')
+        with self.page.expect_response('**/ochecore/ui/api/ui'):
+            self.page.evaluate('window.dispatchEvent(new Event("focus"))')
+        self.assertTrue(saved_themes)
+        self.assertEqual(set(saved_themes), {'dark'})
+        self.assertEqual(settings['theme'], 'dark')
+        self.assertEqual(self.page.locator('html').get_attribute('data-theme'), 'dark')
+        self.assertEqual(other_tab.locator('html').get_attribute('data-theme'), 'dark')
+        self.assertEqual(self.errors, [])
+
+    def test_theme_ignores_an_old_save_response_after_a_newer_click(self):
+        settings = {'embedded': True, 'theme': 'dark', 'parent_origin': '', 'error': None}
+        pending = []
+
+        def ui_settings(route):
+            if route.request.method == 'PATCH':
+                pending.append(route)
+            else:
+                route.fulfill(json=settings)
+
+        self.page.route('**/ochecore/ui/api/ui', ui_settings)
+        self.page.goto('http://oche.test/config')
+        self.page.wait_for_function('document.documentElement.dataset.theme === "dark"')
+        with self.page.expect_request(lambda request: request.url.endswith('/ochecore/ui/api/ui')
+                                       and request.method == 'PATCH'):
+            self.page.locator('#theme-toggle').click()
+        self.page.locator('#theme-toggle').click()
+        self.assertEqual(self.page.locator('html').get_attribute('data-theme'), 'dark')
+        self.assertEqual(len(pending), 1)
+        with self.page.expect_request(lambda request: request.url.endswith('/ochecore/ui/api/ui')
+                                       and request.method == 'PATCH' and request.post_data_json['theme'] == 'dark'):
+            pending[0].fulfill(json={**settings, 'theme': 'light'})
+        # The old light response must not repaint before the newer dark save returns.
+        self.assertEqual(self.page.locator('html').get_attribute('data-theme'), 'dark')
+        self.assertEqual(len(pending), 2)
+        pending[1].fulfill(json=settings)
+        self.assertEqual(self.page.evaluate('localStorage.getItem("oche.theme")'), 'dark')
+        self.assertEqual(self.errors, [])
+
+    def test_stale_theme_cache_does_not_override_owner_choice_in_retained_child(self):
+        self.page.emulate_media(color_scheme='dark')
+        self.page.goto('http://oche.test/config')
+        with self.page.expect_response('**/ochecore/ui/api/ui'):
+            self.page.locator('#theme-toggle').click()  # Core is offline; light remains queued.
+        self.go('/play')
+        child = self.view()
+        self.assertNotEqual(child, self.page.main_frame)
+        for frame in (self.page.main_frame, child):
+            frame.evaluate('''() => {
+                window.staleThemeCacheSeen = false;
+                window.addEventListener('storage', event => {
+                    if (event.key === 'oche.theme' && event.newValue === 'dark')
+                        window.staleThemeCacheSeen = true;
+                });
+            }''')
+        peer = self.page.context.new_page()
+        self.addCleanup(peer.close)
+        peer.on('pageerror', lambda error: self.errors.append(str(error)))
+        peer.route('**/*', self.route)
+        peer.goto('http://oche.test/config')
+        peer.evaluate('localStorage.setItem("oche.theme", "dark")')
+        for frame in (self.page.main_frame, child):
+            frame.wait_for_function('window.staleThemeCacheSeen')
+            self.assertEqual(frame.locator('html').get_attribute('data-theme'), 'light')
         self.assertEqual(self.errors, [])
 
     def test_theme_persists_and_syncs_retained_pages_terminal_and_other_tabs(self):
@@ -302,8 +428,8 @@ class NavigationTests(unittest.TestCase):
             {'name': 'A long pinned panel name for a small screen',
              'url': 'https://example.com/dashboard', 'pinned': True}
         ]}).json()['panels']
-        paths = ('/', '/config', '/config/https', '/supervisor', '/supervisor?service=autoglow',
-                 '/supervisor?service=ochecore', '/play', '/autoglow', '/ochecore', '/panels/' + panels[0]['id'])
+        paths = ('/', '/config', '/config/https', '/config/system', '/supervisor', '/supervisor?service=autoglow',
+                 '/supervisor?service=ochecore', '/play', '/autoglow', '/panels/' + panels[0]['id'])
         for width, height in ((320, 740), (390, 844), (768, 1024), (1024, 768), (1440, 900)):
             self.page.set_viewport_size({'width': width, 'height': height})
             for path in paths:
@@ -323,7 +449,7 @@ class NavigationTests(unittest.TestCase):
                         self.assertLessEqual(dropdown['x'] + dropdown['width'], width + 1)
                         self.assertLessEqual(self.page.evaluate('document.documentElement.scrollWidth'), width)
                         self.page.keyboard.press('Escape')
-                    if path in ('/play', '/autoglow', '/ochecore') or path.startswith('/panels/'):
+                    if path in ('/', '/play', '/autoglow') or path.startswith('/panels/'):
                         box = self.page.locator('main').bounding_box()
                         self.assertAlmostEqual(box['y'] + box['height'], height, delta=1)
         self.assertEqual(self.errors, [])

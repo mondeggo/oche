@@ -31,7 +31,6 @@ class ConfigUpdate(BaseModel):
     show_play_in_navbar: Optional[bool] = None
     show_autodarts_in_navbar: Optional[bool] = None
     show_autoglow_in_navbar: Optional[bool] = None
-    show_ochecore_in_navbar: Optional[bool] = None
     show_panels_in_navbar: Optional[bool] = None
 
 

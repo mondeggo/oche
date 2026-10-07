@@ -25,7 +25,6 @@ DEFAULTS = {
     "show_play_in_navbar": True,
     "show_autodarts_in_navbar": True,
     "show_autoglow_in_navbar": True,
-    "show_ochecore_in_navbar": True,
     "show_panels_in_navbar": True,
     "panels": [],
     "autoglow": {
@@ -44,6 +43,7 @@ def load_config() -> dict:
             merged = {**DEFAULTS, **data}
             merged.pop("show_board_in_navbar", None)
             merged.pop("autohide_navbar_on_board", None)
+            merged.pop("show_ochecore_in_navbar", None)
             return merged
         except Exception:
             pass

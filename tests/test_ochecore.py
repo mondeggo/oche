@@ -28,6 +28,7 @@ class FakeOcheCore:
     def __init__(self):
         self.requests = []
         self.sockets = []
+        self.ui = {'embedded': True, 'theme': 'dark', 'parent_origin': '', 'error': None}
         upstream = FastAPI()
 
         @upstream.middleware('http')
@@ -37,8 +38,8 @@ class FakeOcheCore:
                 if origin and origin != f'{request.url.scheme}://{request.headers["host"]}':
                     return JSONResponse({'detail': 'Origin not allowed.'}, status_code=403)
             response = await call_next(request)
-            response.headers['Content-Security-Policy'] = "default-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'"
-            response.headers['X-Frame-Options'] = 'DENY'
+            ancestor = "'self'" if self.ui['embedded'] else "'none'"
+            response.headers['Content-Security-Policy'] = f"default-src 'self'; connect-src 'self'; frame-ancestors {ancestor}; base-uri 'none'"
             return response
 
         @upstream.api_route('/{path:path}', methods=['GET', 'POST', 'PATCH'])
@@ -46,7 +47,7 @@ class FakeOcheCore:
             self.requests.append({'path': request.url.path, 'method': request.method,
                                   'origin': request.headers.get('origin'), 'body': await request.body()})
             if path == '':
-                return HTMLResponse('''<!doctype html><html><head>
+                return HTMLResponse(f'''<!doctype html><html data-theme="{self.ui['theme']}" data-embedded="{str(self.ui['embedded']).lower()}" data-ui-theme="{self.ui['theme']}"><head>
                     <link rel="stylesheet" href="/static/style.css"></head><body>
                     <h1>OcheCore controls</h1><output id="api-result"></output>
                     <output id="socket-result"></output><script src="/static/app.js"></script>
@@ -54,7 +55,11 @@ class FakeOcheCore:
             if path == 'static/style.css':
                 return Response('body { background: white; }', media_type='text/css')
             if path == 'static/app.js':
-                return Response('''fetch('/api/config', {method: 'PATCH', headers: {'content-type': 'application/json'},
+                return Response('''window.addEventListener('ochecore:ui-settings', event => {
+                        document.documentElement.dataset.theme = event.detail.theme;
+                        document.documentElement.dataset.embedded = String(event.detail.embedded);
+                    });
+                    fetch('/api/config', {method: 'PATCH', headers: {'content-type': 'application/json'},
                     body: JSON.stringify({board_id: 'test'})}).then(response => response.json())
                     .then(data => document.querySelector('#api-result').textContent = data.saved ? 'saved' : 'failed');
                     const socket = new WebSocket(`${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/caller/audio`);
@@ -62,6 +67,10 @@ class FakeOcheCore:
                     ''', media_type='application/javascript')
             if path == 'api/config':
                 return JSONResponse({'saved': True})
+            if path == 'api/ui':
+                if request.method == 'PATCH':
+                    self.ui.update(await request.json())
+                return JSONResponse(self.ui)
             if path == 'api/caller/audio/test.mp3':
                 return Response(b'ID3test audio', media_type='audio/mpeg')
             return JSONResponse({'state': 'ready'})
@@ -133,7 +142,7 @@ class OcheCoreTests(unittest.TestCase):
                      self.source / 'src/ochecore/static/index.html'):
             file.parent.mkdir(parents=True, exist_ok=True)
             file.touch()
-        (self.source / 'VERSION').write_text('0.1.1\n')
+        (self.source / 'VERSION').write_text('0.1.2\n')
 
     def test_start_requires_installation_and_preserves_persistent_core_data(self):
         self.assertFalse(ochecore.start())
@@ -148,10 +157,11 @@ class OcheCoreTests(unittest.TestCase):
         self.assertEqual(self.process.env['OCHECORE_HOST'], '127.0.0.1')
         self.assertEqual(self.process.env['OCHECORE_PORT'], str(ochecore.PORT))
         self.assertEqual(self.process.env['OCHECORE_UI_ENABLED'].lower(), 'true')
+        self.assertEqual(self.process.env['OCHECORE_UI_EMBEDDED'].lower(), 'true')
         self.assertEqual(saved.read_text(), '{"board_id":"existing-board"}')
         self.process.status, self.process.pid = 'running', 321
         status = ochecore.get_status()
-        self.assertEqual(status['version'], '0.1.1')
+        self.assertEqual(status['version'], '0.1.2')
         self.assertEqual(status['processes'], {'ochecore': 'running'})
         self.assertEqual(status['pids'], {'ochecore': 321})
         self.assertTrue(status['installed'])
@@ -175,16 +185,34 @@ class OcheCoreTests(unittest.TestCase):
     def test_settings_persist_and_keep_unrelated_values(self):
         initial = self.client.get('/config/data').json()
         self.assertTrue(initial['autostart_ochecore'])
-        self.assertTrue(initial['show_ochecore_in_navbar'])
+        self.assertNotIn('show_ochecore_in_navbar', initial)
         self.assertFalse(initial['autohide_navbar_on_ochecore'])
-        desired = {'autostart_ochecore': False, 'show_ochecore_in_navbar': False,
+        desired = {'autostart_ochecore': False,
                    'autohide_navbar_on_ochecore': True}
         self.assertEqual(self.client.post('/config/data', json=desired).status_code, 200)
         saved = load_config()
         self.assertTrue(all(saved[key] == value for key, value in desired.items()))
         self.assertEqual(saved['autostart_autoglow'], initial['autostart_autoglow'])
-        self.assertIn('id="nav-link-ochecore"', self.client.get('/config').text)
+        self.assertNotIn('id="nav-link-ochecore"', self.client.get('/config').text)
+        self.assertNotIn('cfg-show-ochecore', self.client.get('/config').text)
         self.assertIn('OcheCore', self.client.get('/supervisor?service=ochecore').text)
+        saved['show_ochecore_in_navbar'] = False  # Old installations may still store this setting.
+        save_config(saved)
+        self.assertNotIn('show_ochecore_in_navbar', self.client.get('/config/data').json())
+        self.assertIn('id="oc-frame"', self.client.get('/').text)
+
+    def test_home_is_core_and_system_dashboard_is_linked_from_settings(self):
+        home = self.client.get('/')
+        self.assertEqual(home.status_code, 200)
+        self.assertIn('id="oc-frame"', home.text)
+        self.assertNotIn('id="m-cpu"', home.text)
+        legacy = self.client.get('/ochecore', follow_redirects=False)
+        self.assertEqual(legacy.status_code, 308)
+        self.assertEqual(legacy.headers['location'], '/')
+        system = self.client.get('/config/system')
+        self.assertEqual(system.status_code, 200)
+        self.assertIn('id="m-cpu"', system.text)
+        self.assertIn('href="/config/system"', self.client.get('/config').text)
 
     def test_control_routes_logs_and_origin_checks(self):
         self.assertEqual(self.client.post('/ochecore/start').status_code, 503)
@@ -224,7 +252,6 @@ class OcheCoreProxyTests(unittest.TestCase):
         self.assertIn('src="/ochecore/ui/static/app.js"', page.text)
         self.assertIn("frame-ancestors 'self'", page.headers['content-security-policy'])
         self.assertIn("default-src 'self'; connect-src 'self'", page.headers['content-security-policy'])
-        self.assertEqual(page.headers['x-frame-options'], 'SAMEORIGIN')
         script = self.client.get('/ochecore/ui/static/app.js')
         self.assertIn("fetch('/ochecore/ui/api/config'", script.text)
         self.assertIn('${location.host}/ochecore/ui/caller/audio', script.text)

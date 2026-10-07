@@ -37,6 +37,7 @@ def start() -> bool:
         "OCHECORE_PORT": str(PORT),
         "OCHECORE_DATA_DIR": str(DATA.resolve()),
         "OCHECORE_UI_ENABLED": "true",
+        "OCHECORE_UI_EMBEDDED": "true",
     }
     return _process.start()
 

@@ -5,7 +5,7 @@ FROM python:3.12-slim
 ARG TARGETARCH
 ARG AUTODARTS_VERSION
 ARG AUTOGLOW_VERSION
-ARG OCHECORE_VERSION=18b136dc5be0548e4af85f1c64b925b440b9f16c
+ARG OCHECORE_VERSION=6cb3622917cb2cdbda813984268b3cf6e2e8f0e8
 
 # Runtime vision/USB libraries and udev for serial/camera device enumeration.
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -59,7 +59,7 @@ RUN --mount=type=secret,id=autoglow_token,required=true set -eu; \
 # OcheCore is public. Reuse the optional build token for authenticated GitHub
 # requests without placing it in build arguments, the image, or runtime env.
 RUN --mount=type=secret,id=autoglow_token set -eu; \
-  CORE_VERSION="${OCHECORE_VERSION:-18b136dc5be0548e4af85f1c64b925b440b9f16c}"; \
+  CORE_VERSION="${OCHECORE_VERSION:-6cb3622917cb2cdbda813984268b3cf6e2e8f0e8}"; \
   echo "$CORE_VERSION" | grep -Eq '^[0-9a-f]{40}$'; \
   mkdir -p /opt/ochecore; \
   if [ -s /run/secrets/autoglow_token ]; then \
