@@ -87,9 +87,6 @@ async def supervisor(request: Request):
                 "allow_header_autohide": True,
                 "autohide_navbar_default": load_config().get("autohide_navbar_on_autodarts", False),
                 "system": system_metrics.get_status(),
-                "autodarts_status": autodarts_service.get_status(),
-                "autoglow_status": autoglow_service.get_status(),
-                "ochecore_status": ochecore_service.get_status(),
             },
         )
     return await autodarts.page(request)

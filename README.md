@@ -2,7 +2,7 @@
 
 An all-in-one Docker app with one-line installation for a hassle-free darts setup. Manage Autodarts, board lighting, and audio calls, play online, and keep your tools together in one web interface.
 
-- **Supervisor:** manage services, set up Autodarts in an interactive terminal, and view CPU, memory, storage, and service status in the System tab.
+- **Supervisor:** manage services, set up Autodarts in an interactive terminal, and view device resources in the System tab.
 - **AutoGlow/WLED:** manage your board lighting.
 - **Home:** use OcheCore to connect your Autodarts account, configure WLED lighting and callers, and inspect game events.
 - **Play:** access online Autodarts games inside Oche.

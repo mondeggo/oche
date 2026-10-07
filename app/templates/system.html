@@ -4,10 +4,9 @@ block content %}
 {% include "supervisor_nav.html" %}
 <h1>System status</h1>
 <p class="subtitle">
-  Check your device's resources and manage its services.
+  Monitor CPU, memory, storage, temperature and network activity.
 </p>
 
-<h2 class="section-title">System</h2>
 <div class="metrics-grid">
   {% macro bar_level(percent) %}{{ 'metric-danger' if percent >= 90 else
   ('metric-warn' if percent >= 75 else '') }}{% endmacro %}
@@ -76,55 +75,6 @@ block content %}
   </div>
 </div>
 
-<h2 class="section-title">Services</h2>
-<div class="grid services-grid">
-  <a class="card" href="/supervisor?service=autodarts">
-    <div class="card-head">
-      <h2 class="card-title">
-        <img
-          src="/static/img/autodarts_logo.svg"
-          alt="Autodarts"
-          class="card-logo"
-        />
-        Autodarts
-      </h2>
-      <span
-        id="svc-autodarts-badge"
-        class="badge {{ 'badge-green' if autodarts_status.status == 'running' else ('badge-yellow' if autodarts_status.status == 'nofile' else 'badge-red') }}"
-      >
-        {{ 'running' if autodarts_status.status == 'running' else ('not
-        installed' if autodarts_status.status == 'nofile' else 'stopped') }}
-      </span>
-    </div>
-    <p>Detection status, setup terminal &amp; controls.</p>
-  </a>
-  <a class="card" href="/supervisor?service=autoglow">
-    <div class="card-head">
-      <h2>💡 AutoGlow 2</h2>
-      {% set ag_ok = (autoglow_status.status == 'running') and
-      autoglow_status.autodarts_connected %}
-      <span
-        id="svc-autoglow-badge"
-        class="badge {{ 'badge-green' if ag_ok else ('badge-yellow' if (autoglow_status.status == 'running') else 'badge-red') }}"
-      >
-        {{ 'connected' if ag_ok else ('idle' if (autoglow_status.status == 'running')
-        else 'not found') }}
-      </span>
-    </div>
-    <p>Board lighting status &amp; controls.</p>
-  </a>
-  <a class="card" href="/supervisor?service=ochecore">
-    <div class="card-head">
-      <h2>OcheCore</h2>
-      <span
-        id="svc-ochecore-badge"
-        class="badge {{ 'badge-green' if ochecore_status.status == 'running' else ('badge-yellow' if not ochecore_status.installed else 'badge-red') }}"
-      >{{ 'running' if ochecore_status.status == 'running' else ('not installed' if not ochecore_status.installed else 'stopped') }}</span>
-    </div>
-    <p>Caller, board tools &amp; service controls.</p>
-  </a>
-</div>
-
 </section>
 
 <script>
@@ -136,16 +86,9 @@ block content %}
 
   async function refreshDashboard() {
     try {
-      const [sysRes, adRes, agRes, ocRes] = await Promise.all([
-        fetch("/system/status"),
-        fetch("/autodarts/status"),
-        fetch("/autoglow/status"),
-        fetch("/ochecore/status"),
-      ]);
-      const sys = await sysRes.json();
-      const ad = await adRes.json();
-      const ag = await agRes.json();
-      const oc = await ocRes.json();
+      const response = await fetch("/system/status");
+      if (!response.ok) return;
+      const sys = await response.json();
 
       document.getElementById("m-cpu").textContent = sys.cpu_percent + "%";
       const cpuBar = document.getElementById("m-cpu-bar");
@@ -177,37 +120,6 @@ block content %}
       document.getElementById("m-netio").textContent =
         `${sys.net_recv_mb_s} / ${sys.net_sent_mb_s} MB/s`;
 
-      const adBadge = document.getElementById("svc-autodarts-badge");
-      const adOk = ad.status === "running";
-      const adNofile = ad.status === "nofile";
-      adBadge.className =
-        "badge " +
-        (adOk ? "badge-green" : adNofile ? "badge-yellow" : "badge-red");
-      adBadge.textContent = adOk
-        ? "running"
-        : adNofile
-          ? "not installed"
-          : "stopped";
-
-      const agOk = (ag.status === "running") && ag.autodarts_connected;
-      const agBadge = document.getElementById("svc-autoglow-badge");
-      agBadge.className =
-        "badge " +
-        (agOk
-          ? "badge-green"
-          : (ag.status === "running")
-            ? "badge-yellow"
-            : "badge-red");
-      agBadge.textContent = agOk
-        ? "connected"
-        : (ag.status === "running")
-          ? "idle"
-          : "not found";
-
-      const ocBadge = document.getElementById('svc-ochecore-badge');
-      const ocRunning = oc.status === 'running';
-      ocBadge.className = 'badge ' + (ocRunning ? 'badge-green' : oc.installed ? 'badge-red' : 'badge-yellow');
-      ocBadge.textContent = ocRunning ? 'running' : oc.installed ? 'stopped' : 'not installed';
     } catch (e) {
       // Ignore transient poll failures - values just stay stale until the next tick.
     }
