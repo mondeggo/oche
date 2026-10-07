@@ -70,23 +70,28 @@ async def index(request: Request):
     return await ochecore.page(request)
 
 
-@app.get("/config/system")
-async def system_page(request: Request):
-    return templates.TemplateResponse(
-        "index.html",
-        {
-            "request": request,
-            "active_nav": "config",
-            "system": system_metrics.get_status(),
-            "autodarts_status": autodarts_service.get_status(),
-            "autoglow_status": autoglow_service.get_status(),
-            "ochecore_status": ochecore_service.get_status(),
-        },
-    )
+@app.get("/config/system", include_in_schema=False)
+async def legacy_system():
+    return RedirectResponse("/supervisor?service=system", status_code=308)
 
 
 @app.get("/supervisor")
 async def supervisor(request: Request):
+    if request.query_params.get("service") == "system":
+        return templates.TemplateResponse(
+            "system.html",
+            {
+                "request": request,
+                "active_nav": "autodarts",
+                "service": "system",
+                "allow_header_autohide": True,
+                "autohide_navbar_default": load_config().get("autohide_navbar_on_autodarts", False),
+                "system": system_metrics.get_status(),
+                "autodarts_status": autodarts_service.get_status(),
+                "autoglow_status": autoglow_service.get_status(),
+                "ochecore_status": ochecore_service.get_status(),
+            },
+        )
     return await autodarts.page(request)
 
 

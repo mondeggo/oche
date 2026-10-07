@@ -4,10 +4,14 @@
   const canonicalUrl = href => {
     const url = new URL(href, location.href);
     if (url.pathname === '/ochecore') url.pathname = '/';
+    if (url.pathname === '/config/system') {
+      url.pathname = '/supervisor';
+      url.searchParams.set('service', 'system');
+    }
     return url;
   };
   const persistent = path => path === '/supervisor' || path === '/';
-  const supervisorService = url => ['autoglow', 'ochecore'].includes(url.searchParams.get('service'))
+  const supervisorService = url => ['autoglow', 'ochecore', 'system'].includes(url.searchParams.get('service'))
     ? url.searchParams.get('service') : 'autodarts';
   const viewKey = url => url.pathname === '/supervisor'
     ? '/supervisor?service=' + supervisorService(url)

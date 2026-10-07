@@ -1,0 +1,5 @@
+<nav class="embed-toggle supervisor-selector" aria-label="Supervisor">
+  {% for key, label in [('autodarts', 'Autodarts'), ('autoglow', 'AutoGlow 2'), ('ochecore', 'OcheCore'), ('system', 'System')] %}
+  <a class="view-toggle-btn {{ 'active' if service == key }}" href="/supervisor?service={{ key }}"{% if service == key %} aria-current="page"{% endif %}>{{ label }}</a>
+  {% endfor %}
+</nav>

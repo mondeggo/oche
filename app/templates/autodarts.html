@@ -5,11 +5,7 @@ block content %}
 {% set status_prefix = 'ag-web' if service == 'autoglow' else control_prefix %}
 {% set process_key = 'autoglow-web' if service == 'autoglow' else 'ochecore' %}
 <section class="supervisor-page">
-<div class="embed-toggle supervisor-selector" aria-label="Service">
-  <a class="view-toggle-btn {{ 'active' if service == 'autodarts' }}" href="/supervisor?service=autodarts">Autodarts</a>
-  <a class="view-toggle-btn {{ 'active' if service == 'autoglow' }}" href="/supervisor?service=autoglow">AutoGlow 2</a>
-  <a class="view-toggle-btn {{ 'active' if service == 'ochecore' }}" href="/supervisor?service=ochecore">OcheCore</a>
-</div>
+{% include "supervisor_nav.html" %}
 {% if service == "autodarts" %}
 <div class="page-header">
   <img

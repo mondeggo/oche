@@ -2,12 +2,12 @@
 
 An all-in-one Docker app with one-line installation for a hassle-free darts setup. Manage Autodarts, board lighting, and audio calls, play online, and keep your tools together in one web interface.
 
-- **Supervisor:** manage headless detection and set up Autodarts in an interactive terminal.
+- **Supervisor:** manage services, set up Autodarts in an interactive terminal, and view CPU, memory, storage, and service status in the System tab.
 - **AutoGlow/WLED:** manage your board lighting.
 - **Home:** use OcheCore to connect your Autodarts account, configure WLED lighting and callers, and inspect game events.
 - **Play:** access online Autodarts games inside Oche.
 - **Panels:** add website URLs in Settings to open your own tools from the Panels menu.
-- **Settings:** configure Oche and open the system dashboard for CPU, memory, storage, and service status.
+- **Settings:** configure Oche.
 
 Use the sun or moon button in the header to switch between dark and light themes.
 Oche saves your choice with OcheCore and shares it across connected devices. The
@@ -301,7 +301,7 @@ Autodarts account, WLED lighting, and caller voices. Its controls, event streams
 and browser audio use Oche's connection, including HTTPS. Oche starts it in
 embedded mode, which hides OcheCore's own branding and theme switch. The header
 theme button controls its appearance. Settings let you choose whether it starts
-automatically; Oche's system dashboard is also available from Settings.
+automatically. Oche's system dashboard is available under **Supervisor → System**.
 
 On first use, enter your Autodarts OAuth client ID in OcheCore's connection settings,
 then connect your account and choose a board. The client must support device

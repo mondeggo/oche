@@ -201,7 +201,7 @@ class OcheCoreTests(unittest.TestCase):
         self.assertNotIn('show_ochecore_in_navbar', self.client.get('/config/data').json())
         self.assertIn('id="oc-frame"', self.client.get('/').text)
 
-    def test_home_is_core_and_system_dashboard_is_linked_from_settings(self):
+    def test_home_is_core_and_system_dashboard_lives_in_supervisor(self):
         home = self.client.get('/')
         self.assertEqual(home.status_code, 200)
         self.assertIn('id="oc-frame"', home.text)
@@ -209,10 +209,14 @@ class OcheCoreTests(unittest.TestCase):
         legacy = self.client.get('/ochecore', follow_redirects=False)
         self.assertEqual(legacy.status_code, 308)
         self.assertEqual(legacy.headers['location'], '/')
-        system = self.client.get('/config/system')
+        system = self.client.get('/supervisor?service=system')
         self.assertEqual(system.status_code, 200)
         self.assertIn('id="m-cpu"', system.text)
-        self.assertIn('href="/config/system"', self.client.get('/config').text)
+        self.assertIn('href="/supervisor?service=system"', self.client.get('/supervisor').text)
+        self.assertNotIn('href="/config/system"', self.client.get('/config').text)
+        legacy_system = self.client.get('/config/system', follow_redirects=False)
+        self.assertEqual(legacy_system.status_code, 308)
+        self.assertEqual(legacy_system.headers['location'], '/supervisor?service=system')
 
     def test_control_routes_logs_and_origin_checks(self):
         self.assertEqual(self.client.post('/ochecore/start').status_code, 503)

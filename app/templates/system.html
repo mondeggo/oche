@@ -1,6 +1,7 @@
-{% extends "base.html" %} {% block title %}Oche - System status{% endblock %} {%
+{% extends "base.html" %} {% block title %}Oche - Supervisor - System{% endblock %} {%
 block content %}
-<a href="/config">← Settings</a>
+<section class="supervisor-page">
+{% include "supervisor_nav.html" %}
 <h1>System status</h1>
 <p class="subtitle">
   Check your device's resources and manage its services.
@@ -123,6 +124,8 @@ block content %}
     <p>Caller, board tools &amp; service controls.</p>
   </a>
 </div>
+
+</section>
 
 <script>
   function setBarLevel(el, percent) {

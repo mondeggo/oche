@@ -216,8 +216,10 @@ class NavigationTests(unittest.TestCase):
             with self.page.expect_response('**/config/data'):
                 self.view().locator('#cfg-autostart-ochecore').uncheck()
             self.assertFalse(self.client.get('/config/data').json()['autostart_ochecore'])
-            self.view().locator('a[href="/config/system"]').click()
-            self.page.wait_for_url('https://oche.test/config/system')
+            self.assertEqual(self.view().locator('a[href="/config/system"]').count(), 0)
+            self.go('/supervisor')
+            self.view().locator('a[href="/supervisor?service=system"]').click()
+            self.page.wait_for_url('https://oche.test/supervisor?service=system')
             self.view().locator('#m-cpu').wait_for()
             self.go('/')
             self.assertEqual(self.view().locator('#oc-frame').element_handle().content_frame()
@@ -403,6 +405,21 @@ class NavigationTests(unittest.TestCase):
         self.assertTrue(any(m.get('type') == 'resize' for m in self.terminal_messages))
         self.view().evaluate('window.pageMarker = "original"')
         self.view().locator('#board-frame').element_handle().content_frame().evaluate('window.terminalMarker = "retained"')
+        self.view().locator('a[href="/supervisor?service=system"]').click()
+        self.page.wait_for_url('http://oche.test/supervisor?service=system')
+        self.view().locator('#m-cpu').wait_for()
+        self.assertIn('active', self.view().locator('#nav-link-autodarts').get_attribute('class').split())
+        self.assertEqual(self.view().locator('.supervisor-selector a[href="/supervisor?service=system"]').get_attribute('aria-current'), 'page')
+        self.view().evaluate('window.systemMarker = "retained-system"')
+        self.view().locator('.supervisor-selector a[href="/supervisor?service=autodarts"]').click()
+        self.page.wait_for_url('http://oche.test/supervisor?service=autodarts')
+        self.assertEqual(self.view().evaluate('window.pageMarker'), 'original')
+        # Legacy links must select the same cached System view, without replacing Autodarts.
+        self.page.evaluate('window.ocheNavigation.navigate("/config/system")')
+        self.page.wait_for_url('http://oche.test/supervisor?service=system')
+        self.assertEqual(self.view().evaluate('window.systemMarker'), 'retained-system')
+        self.view().locator('.supervisor-selector a[href="/supervisor?service=autodarts"]').click()
+        self.page.wait_for_url('http://oche.test/supervisor?service=autodarts')
         self.go('/config')
         self.go('/play')
         self.go('/supervisor')
@@ -428,7 +445,7 @@ class NavigationTests(unittest.TestCase):
             {'name': 'A long pinned panel name for a small screen',
              'url': 'https://example.com/dashboard', 'pinned': True}
         ]}).json()['panels']
-        paths = ('/', '/config', '/config/https', '/config/system', '/supervisor', '/supervisor?service=autoglow',
+        paths = ('/', '/config', '/config/https', '/supervisor?service=system', '/supervisor', '/supervisor?service=autoglow',
                  '/supervisor?service=ochecore', '/play', '/autoglow', '/panels/' + panels[0]['id'])
         for width, height in ((320, 740), (390, 844), (768, 1024), (1024, 768), (1440, 900)):
             self.page.set_viewport_size({'width': width, 'height': height})

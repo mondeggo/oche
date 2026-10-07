@@ -17,6 +17,7 @@ class SupervisorTests(unittest.TestCase):
         self.assertIn('/supervisor?service=autodarts', response.text)
         self.assertIn('/supervisor?service=autoglow', response.text)
         self.assertIn('/supervisor?service=ochecore', response.text)
+        self.assertIn('/supervisor?service=system', response.text)
         self.assertIn('<iframe', response.text)
         self.assertIn('/autodarts/start', response.text)
         self.assertIn('/autodarts/terminal', response.text)
