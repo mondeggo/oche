@@ -178,6 +178,28 @@ interactive setup terminal. Use the keyboard to sign in, claim the board, set up
 cameras, and calibrate. The terminal reconnects to the existing daemon; closing
 the page leaves detection running. A **Reconnect** button opens a new setup session.
 
+Open **Supervisor → Autodarts → Cameras** for camera previews, focus guidance,
+camera selection, resolution, and frame rate. Oche reads images and delivered FPS
+from the running Autodarts camera API. Previewing does not stop the service or
+open a competing camera capture. Hidden previews pause their image requests.
+
+Select a camera, then tap or drag over a detailed part of the board to compare
+focus while turning its lens. The zoom, smoothed score, and best score apply to
+that camera and selected area. Reset the best score after changing lighting or
+exposure. Lighting warnings are separate from focus feedback; the meter is not
+an absolute picture-quality rating. Optional audio guidance plays in your
+browser, and focus analysis runs there too, without a desktop or OpenCV on the
+Oche device.
+
+Camera settings offer resolutions and whole-number FPS supported by all three
+selected cameras. Oche uses reported API capabilities and read-only Linux V4L2
+enumeration when frame-rate details are missing. If capabilities cannot be read,
+the settings remain unavailable instead of guessing supported modes; the setup
+terminal remains available. Click **Apply settings** to save. Changes may briefly
+interrupt detection and require recalibration. Oche checks for edits from another
+session and verifies the settings Autodarts actually retained. Settings use the
+same persistent Autodarts configuration as the terminal.
+
 On phones and tablets, use the menu icon to reach navigation. Tap **Keys** in the
 terminal to reveal arrows, Tab, Esc, and Enter, or the keyboard icon to type. Rotating
 the device resizes the terminal without reconnecting. Embedded external pages

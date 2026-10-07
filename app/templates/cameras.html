@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark light">
+  <title>Autodarts cameras</title>
+  <link rel="stylesheet" href="/static/css/theme.css">
+  <script src="/static/js/theme.js"></script>
+  <link rel="stylesheet" href="/static/css/style.css">
+  <link rel="stylesheet" href="/static/css/cameras.css">
+</head>
+<body>
+<main class="camera-workspace">
+  <header class="camera-toolbar">
+    <div><h1>Cameras</h1><p>Check the views and adjust each lens while watching its focus.</p></div>
+    <button id="camera-preview-toggle" class="btn-neutral" type="button" aria-pressed="false">Pause preview</button>
+  </header>
+  <p id="camera-status" class="camera-notice" role="status">Connecting to Autodarts…</p>
+  <ul id="camera-warnings" class="camera-notice" hidden></ul>
+
+  <div class="camera-previews" role="group" aria-label="Choose a camera to focus">
+    {% for index in range(3) %}
+    <button class="camera-tile{{ ' selected' if index == 0 }}" type="button" data-camera="{{ index }}" aria-pressed="{{ 'true' if index == 0 else 'false' }}">
+      <span class="camera-tile-heading">Camera {{ index + 1 }}</span>
+      <span class="camera-thumbnail"><img id="camera-image-{{ index }}" alt="Camera {{ index + 1 }} preview" hidden><span id="camera-image-state-{{ index }}">Waiting for an image</span></span>
+      <span id="camera-health-{{ index }}" class="camera-health">Engine FPS unavailable</span>
+    </button>
+    {% endfor %}
+  </div>
+
+  <section class="camera-focus" aria-labelledby="camera-focus-title">
+    <div class="camera-focus-main">
+      <h2 id="camera-focus-title">Focus Camera 1</h2>
+      <p class="camera-hint">Tap a detailed part of the board, or drag to select it. Keep the same area selected while you slowly turn the lens.</p>
+      <div class="camera-canvas-wrap">
+        <canvas id="camera-focus-canvas" width="640" height="480" tabindex="0" aria-label="Focus area. Tap or drag to select; arrow keys move the selection."></canvas>
+        <span id="camera-focus-empty">Waiting for the selected camera</span>
+      </div>
+      <div class="camera-focus-actions">
+        <button id="camera-roi-reset" type="button" class="btn-neutral">Center selection</button>
+        <span class="camera-hint">Arrow keys move the selection.</span>
+      </div>
+    </div>
+    <aside class="camera-focus-tools">
+      <canvas id="camera-zoom-canvas" width="320" height="240" aria-label="Magnified focus area"></canvas>
+      <label class="camera-zoom-label" for="camera-zoom">Magnification <output id="camera-zoom-value">2.5×</output></label>
+      <input id="camera-zoom" type="range" min="1" max="6" step="0.5" value="2.5">
+      <div class="camera-score-row"><span>Current <strong id="camera-focus-current">—</strong></span><span>Best <strong id="camera-focus-best">—</strong></span></div>
+      <meter id="camera-focus-meter" min="0" max="1" value="0" aria-label="Focus compared with the best this session"></meter>
+      <p class="camera-hint">Compared with best this session. Scores help compare this area; they do not certify perfect focus.</p>
+      <p id="camera-focus-trend" role="status">Select an area with visible wire or board detail.</p>
+      <button id="camera-focus-reset" type="button" class="btn-neutral">Reset best</button>
+      <label class="camera-audio-label"><input id="camera-audio" type="checkbox"> Audio guidance</label>
+      <p class="camera-hint">A higher tone means closer to your best. Sound plays on this device.</p>
+    </aside>
+  </section>
+
+  <section class="camera-settings" aria-labelledby="camera-settings-title">
+    <div class="camera-settings-heading"><h2 id="camera-settings-title">Camera settings</h2><button id="camera-refresh" type="button" class="btn-neutral">Refresh devices</button></div>
+    <p class="camera-hint">These settings apply to Autodarts. Applying them can briefly interrupt detection. After changing cameras or resolution, check the calibration in Autodarts.</p>
+    <form id="camera-settings-form">
+      <fieldset id="camera-settings-fields" disabled>
+        <div class="camera-device-fields">
+          {% for index in range(3) %}<label for="camera-device-{{ index }}">Camera {{ index + 1 }}<select id="camera-device-{{ index }}" name="camera-{{ index }}"><option value="">Choose a camera</option></select></label>{% endfor %}
+        </div>
+        <div class="camera-mode-fields">
+          <label for="camera-resolution">Resolution<select id="camera-resolution" name="resolution"><option value="">Unavailable</option></select></label>
+          <label for="camera-fps">Requested FPS<select id="camera-fps" name="fps"><option value="">Unavailable</option></select></label>
+        </div>
+        <p id="camera-settings-hint" class="camera-hint">Reading supported camera modes…</p>
+        <div class="btn-row"><button id="camera-apply" type="submit" disabled>Apply settings</button><button id="camera-reset-settings" type="button" class="btn-neutral">Reset changes</button></div>
+      </fieldset>
+    </form>
+    <p id="camera-settings-status" role="status"></p>
+  </section>
+</main>
+<script src="/static/js/camera-focus.js"></script>
+<script src="/static/js/cameras.js"></script>
+</body>
+</html>

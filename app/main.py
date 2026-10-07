@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse, RedirectResponse
 from starlette.concurrency import run_in_threadpool
 
 from app.config import load_config
-from app.routers import autodarts, autoglow, autoglow_proxy, config, ochecore, ochecore_proxy, panels, system
+from app.routers import autodarts, autoglow, autoglow_proxy, cameras, config, ochecore, ochecore_proxy, panels, system
 from app.services import autodarts as autodarts_service
 from app.services import autoglow as autoglow_service
 from app.services import ochecore as ochecore_service
@@ -56,6 +56,7 @@ async def check_write_origin(request: Request, call_next):
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 app.include_router(autodarts.router)
+app.include_router(cameras.router)
 app.include_router(autoglow.router)
 app.include_router(autoglow_proxy.router)
 app.include_router(ochecore.router)

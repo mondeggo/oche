@@ -132,6 +132,7 @@ block content %}
       {{ "Play" if service == "autodarts" else "Logs" }}
     </button>
     {% if service == "autodarts" %}
+    <button id="toggle-cameras-btn" class="view-toggle-btn" onclick="showView('cameras')">Cameras</button>
     <button
       id="toggle-logs-btn"
       class="view-toggle-btn"
@@ -176,6 +177,8 @@ block content %}
       hidden
     ></iframe>
 
+    {% if service == "autodarts" %}<iframe id="cameras-frame" class="board-frame" title="Autodarts cameras and focus" allow="autoplay" hidden></iframe>{% endif %}
+
     <pre id="ad-logs" class="log-box board-log-view" hidden>Loading...</pre>
   </div>
 </div>
@@ -219,8 +222,16 @@ block content %}
       ?.classList.toggle("active", view === "logs");
     document.getElementById("ad-logs").hidden = !isLogs;
     document.getElementById("log-actions").hidden = !isLogs;
+    document.getElementById("toggle-cameras-btn")?.classList.toggle("active", view === "cameras");
+    const camerasFrame = document.getElementById("cameras-frame");
+    if (camerasFrame) camerasFrame.hidden = view !== "cameras";
 
-    if (isLogs) {
+    if (view === "cameras" && camerasFrame) {
+      document.getElementById("board-frame").hidden = true;
+      document.getElementById("board-disconnected").hidden = true;
+      document.getElementById("play-frame").hidden = true;
+      if (!camerasFrame.getAttribute('src')) camerasFrame.src = '/autodarts/cameras';
+    } else if (isLogs) {
       document.getElementById("board-frame").hidden = true;
       document.getElementById("board-disconnected").hidden = true;
       document.getElementById("play-frame").hidden = true;
