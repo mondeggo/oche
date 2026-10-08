@@ -3,6 +3,7 @@ from pathlib import Path
 
 from app.config import AUTODARTS_DIR
 from app.services.process_manager import ManagedProcess, registry
+from app.services.module_paths import source
 
 # The v2 headless binary, installed into the image at build time.
 AUTODARTS_BIN = Path("/opt/autodarts/autodarts")
@@ -31,6 +32,7 @@ _process = registry.register(
 
 
 def get_status() -> dict:
+    refresh_source()
     version_file = AUTODARTS_BIN.parent / "VERSION"
     return {
         "version": version_file.read_text().strip() if version_file.is_file() else None,
@@ -42,6 +44,7 @@ def get_status() -> dict:
 
 
 def start() -> bool:
+    refresh_source()
     configure_config_source()
     return _process.start()
 
@@ -51,8 +54,14 @@ def stop() -> bool:
 
 
 def restart() -> bool:
-    configure_config_source()
-    return _process.restart()
+    stop()
+    return start()
+
+
+def refresh_source():
+    global AUTODARTS_BIN
+    AUTODARTS_BIN = source("autodarts", AUTODARTS_BIN.parent) / "autodarts"
+    _process.command = [str(AUTODARTS_BIN), "run"]
 
 
 def logs(lines: int = 200) -> str:

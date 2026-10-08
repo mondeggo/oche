@@ -4,6 +4,10 @@
 !requirements.txt
 !app/
 !app/**
+!launcher.py
+!oche_runtime.py
+!scripts/
+!scripts/package_updates.py
 
 **/__pycache__/
 **/*.py[cod]

@@ -87,6 +87,31 @@ class NavigationTests(unittest.TestCase):
         self.page.wait_for_url(origin.scheme + '://' + origin.netloc + path)
         self.view().locator('#topbar').wait_for()
 
+    def test_updates_tab_has_its_own_retained_view(self):
+        self.page.goto('http://oche.test/supervisor')
+        self.view().locator('a[href="/supervisor?service=updates"]').click()
+        self.page.wait_for_url('http://oche.test/supervisor?service=updates')
+        self.view().get_by_role('heading', name='Software updates').wait_for()
+        self.view().locator('#update-modules article').first.wait_for()
+        self.assertEqual(self.view().locator('#update-modules article').count(), 4)
+        self.assertTrue(self.view().locator('#check-updates').is_enabled())
+        self.assertTrue(self.view().locator('#update-installation-notice').is_visible())
+        with patch('app.routers.updates.manager.submit') as submit:
+            with self.page.expect_response('**/updates/check') as response:
+                self.view().locator('#check-updates').click()
+            self.assertEqual(response.value.status, 202)
+            submit.assert_called_once_with('check', None)
+        self.view().evaluate('window.updatesMarker = "retained"')
+        self.view().locator('a[href="/supervisor?service=autodarts"]').click()
+        self.page.wait_for_url('http://oche.test/supervisor?service=autodarts')
+        self.view().locator('#toggle-board-btn').wait_for()
+        self.assertEqual(self.view().locator('#update-modules').count(), 0)
+        self.view().locator('a[href="/supervisor?service=updates"]').click()
+        self.page.wait_for_url('http://oche.test/supervisor?service=updates')
+        self.view().get_by_role('heading', name='Software updates').wait_for()
+        self.assertEqual(self.view().evaluate('window.updatesMarker'), 'retained')
+        self.assertEqual(self.errors, [])
+
     def test_autoglow_embeds_same_origin_with_https_assets_api_and_websocket(self):
         from test_autoglow_proxy import FakeAutoGlow
 

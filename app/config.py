@@ -1,8 +1,9 @@
 import json
+import os
 from pathlib import Path
 
-DATA_DIR = Path(__file__).resolve().parent.parent / "data"
-DATA_DIR.mkdir(exist_ok=True)
+DATA_DIR = Path(os.environ.get("OCHE_DATA_DIR", str(Path(__file__).resolve().parent.parent / "data")))
+DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 CONFIG_FILE = DATA_DIR / "oche_config.json"
 LOG_DIR = DATA_DIR / "logs"

@@ -1,0 +1,251 @@
+"""Verified release bundles, serialized background jobs and health rollback."""
+import hashlib
+import json
+import os
+from pathlib import Path, PurePosixPath
+import platform
+import re
+import shutil
+import tarfile
+import tempfile
+import threading
+import time
+import uuid
+from urllib.parse import urlparse
+from urllib.error import HTTPError
+from urllib.request import HTTPSHandler, HTTPRedirectHandler, build_opener
+
+import oche_runtime as store
+from app.services.release_metadata import metadata, is_revision
+
+FEED = os.environ.get("OCHE_UPDATE_FEED", "https://github.com/mondeggo/oche/releases/latest/download/updates.json")
+MAX_DOWNLOAD = 1024 * 1024 * 1024
+MAX_EXPANDED = 3 * MAX_DOWNLOAD
+
+
+def https_url(url):
+    parsed = urlparse(url)
+    if parsed.scheme != "https" or not parsed.hostname or parsed.username or parsed.password:
+        raise ValueError("Update sources must use HTTPS without embedded credentials")
+    return url
+
+
+class HTTPSRedirect(HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        https_url(newurl)
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
+def download(url, destination, limit):
+    opener = build_opener(HTTPSHandler(), HTTPSRedirect())
+    digest = hashlib.sha256()
+    total = 0
+    with opener.open(https_url(url), timeout=30) as response, destination.open("wb") as output:
+        while block := response.read(1024 * 1024):
+            total += len(block)
+            if total > limit:
+                raise ValueError("Release exceeds download size limit")
+            output.write(block)
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def extract(archive, destination):
+    with tarfile.open(archive, "r:gz") as bundle:
+        members = bundle.getmembers()
+        if len(members) > 100000 or sum(m.size for m in members) > MAX_EXPANDED:
+            raise ValueError("Release exceeds extraction size limit")
+        for member in members:
+            path = PurePosixPath(member.name)
+            if (not member.isfile() and not member.isdir()) or path.is_absolute() or ".." in path.parts or "\\" in member.name or ":" in member.name:
+                raise ValueError("Unsafe path or link in release archive")
+        bundle.extractall(destination, members=members, filter="data")
+
+
+class UpdateManager:
+    def __init__(self):
+        self.lock = threading.Lock()
+        self.available = {}
+        self.job = {"status": "idle", "message": ""}
+
+    def status(self):
+        modules = []
+        for name in store.MODULES:
+            state = store.read_state(name)
+            bundled = store.BUNDLES / name / "VERSION"
+            versions = store.ROOT / name / "versions"
+            bundle_info = metadata(bundled.parent)
+            active_info = metadata(store.release_path(name, state["active"]), state["active"]) if state.get("active") else bundle_info
+            previous_info = metadata(store.release_path(name, state["previous"]), state["previous"]) if state.get("previous") else {}
+            release = self.available.get(name, {})
+            available_version = release.get("display_version") or (release.get("version") if not is_revision(release.get("version")) else None)
+            modules.append({"name": name, **state,
+                            "active_version": active_info.get("version"), "active_revision": active_info.get("revision"),
+                            "bundled_version": bundle_info.get("version"), "bundled_revision": bundle_info.get("revision"),
+                            "previous_version": previous_info.get("version"), "previous_revision": previous_info.get("revision"),
+                            "available_version": available_version, "available_revision": release.get("revision") or (release.get("version") if is_revision(release.get("version")) else None),
+                            "bundled": bundled.read_text().strip() if bundled.exists() else None,
+                            "installed": sorted(p.name for p in versions.iterdir() if (p / store.RUNTIME).is_dir() and not p.name.startswith(".")) if versions.exists() else [],
+                            "available": self.available.get(name, {}).get("version")})
+        return {"enabled": os.environ.get("OCHE_LAUNCHER") == "1", "modules": modules,
+                "job": dict(self.job), "runtime": store.RUNTIME}
+
+    def submit(self, action, name=None):
+        if action != "check" and os.environ.get("OCHE_LAUNCHER") != "1":
+            raise ValueError("Updates require the Docker runtime with the stable launcher")
+        if action not in ("check", "update", "rollback") or (action != "check" and name not in store.MODULES):
+            raise ValueError("Unknown update action or module")
+        if not self.lock.acquire(blocking=False):
+            raise ValueError("Another update operation is running")
+        if any(store.read_state(n).get("pending") for n in store.MODULES):
+            self.lock.release()
+            raise ValueError("Waiting for an activation health check")
+        self.job = {"status": "running", "message": action, "module": name}
+        threading.Thread(target=self._run, args=(action, name), daemon=True).start()
+
+    def _run(self, action, name):
+        try:
+            if action == "check":
+                self.check()
+            elif action == "update":
+                self.install(name)
+            else:
+                previous = store.read_state(name).get("previous")
+                if not previous:
+                    raise ValueError("No previous release is available")
+                self.activate(name, previous)
+            self.job = {"status": "complete", "message": "Operation complete", "module": name}
+        except Exception as error:
+            self.job = {"status": "error", "message": str(error), "module": name}
+        finally:
+            self.lock.release()
+
+    def check(self):
+        self.available = {}
+        temporary_dir = tempfile.TemporaryDirectory(prefix="oche-release-check-")
+        temporary = Path(temporary_dir.name) / "manifest.json"
+        try:
+            try:
+                download(FEED, temporary, 1024 * 1024)
+            except HTTPError as error:
+                if error.code == 404:
+                    raise ValueError(
+                        "The update feed is not available (HTTP 404). Publish a GitHub release "
+                        "using the Publish application updates workflow, including updates.json "
+                        "and its application archives. If releases already exist, check that "
+                        "OCHE_UPDATE_FEED points to a publicly accessible manifest. "
+                        "Installed applications have not been changed."
+                    ) from error
+                raise
+            manifest = json.loads(temporary.read_text())
+            architecture = {"x86_64": "amd64", "amd64": "amd64", "aarch64": "arm64", "arm64": "arm64"}.get(platform.machine().lower(), platform.machine().lower())
+            if manifest.get("schema") != 1:
+                raise ValueError("Unsupported release manifest")
+            releases = manifest["platforms"]["linux-" + architecture]
+            candidates = {}
+            for name, entry in releases.items():
+                if name not in store.MODULES:
+                    continue
+                store.valid_version(entry["version"])
+                https_url(entry["url"])
+                if not re.fullmatch(r"[a-f0-9]{64}", entry["sha256"]):
+                    raise ValueError("Missing or invalid release SHA-256")
+                if entry["runtime"] != store.RUNTIME:
+                    raise ValueError("This release needs a newer Docker runtime image")
+                candidates[name] = entry
+            self.available = candidates
+        finally:
+            temporary_dir.cleanup()
+
+    def install(self, name):
+        self.check()
+        release = self.available.get(name)
+        if not release:
+            raise ValueError("No compatible release is published for this module")
+        version = release["version"]
+        if store.read_state(name).get("active") == version:
+            return
+        versions = store.ROOT / name / "versions"
+        versions.mkdir(parents=True, exist_ok=True)
+        target = store.release_path(name, version)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        if not target.exists():
+            stage = versions / (".download-" + uuid.uuid4().hex)
+            stage.mkdir()
+            try:
+                self.job["message"] = "Downloading and verifying " + name
+                archive = stage / "release.tar.gz"
+                if download(release["url"], archive, MAX_DOWNLOAD) != release["sha256"]:
+                    raise ValueError("Release SHA-256 verification failed")
+                content = stage / "content"
+                content.mkdir()
+                extract(archive, content)
+                identity = content / "REVISION" if (content / "REVISION").is_file() else content / "VERSION"
+                if identity.read_text().strip() != version:
+                    raise ValueError("Bundle version does not match release metadata")
+                if release.get("display_version") and (content / "VERSION").read_text().strip() != release["display_version"]:
+                    raise ValueError("Application version does not match release metadata")
+                if (content / "RUNTIME").read_text().strip() != store.RUNTIME:
+                    raise ValueError("Bundle requires a different Docker runtime")
+                required = {"oche": "app/server.py", "autodarts": "autodarts",
+                            "autoglow": "server.py", "ochecore": ".venv/bin/python"}[name]
+                if not (content / required).is_file():
+                    raise ValueError("Bundle is missing its application entry point")
+                os.replace(content, target)
+            finally:
+                shutil.rmtree(stage, ignore_errors=True)
+        self.activate(name, version)
+
+    def activate(self, name, version):
+        version = store.valid_version(version)
+        if not store.release_path(name, version).is_dir():
+            raise ValueError("Requested release is not installed")
+        old = store.read_state(name)
+        if old.get("active") == version:
+            return
+        state = {**old, "active": version, "previous": old.get("active"), "pending": True, "error": None}
+        self.job["message"] = "Activating and checking " + name
+        if name == "oche":
+            store.write_state(name, state)
+            request = store.DATA / "state" / "restart-oche"
+            request.parent.mkdir(parents=True, exist_ok=True)
+            request.touch()
+            return
+        from app.services import autodarts, autoglow, ochecore
+        service = {"autodarts": autodarts, "autoglow": autoglow, "ochecore": ochecore}[name]
+        running = service.get_status()["status"] == "running"
+        service.stop()
+        try:
+            store.write_state(name, state)
+            service.start()
+            port = {"autodarts": 3180, "autoglow": autoglow.PORT, "ochecore": ochecore.PORT}[name]
+            from urllib.request import urlopen
+            deadline = time.monotonic() + 60
+            successes = 0
+            while time.monotonic() < deadline:
+                if service.get_status()["status"] != "running":
+                    raise RuntimeError("Updated process exited before becoming healthy")
+                try:
+                    with urlopen(f"http://127.0.0.1:{port}/", timeout=2) as response:
+                        if response.status < 400:
+                            successes += 1
+                except Exception:
+                    successes = 0
+                if successes >= 3:
+                    break
+                time.sleep(1)
+            else:
+                raise RuntimeError("Updated process did not pass its HTTP health check")
+            if not running:
+                service.stop()
+            state["pending"] = False
+            store.write_state(name, state)
+        except Exception:
+            service.stop()
+            store.write_state(name, old)
+            if running:
+                service.start()
+            raise
+
+
+manager = UpdateManager()

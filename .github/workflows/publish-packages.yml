@@ -1,0 +1,100 @@
+name: Publish application updates
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag to package
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  versions:
+    runs-on: ubuntu-latest
+    outputs:
+      autoglow: ${{ steps.versions.outputs.autoglow }}
+      ochecore: ${{ steps.versions.outputs.ochecore }}
+      autodarts: ${{ steps.versions.outputs.autodarts }}
+    steps:
+      - name: Pin upstream versions for both architectures
+        id: versions
+        env:
+          GH_TOKEN: ${{ secrets.AUTOGLOW_TOKEN }}
+        run: |
+          set -euo pipefail
+          echo "autoglow=$(gh api repos/mondeggo/AutoGlow2/commits/HEAD --jq .sha)" >> "$GITHUB_OUTPUT"
+          echo "ochecore=$(gh api repos/mondeggo/oche-core/commits/main --jq .sha)" >> "$GITHUB_OUTPUT"
+          releases=$(curl -fsSL https://releases.autodarts.com/headless/downloads/latest.stable.json)
+          version=$(jq -er '.platforms["linux-amd64"].version' <<< "$releases")
+          test "$version" = "$(jq -er '.platforms["linux-arm64"].version' <<< "$releases")"
+          echo "autodarts=$version" >> "$GITHUB_OUTPUT"
+  packages:
+    needs: versions
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        arch: [amd64, arm64]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref_name }}
+      - uses: docker/setup-qemu-action@v4
+      - name: Build prepared runtime and export application bundles
+        env:
+          AUTOGLOW_TOKEN: ${{ secrets.AUTOGLOW_TOKEN }}
+          TAG: ${{ inputs.tag || github.ref_name }}
+          ARCH: ${{ matrix.arch }}
+          AUTOGLOW_VERSION: ${{ needs.versions.outputs.autoglow }}
+          OCHECORE_VERSION: ${{ needs.versions.outputs.ochecore }}
+          AUTODARTS_VERSION: ${{ needs.versions.outputs.autodarts }}
+        run: |
+          set -euo pipefail
+          [[ "$TAG" =~ ^v[0-9][A-Za-z0-9._-]*$ ]]
+          docker build --platform "linux/$ARCH" --secret id=autoglow_token,env=AUTOGLOW_TOKEN --build-arg "OCHE_VERSION=${TAG#v}" --build-arg AUTOGLOW_VERSION --build-arg OCHECORE_VERSION --build-arg AUTODARTS_VERSION -t oche-packages .
+          mkdir -p output
+          docker run --rm --platform "linux/$ARCH" --user root -v "$PWD/output:/output" --entrypoint python oche-packages /opt/oche-tools/package_updates.py --base-url "https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: packages-${{ matrix.arch }}
+          path: output/*
+  release:
+    needs: packages
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref_name }}
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: packages-*
+          merge-multiple: true
+          path: output
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Build wheel and combined manifest
+        env:
+          TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          python -m pip install build
+          python - <<'PY'
+          import json, os, pathlib, re
+          p = pathlib.Path('pyproject.toml')
+          p.write_text(re.sub(r'(?m)^version = ".*"$', 'version = "' + os.environ['TAG'].removeprefix('v') + '"', p.read_text()))
+          platforms = {}
+          for path in pathlib.Path('output').glob('updates-*.json'):
+              platforms.update(json.loads(path.read_text())['platforms'])
+          pathlib.Path('output/updates.json').write_text(json.dumps({'schema': 1, 'platforms': platforms}, indent=2))
+          PY
+          python -m build --wheel --outdir output
+      - name: Publish release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          gh release view "$TAG" || gh release create "$TAG" --generate-notes
+          gh release upload "$TAG" output/*

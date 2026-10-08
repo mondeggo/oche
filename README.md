@@ -311,7 +311,7 @@ This builds and launches a local image, shows logs, and reloads Python changes a
 Open **Supervisor** to start, stop, or restart Autodarts, AutoGlow 2, and OcheCore and
 view their logs. AutoGlow runs its configuration server and lighting engine together, with one
 Start/Stop/Restart control and combined logs. Configuration, presets, flows, and
-backups are stored in `data/autoglow/`. Update AutoGlow through the Oche image.
+backups are stored in `data/autoglow/`. Update AutoGlow through **Supervisor → Updates**.
 The **Autodarts** tab inside Supervisor opens board setup; **AutoGlow 2** in the
 navigation opens its lighting configuration.
 
@@ -336,8 +336,8 @@ installed voices, UI settings in `ui.json`, and debug captures. This is part of
 Oche's existing persistent data mount. Production
 uses `./data/ochecore`; development keeps it in the existing `dev-data` volume.
 Process logs are stored in `/app/data/logs/ochecore.log`. Updating or recreating the
-container preserves these files when the data mount is kept. Update OcheCore by
-updating the Oche image.
+container preserves these files when the data mount is kept. Update OcheCore through
+**Supervisor → Updates**.
 
 OcheCore listens only on loopback port `9180`; no additional browser-facing port
 is required. If another host process uses that port, set `OCHE_OCHECORE_PORT` in
@@ -351,3 +351,69 @@ host playback additionally needs access and permissions for `/dev/snd`; the imag
 includes the ALSA and PulseAudio libraries. See the
 [OcheCore caller guide](https://github.com/mondeggo/oche-core/blob/main/docs/CALLER.md#docker-audio)
 for host audio setup.
+
+### Application updates and recovery
+
+Install the new Docker image once to enable **Supervisor → Updates**. The stable
+launcher then seeds missing applications from the image into
+`data/modules/<module>/versions/<version>/<runtime-id>/`. An atomically replaced
+`state.json` selects the active and previous versions (no host symlink support is
+needed). Existing configuration directories remain unchanged. Keep the entire
+`./data:/app/data` mount when recreating a container.
+
+Use **Check for updates**, **Update**, or **Roll back** for AutoDarts, AutoGlow,
+OcheCore, or Oche. Downloads run in the background; applications keep running
+until activation. Startup checks availability without installing anything or
+waiting for the network. Offline startup uses saved applications or bundled
+copies. A self-update restarts Oche through `/app/launcher.py` and reconnects the
+page automatically. Checking for releases also works without the launcher;
+installation and rollback require it.
+
+The updater requires HTTPS release metadata and a matching SHA-256 for each
+archive. It rejects archive links, traversal paths, oversized archives, and
+incompatible runtime fingerprints. Applications must pass process and HTTP health
+checks before activation is accepted. A failed activation restores the previous
+application; interrupted activations are recovered on the next container start.
+Oche's launcher checks a unique boot ID so another service on the port cannot
+accidentally approve its update. Runtime fingerprints isolate installations across
+image upgrades and cover the stable runtime contract, Python version, and shared
+Python dependencies. Native-library or launcher changes must also bump the
+`oche-runtime-1` contract in `scripts/package_updates.py`.
+
+Rollback restores code, not configuration/database migrations. Keep data backups
+before releases that migrate user data. Installed versions are retained, so allow
+space for downloads, extraction, and previous releases. The updater has the same
+local-network access model as existing Supervisor controls and needs no Docker
+socket or host management privileges.
+
+### Publishing application releases
+
+The **Publish application updates** workflow runs for `v*` tags or an existing tag
+selected manually. It pins upstream versions, prepares both Linux architectures,
+and publishes `updates.json`, verified application archives, and an Oche Python
+wheel to the GitHub release. `AUTOGLOW_TOKEN` must have read access to AutoGlow2.
+The workflow prepares bundles in Docker on CI; users download only the selected
+application bundle and do not need to rebuild or replace their running image for
+compatible releases. AutoGlow uses the runtime's shared Python dependencies;
+OcheCore carries its isolated Python environment. Oche updates use an archive of
+its package and assets, while the wheel is also available for Python distribution.
+
+Publish a release with these assets before expecting the update check to succeed.
+The default feed is
+`https://github.com/mondeggo/oche/releases/latest/download/updates.json`.
+`OCHE_UPDATE_FEED` can select another trusted HTTPS manifest; it is an executable
+software trust source, not a browser-editable URL. Private source credentials are
+used only in CI and are not needed at runtime. A missing feed or unavailable
+network is shown as an update error and does not stop applications.
+
+A release manifest has schema `1` and a `platforms` object keyed by `linux-amd64`
+and `linux-arm64`. Each platform maps module names to `version` (the immutable
+build ID), `display_version` (the application version), optional `revision`,
+`url`, `sha256`, and `runtime`. Archive roots contain `VERSION`, `RUNTIME`,
+optional `REVISION`, and the application files. AutoGlow and OcheCore retain
+commit-based build IDs, while the interface displays application versions and
+lists source revisions separately in Version history. Older bundles whose
+VERSION contains a hash are read using their original application metadata.
+Version identifiers are immutable: publish a new version instead of
+replacing an existing version's assets. Dependency changes requiring a different
+runtime are refused and require a Docker image upgrade.

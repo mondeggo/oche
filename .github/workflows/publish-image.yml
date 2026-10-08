@@ -65,6 +65,7 @@ jobs:
             AUTODARTS_VERSION=${{ steps.image.outputs.autodarts_version }}
             AUTOGLOW_VERSION=${{ steps.image.outputs.autoglow_version }}
             OCHECORE_VERSION=${{ steps.image.outputs.ochecore_version }}
+            OCHE_VERSION=${{ github.sha }}
           tags: |
             mondeggo/oche:${{ steps.image.outputs.tag }}
             mondeggo/oche:latest

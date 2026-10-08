@@ -11,7 +11,7 @@
     return url;
   };
   const persistent = path => path === '/supervisor' || path === '/';
-  const supervisorService = url => ['autoglow', 'ochecore', 'system'].includes(url.searchParams.get('service'))
+  const supervisorService = url => ['autoglow', 'ochecore', 'system', 'updates'].includes(url.searchParams.get('service'))
     ? url.searchParams.get('service') : 'autodarts';
   const viewKey = url => url.pathname === '/supervisor'
     ? '/supervisor?service=' + supervisorService(url)
