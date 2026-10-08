@@ -21,3 +21,8 @@ def submit(action: str, name: str = None):
     except ValueError as error:
         raise HTTPException(status_code=409, detail=str(error)) from error
     return {"accepted": True}
+
+
+@router.post("/update-all", status_code=202)
+def update_all():
+    return submit("update-all")

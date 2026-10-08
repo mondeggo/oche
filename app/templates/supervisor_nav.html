@@ -1,5 +1,5 @@
 <nav class="embed-toggle supervisor-selector" aria-label="Supervisor">
   {% for key, label in [('autodarts', 'Autodarts'), ('autoglow', 'AutoGlow 2'), ('ochecore', 'OcheCore'), ('system', 'System'), ('updates', 'Updates')] %}
-  <a class="view-toggle-btn {{ 'active' if service == key }}" href="/supervisor?service={{ key }}"{% if service == key %} aria-current="page"{% endif %}>{{ label }}</a>
+  <a class="view-toggle-btn {{ 'active' if service == key }}" href="/supervisor?service={{ key }}"{% if service == key %} aria-current="page"{% endif %}>{{ label }}{% if key != 'system' %}<span class="service-update-dot" data-update-dot="{{ key }}" hidden role="img" aria-label="Update available" title="Update available"></span>{% endif %}</a>
   {% endfor %}
 </nav>

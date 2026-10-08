@@ -2,6 +2,7 @@
   const status = document.getElementById('update-status');
   const modules = document.getElementById('update-modules');
   const check = document.getElementById('check-updates');
+  const updateAll = document.getElementById('update-all');
   const installationNotice = document.getElementById('update-installation-notice');
   const labels = {
     autodarts: ['AutoDarts', 'Board detection & calibration'],
@@ -27,7 +28,7 @@
   async function action(path) {
     submitting = true;
     requestError = '';
-    document.querySelectorAll('#update-modules button, #check-updates').forEach(b => b.disabled = true);
+    document.querySelectorAll('#update-modules button, #check-updates, #update-all').forEach(b => b.disabled = true);
     try {
       const response = await fetch(path, {method: 'POST'});
       const result = await response.json();
@@ -105,12 +106,23 @@
       const response = await fetch('/updates/status', {cache: 'no-store'});
       if (!response.ok) throw new Error('Status unavailable');
       const data = await response.json();
+      document.dispatchEvent(new CustomEvent('oche:updates', {detail: data}));
       if (submitting) return;
       const busy = data.job.status === 'running' || data.modules.some(m => m.pending);
+      const count = data.modules.filter(item => item.available && item.available !== (item.active || item.bundled_revision || item.bundled)).length;
+      const availability = count ? `${count} ${count === 1 ? 'package available' : 'packages available'} to update.` : 'All packages are up to date.';
+      updateAll.textContent = count ? `Update all (${count})` : 'Update all';
+      updateAll.disabled = !data.enabled || busy || !count;
+      updateAll.title = !data.enabled ? 'Start Oche through the stable launcher to install releases.' : busy ? 'Wait for the current operation to finish.' : !count ? 'No packages available to update.' : 'Update all available packages. Oche updates last.';
       check.disabled = busy;
-      check.textContent = data.job.status === 'running' && !data.job.module ? 'Checking…' : 'Check for updates';
+      check.textContent = data.job.status === 'running' && (data.job.action === 'check' || (!data.job.action && !data.job.module)) ? 'Checking…' : 'Check for updates';
       installationNotice.hidden = data.enabled;
-      const jobMessage = data.job.status === 'idle' ? 'Check for releases to see what’s available.' : data.job.status === 'complete' ? (data.job.module ? 'Application operation complete.' : 'Check complete. Available versions are shown below.') : data.job.message;
+      let jobMessage = data.job.status === 'idle' ? 'Check for releases to see what’s available.' : data.job.status === 'complete' ? `${data.job.action === 'update-all' || data.job.module ? 'Update complete.' : 'Check complete.'} ${availability}` : data.job.message;
+      if (data.job.action === 'update-all' && data.job.current) {
+        const progress = `Package ${data.job.current} of ${data.job.total}`;
+        if (data.job.status === 'running') jobMessage = `${progress}: ${data.job.message}`;
+        if (data.job.status === 'error') jobMessage = `${progress} failed. Remaining updates stopped. ${data.job.message}`;
+      }
       message(requestError || (data.modules.some(m => m.pending) ? 'Restarting and checking application health…' : jobMessage), requestError ? 'error' : busy ? 'running' : data.job.status);
       for (const item of data.modules) renderRow(item, data, busy);
       // A request disables buttons immediately; unchanged rows also need restoring.
@@ -121,12 +133,13 @@
       }
     } catch (_) {
       message('Waiting for Oche to reconnect…', 'running');
-      document.querySelectorAll('#update-modules button, #check-updates').forEach(b => b.disabled = true);
+      document.querySelectorAll('#update-modules button, #check-updates, #update-all').forEach(b => b.disabled = true);
     } finally {
       refreshing = false;
     }
   }
   check.addEventListener('click', () => action('/updates/check'));
+  updateAll.addEventListener('click', () => action('/updates/update-all'));
   refresh();
   setInterval(refresh, 3000);
 })();

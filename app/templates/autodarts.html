@@ -19,6 +19,12 @@ block content %}
   Manage {{ "Autodarts headless" if service == "autodarts" else service_name }} running inside this container.
 </p>
 
+<div class="service-update-status" data-service-update="{{ service }}">
+  <span class="service-update-dot" data-service-update-dot hidden aria-hidden="true"></span>
+  <span data-service-update-message role="status" aria-live="polite">Loading update status…</span>
+  <a href="/supervisor?service=updates">Manage updates</a>
+</div>
+
 <div class="status-panel">
   {% if service != "autoglow" %}
   <div class="controls-card">

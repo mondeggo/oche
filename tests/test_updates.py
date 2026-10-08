@@ -173,6 +173,30 @@ class UpdateTests(unittest.TestCase):
         check.assert_called_once()
         self.assertEqual(self.manager.job["status"], "complete")
 
+    def test_update_all_skips_current_packages_and_updates_oche_last(self):
+        for name in store.MODULES:
+            self.seed(name)
+        self.manager.available = {name: {"version": "1" if name == "autoglow" else "2"} for name in store.MODULES}
+        with patch.object(self.manager, "check") as check, patch.object(self.manager, "install") as install:
+            self.manager.lock.acquire()
+            self.manager._run("update-all", None)
+        check.assert_called_once()
+        self.assertEqual([call.args[0] for call in install.call_args_list], ["autodarts", "ochecore", "oche"])
+        self.assertTrue(all(call.kwargs == {"refresh": False} for call in install.call_args_list))
+        self.assertEqual(self.manager.job["status"], "complete")
+        self.assertEqual(self.manager.job["total"], 3)
+
+    def test_update_all_stops_on_failure(self):
+        for name in store.MODULES:
+            self.seed(name)
+        self.manager.available = {name: {"version": "2"} for name in store.MODULES}
+        with patch.object(self.manager, "check"), patch.object(self.manager, "install", side_effect=RuntimeError("Health check failed")) as install:
+            self.manager.lock.acquire()
+            self.manager._run("update-all", None)
+        install.assert_called_once_with("autodarts", refresh=False)
+        self.assertEqual(self.manager.job["status"], "error")
+        self.assertEqual(self.manager.job["module"], "autodarts")
+
     def test_web_page_and_cross_origin_rejection(self):
         from fastapi.testclient import TestClient
         from app.main import app

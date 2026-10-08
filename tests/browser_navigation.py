@@ -89,7 +89,7 @@ class NavigationTests(unittest.TestCase):
 
     def test_updates_tab_has_its_own_retained_view(self):
         self.page.goto('http://oche.test/supervisor')
-        self.view().locator('a[href="/supervisor?service=updates"]').click()
+        self.view().locator('.supervisor-selector a[href="/supervisor?service=updates"]').click()
         self.page.wait_for_url('http://oche.test/supervisor?service=updates')
         self.view().get_by_role('heading', name='Software updates').wait_for()
         self.view().locator('#update-modules article').first.wait_for()
@@ -106,11 +106,53 @@ class NavigationTests(unittest.TestCase):
         self.page.wait_for_url('http://oche.test/supervisor?service=autodarts')
         self.view().locator('#toggle-board-btn').wait_for()
         self.assertEqual(self.view().locator('#update-modules').count(), 0)
-        self.view().locator('a[href="/supervisor?service=updates"]').click()
+        self.view().locator('.supervisor-selector a[href="/supervisor?service=updates"]').click()
         self.page.wait_for_url('http://oche.test/supervisor?service=updates')
         self.view().get_by_role('heading', name='Software updates').wait_for()
         self.assertEqual(self.view().evaluate('window.updatesMarker'), 'retained')
         self.assertEqual(self.errors, [])
+
+    def test_updates_count_and_update_all(self):
+        status = {'enabled': True, 'job': {'status': 'complete', 'action': 'check', 'message': ''},
+                  'modules': [{'name': name, 'active': '1', 'available': '2' if name != 'autoglow' else '1'}
+                              for name in ('autodarts', 'autoglow', 'ochecore', 'oche')]}
+        with patch('app.routers.updates.manager.status', return_value=status), \
+             patch('app.routers.updates.manager.submit') as submit:
+            self.page.goto('http://oche.test/supervisor?service=updates')
+            self.page.get_by_text('Check complete. 3 packages available to update.', exact=True).wait_for()
+            button = self.page.get_by_role('button', name='Update all (3)', exact=True)
+            self.assertTrue(button.is_enabled())
+            with self.page.expect_response('**/updates/update-all') as response:
+                button.click()
+            self.assertEqual(response.value.status, 202)
+            submit.assert_called_once_with('update-all', None)
+            for item in status['modules']:
+                item['available'] = '1'
+            self.page.reload()
+            self.page.get_by_text('Check complete. All packages are up to date.', exact=True).wait_for()
+            self.assertTrue(self.page.get_by_role('button', name='Update all', exact=True).is_disabled())
+            self.assertEqual(self.errors, [])
+
+    def test_service_update_status_and_red_dots(self):
+        status = {'enabled': True, 'job': {'status': 'complete', 'action': 'check'},
+                  'modules': [{'name': name, 'active': '1', 'available': '2', 'available_version': '2.0.0'}
+                              for name in ('autodarts', 'autoglow', 'ochecore', 'oche')]}
+        with patch('app.routers.updates.manager.status', return_value=status):
+            for name in ('autodarts', 'autoglow', 'ochecore'):
+                self.page.goto('http://oche.test/supervisor?service=' + name)
+                self.page.get_by_text('Update available · 2.0.0', exact=True).wait_for()
+                self.assertTrue(self.page.locator(f'[data-update-dot="{name}"]').is_visible())
+                self.assertEqual(self.page.locator('[data-update-dot="updates"]:visible').count(), 2)
+                self.assertEqual(self.page.get_by_role('link', name='Manage updates').get_attribute('href'), '/supervisor?service=updates')
+            for item in status['modules']:
+                item['available'] = '1'
+            self.page.get_by_text('Up to date · No update available.', exact=True).wait_for(timeout=8000)
+            self.assertEqual(self.page.locator('.service-update-dot:visible').count(), 0)
+            status['modules'][0]['available'] = '2'
+            self.page.goto('http://oche.test/supervisor?service=updates')
+            self.page.locator('[data-update-dot="autodarts"]').wait_for(state='visible')
+            self.assertEqual(self.page.locator('[data-update-dot="updates"]:visible').count(), 2)
+            self.assertEqual(self.errors, [])
 
     def test_autoglow_embeds_same_origin_with_https_assets_api_and_websocket(self):
         from test_autoglow_proxy import FakeAutoGlow

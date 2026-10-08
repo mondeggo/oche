@@ -6,7 +6,7 @@ ARG TARGETARCH
 ARG AUTODARTS_VERSION
 ARG AUTOGLOW_VERSION
 ARG OCHECORE_VERSION=6cb3622917cb2cdbda813984268b3cf6e2e8f0e8
-ARG OCHE_VERSION=0.1.0
+ARG OCHE_VERSION
 
 # Runtime vision/USB libraries and udev for serial/camera device enumeration.
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -89,6 +89,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt -r /opt/autoglow/requirements.txt
 
 COPY app ./app
+COPY pyproject.toml ./
 COPY launcher.py oche_runtime.py ./
 COPY scripts/package_updates.py /opt/oche-tools/package_updates.py
 
@@ -96,7 +97,7 @@ COPY scripts/package_updates.py /opt/oche-tools/package_updates.py
 # Copy dereferences venv interpreter symlinks so release archives contain no links.
 RUN mkdir -p /opt/oche-bundles/oche \
   && cp -a app /opt/oche-bundles/oche/app \
-  && echo "$OCHE_VERSION" > /opt/oche-bundles/oche/VERSION \
+  && python -c 'import os, pathlib, tomllib; version=os.environ.get("OCHE_VERSION") or tomllib.loads(pathlib.Path("pyproject.toml").read_text())["project"]["version"]; pathlib.Path("/opt/oche-bundles/oche/VERSION").write_text(version + "\n")' \
   && cp -rL /opt/autodarts /opt/oche-bundles/autodarts \
   && cp -rL /opt/autoglow /opt/oche-bundles/autoglow \
   && python -c 'from pathlib import Path; from app.services.release_metadata import application_version; p=Path("/opt/oche-bundles/autoglow"); v=application_version(p); assert v, "AutoGlow application version is missing"; (p/"VERSION").write_text(v + "\n")' \

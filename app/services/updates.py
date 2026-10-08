@@ -93,14 +93,14 @@ class UpdateManager:
     def submit(self, action, name=None):
         if action != "check" and os.environ.get("OCHE_LAUNCHER") != "1":
             raise ValueError("Updates require the Docker runtime with the stable launcher")
-        if action not in ("check", "update", "rollback") or (action != "check" and name not in store.MODULES):
+        if action not in ("check", "update", "rollback", "update-all") or (action in ("update", "rollback") and name not in store.MODULES):
             raise ValueError("Unknown update action or module")
         if not self.lock.acquire(blocking=False):
             raise ValueError("Another update operation is running")
         if any(store.read_state(n).get("pending") for n in store.MODULES):
             self.lock.release()
             raise ValueError("Waiting for an activation health check")
-        self.job = {"status": "running", "message": action, "module": name}
+        self.job = {"status": "running", "message": action, "module": name, "action": action}
         threading.Thread(target=self._run, args=(action, name), daemon=True).start()
 
     def _run(self, action, name):
@@ -109,14 +109,22 @@ class UpdateManager:
                 self.check()
             elif action == "update":
                 self.install(name)
+            elif action == "update-all":
+                self.check()
+                candidates = [m["name"] for m in self.status()["modules"] if m.get("available") and
+                              m["available"] != (m.get("active") or m.get("bundled_revision") or m.get("bundled"))]
+                # MODULES keeps Oche last: its restart must not interrupt others.
+                for index, module in enumerate(candidates, 1):
+                    self.job.update(module=module, current=index, total=len(candidates))
+                    self.install(module, refresh=False)
             else:
                 previous = store.read_state(name).get("previous")
                 if not previous:
                     raise ValueError("No previous release is available")
                 self.activate(name, previous)
-            self.job = {"status": "complete", "message": "Operation complete", "module": name}
+            self.job = {**self.job, "status": "complete", "message": "Operation complete", "module": name, "action": action}
         except Exception as error:
-            self.job = {"status": "error", "message": str(error), "module": name}
+            self.job = {**self.job, "status": "error", "message": str(error), "action": action}
         finally:
             self.lock.release()
 
@@ -157,8 +165,9 @@ class UpdateManager:
         finally:
             temporary_dir.cleanup()
 
-    def install(self, name):
-        self.check()
+    def install(self, name, refresh=True):
+        if refresh:
+            self.check()
         release = self.available.get(name)
         if not release:
             raise ValueError("No compatible release is published for this module")

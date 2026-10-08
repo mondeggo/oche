@@ -2,6 +2,7 @@
 *
 !Dockerfile
 !requirements.txt
+!pyproject.toml
 !app/
 !app/**
 !launcher.py

@@ -38,7 +38,7 @@ class SupervisorTests(unittest.TestCase):
         self.assertEqual(toggle_bar.count('Logs'), 1)
         self.assertLess(response.text.index('class="panels-menu"'), response.text.index('id="nav-link-autodarts"'))
         self.assertLess(response.text.index('id="nav-link-autodarts"'), response.text.index('>Settings</a>'))
-        self.assertIn('>Supervisor</a', response.text)
+        self.assertIn('>Supervisor<span', response.text)
         self.assertNotIn('id="nav-link-board"', response.text)
         self.assertEqual(self.client.get('/autodarts').status_code, 200)
 

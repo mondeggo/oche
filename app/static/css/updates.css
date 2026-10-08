@@ -2,6 +2,9 @@
 .updates-heading h1 { margin: 0 0 8px; }
 .updates-heading .subtitle { margin: 0; line-height: 1.5; }
 .updates-heading button { flex: none; }
+.updates-toolbar { display: flex; flex: none; gap: 8px; flex-wrap: wrap; }
+.updates-toolbar #check-updates { background: transparent; color: var(--fg); border: 1px solid var(--border); }
+.updates-toolbar #check-updates:hover:not(:disabled) { background: var(--surface-hover); }
 .updates-status { padding: 14px 18px; border: 1px solid var(--border); border-radius: 8px; color: var(--fg-dim); background: var(--card); line-height: 1.5; overflow-wrap: anywhere; margin: 24px 0 16px; }
 .updates-status[data-state="error"] { color: var(--danger-bright); background: var(--danger-soft); }
 .updates-status[data-state="running"] { color: var(--warning); background: var(--warning-soft); }

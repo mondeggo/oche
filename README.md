@@ -334,7 +334,7 @@ All OcheCore settings and downloads are stored in `/app/data/ochecore`: connecti
 settings, OAuth tokens, WLED configuration, shared profiles, caller settings,
 installed voices, UI settings in `ui.json`, and debug captures. This is part of
 Oche's existing persistent data mount. Production
-uses `./data/ochecore`; development keeps it in the existing `dev-data` volume.
+and development both use `./data/ochecore` on the host.
 Process logs are stored in `/app/data/logs/ochecore.log`. Updating or recreating the
 container preserves these files when the data mount is kept. Update OcheCore through
 **Supervisor → Updates**.

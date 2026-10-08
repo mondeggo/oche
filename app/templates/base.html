@@ -93,7 +93,7 @@
           href="/supervisor"
           class="{{ 'active' if active_nav == 'autodarts' }}"
           {{ 'hidden' if not nav_visibility.autodarts }}
-          >Supervisor</a
+          >Supervisor<span class="service-update-dot" data-update-dot="updates" hidden role="img" aria-label="Updates available" title="Updates available"></span></a
         >
         <a href="/config" class="{{ 'active' if active_nav == 'config' }}">Settings</a>
       </nav>
@@ -124,6 +124,7 @@
     </div>
     <script src="/static/js/navigation.js"></script>
     <script src="/static/js/app.js"></script>
+    <script src="/static/js/service-updates.js" defer></script>
     {% block scripts %}{% endblock %}
   </body>
 </html>
