@@ -305,6 +305,10 @@ enabled; device mounts refer to its Linux VM. No local Python installation is ne
 
 This builds and launches a local image, shows logs, and reloads Python changes automatically. Open **http://localhost:8180**; refresh the browser after editing templates or styles. Press **Ctrl+C** to stop.
 
+Oche development uses Compose project `oche-dev` and runs its bundled OcheCore on
+loopback port `9180`. The sibling OcheCore project's development scripts use a separate
+`ochecore-dev` project and port `9280`, so both can run at once with separate data.
+
 
 ## Supervisor
 

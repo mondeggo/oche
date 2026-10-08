@@ -11,5 +11,6 @@ if [[ -f docker-compose.override.yml ]]; then
 fi
 
 echo "Oche development: http://localhost:8180"
-echo "Stop other Oche containers first. Press Ctrl+C to stop; logs appear below."
+echo "Stop other Oche containers first; standalone OcheCore development can run alongside on port 9280."
+echo "Press Ctrl+C to stop; logs appear below."
 exec "${compose[@]}" -f docker-compose.build.yml up --build
