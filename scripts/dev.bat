@@ -13,7 +13,7 @@ set "COMPOSE_OVERRIDE="
 if exist docker-compose.override.yml set "COMPOSE_OVERRIDE=-f docker-compose.override.yml"
 
 echo Oche development: http://localhost:8180
-echo Stop other Oche containers first; standalone OcheCore development can run alongside on port 9280.
+echo Stop other Oche containers first; standalone OcheCore development can run alongside on port 9180.
 echo Press Ctrl+C to stop; logs appear below.
 docker compose -p oche-dev -f docker-compose.yml %COMPOSE_OVERRIDE% -f docker-compose.build.yml up --build
 exit /b %errorlevel%

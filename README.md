@@ -306,8 +306,9 @@ enabled; device mounts refer to its Linux VM. No local Python installation is ne
 This builds and launches a local image, shows logs, and reloads Python changes automatically. Open **http://localhost:8180**; refresh the browser after editing templates or styles. Press **Ctrl+C** to stop.
 
 Oche development uses Compose project `oche-dev` and runs its bundled OcheCore on
-loopback port `9180`. The sibling OcheCore project's development scripts use a separate
-`ochecore-dev` project and port `9280`, so both can run at once with separate data.
+loopback port `9280` (override with `OCHE_DEV_OCHECORE_PORT`). The sibling OcheCore
+project's development scripts use a separate `ochecore-dev` project and the standard
+port `9180`, so both can run at once with separate data.
 
 
 ## Supervisor
@@ -343,7 +344,7 @@ Process logs are stored in `/app/data/logs/ochecore.log`. Updating or recreating
 container preserves these files when the data mount is kept. Update OcheCore through
 **Supervisor → Updates**.
 
-OcheCore listens only on loopback port `9180`; no additional browser-facing port
+OcheCore listens only on loopback port `9180` (`9280` in development); no additional browser-facing port
 is required. If another host process uses that port, set `OCHE_OCHECORE_PORT` in
 `.env` and recreate Oche. Its Python environment is isolated from Oche and AutoGlow.
 
