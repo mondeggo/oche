@@ -5,6 +5,7 @@ from pathlib import Path
 
 from app.config import DATA_DIR
 from app.services.process_manager import ManagedProcess, registry
+from app.services.module_paths import source
 
 SOURCE = Path(os.environ.get("OCHE_OCHECORE_SOURCE", "/opt/ochecore"))
 PORT = int(os.environ.get("OCHE_OCHECORE_PORT", "9180"))
@@ -19,6 +20,11 @@ _process = registry.register(ManagedProcess(
 
 
 def installed() -> bool:
+    global SOURCE, PYTHON
+    if os.environ.get("OCHE_LAUNCHER") == "1":
+        SOURCE = source("ochecore", SOURCE)
+        PYTHON = SOURCE / ".venv" / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
+        _process.command = [str(PYTHON), "-u", "-m", "ochecore.main", "serve"]
     return all(path.is_file() for path in (
         PYTHON, SOURCE / "src/ochecore/main.py", SOURCE / "src/ochecore/static/index.html",
     ))

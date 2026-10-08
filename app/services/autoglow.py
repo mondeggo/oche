@@ -5,6 +5,7 @@ import sys
 
 from app.config import DATA_DIR
 from app.services.process_manager import ManagedProcess, registry
+from app.services.module_paths import source
 
 SOURCE = Path(os.environ.get("OCHE_AUTOGLOW_SOURCE", "/opt/autoglow"))
 PORT = int(os.environ.get("OCHE_AUTOGLOW_PORT", "8080"))
@@ -19,6 +20,8 @@ _processes = [
 
 
 def installed() -> bool:
+    global SOURCE
+    SOURCE = source("autoglow", SOURCE)
     return all((SOURCE / name).is_file() for name in
                ("server.py", "core/engine.py", "web/index.html"))
 
@@ -32,6 +35,7 @@ def start() -> bool:
     started = False
     try:
         for process in _processes:
+            process.env = {**os.environ, "OCHE_AUTOGLOW_SOURCE": str(SOURCE)}
             started = process.start() or started
     except RuntimeError:
         stop()
@@ -79,7 +83,9 @@ def restart() -> bool:
 
 
 def control_process(role: str, action: str) -> None:
+    installed()
     process = _processes[{"web": 0}[role]]
+    process.env = {**os.environ, "OCHE_AUTOGLOW_SOURCE": str(SOURCE)}
     if action in ("stop", "restart"):
         process.stop()
     if action in ("start", "restart"):

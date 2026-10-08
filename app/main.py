@@ -1,4 +1,6 @@
 from contextlib import asynccontextmanager
+import os
+from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
@@ -14,6 +16,8 @@ from app.services import system_metrics
 from app.services.local_https import LocalHTTPS
 from app.templating import templates
 from app.security import same_origin
+from app.routers import updates
+from app.services.updates import manager as update_manager
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -27,6 +31,11 @@ async def lifespan(app: FastAPI):
         if config.get("autostart_ochecore"):
             ochecore_service.start()
         await app.state.local_https.restore(app)
+        if os.environ.get("OCHE_LAUNCHER") == "1":
+            try:
+                update_manager.submit("check")
+            except ValueError:
+                pass  # The stable launcher may still be checking a self-update.
         yield
     finally:
         try:
@@ -53,7 +62,7 @@ async def check_write_origin(request: Request, call_next):
             return JSONResponse({"detail": "Cross-origin changes are not allowed."}, status_code=403)
     return await call_next(request)
 
-app.mount("/static", StaticFiles(directory="app/static"), name="static")
+app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
 
 app.include_router(autodarts.router)
 app.include_router(cameras.router)
@@ -64,6 +73,7 @@ app.include_router(ochecore_proxy.router)
 app.include_router(config.router)
 app.include_router(panels.router)
 app.include_router(system.router)
+app.include_router(updates.router)
 
 
 @app.get("/")
@@ -78,6 +88,10 @@ async def legacy_system():
 
 @app.get("/supervisor")
 async def supervisor(request: Request):
+    if request.query_params.get("service") == "updates":
+        return templates.TemplateResponse("updates.html", {
+            "request": request, "active_nav": "autodarts", "service": "updates",
+        })
     if request.query_params.get("service") == "system":
         return templates.TemplateResponse(
             "system.html",
@@ -117,4 +131,7 @@ async def play(request: Request):
 
 @app.get("/healthz")
 async def healthz():
-    return {"ok": True}
+    result = {"ok": True}
+    if os.environ.get("OCHE_BOOT_ID"):
+        result["boot_id"] = os.environ["OCHE_BOOT_ID"]
+    return result

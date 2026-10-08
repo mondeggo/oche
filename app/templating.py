@@ -1,4 +1,5 @@
 from fastapi.templating import Jinja2Templates
+from pathlib import Path
 
 from app.config import load_config
 
@@ -17,5 +18,5 @@ def navigation_context(request):
 
 
 templates = Jinja2Templates(
-    directory="app/templates", context_processors=[navigation_context]
+    directory=str(Path(__file__).parent / "templates"), context_processors=[navigation_context]
 )

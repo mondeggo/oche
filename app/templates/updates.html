@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Oche - Supervisor - Updates{% endblock %}
+{% block content %}
+<link rel="stylesheet" href="/static/css/updates.css">
+<section class="supervisor-page updates-page">
+  {% include "supervisor_nav.html" %}
+  <div class="updates-heading">
+    <div><h1>Software updates</h1>
+    <p class="subtitle">Manage each application independently. Your settings stay in place.</p></div>
+    <button id="check-updates" type="button">Check for updates</button>
+  </div>
+  <p id="update-status" class="updates-status" role="status" aria-live="polite">Loading versions…</p>
+  <p id="update-installation-notice" hidden>You can check for releases here. Installing updates and rolling back require Oche to run through the stable launcher. The development live-reload server does not use that launcher.</p>
+  <div class="updates-list">
+    <div class="updates-columns" aria-hidden="true"><span>Application</span><span>Installed</span><span>Available</span><span>Actions</span></div>
+    <div id="update-modules"></div>
+  </div>
+  <p class="updates-footnote">Updating Oche briefly disconnects this page; it reconnects automatically.
+     Some releases require a Docker image upgrade. Rollback restores code, not changes to saved data.</p>
+</section>
+<script src="/static/js/updates.js" defer></script>
+{% endblock %}

@@ -7,6 +7,7 @@ import signal
 import subprocess
 
 from app.services.autodarts import AUTODARTS_BIN
+from app.services.module_paths import source
 
 
 class AutodartsTerminal:
@@ -21,7 +22,7 @@ class AutodartsTerminal:
             termios.tcsetwinsize(slave, (24, 80))
             os.set_blocking(self.master, False)
             self.process = subprocess.Popen(
-                [str(AUTODARTS_BIN), "remote", "-H", "127.0.0.1"],
+                [str(source("autodarts", AUTODARTS_BIN.parent) / "autodarts"), "remote", "-H", "127.0.0.1"],
                 stdin=slave, stdout=slave, stderr=slave,
                 env={**os.environ, "TERM": "xterm-256color", "COLORTERM": "truecolor"},
                 start_new_session=True,
