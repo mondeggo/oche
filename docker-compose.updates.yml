@@ -1,0 +1,5 @@
+# Add after docker-compose.build.yml to test real installs and self-updates.
+# Runs versioned application code; local source live reload is disabled.
+services:
+  oche:
+    command: ["python", "/app/launcher.py"]

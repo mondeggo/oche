@@ -126,6 +126,12 @@ class NavigationTests(unittest.TestCase):
                 button.click()
             self.assertEqual(response.value.status, 202)
             submit.assert_called_once_with('update-all', None)
+            status['modules'][0]['runtime_compatible'] = False
+            self.page.reload()
+            self.page.get_by_text('Check complete. 3 packages available to update. 1 requires a Docker image upgrade.', exact=True).wait_for()
+            self.assertTrue(self.page.get_by_role('button', name='Update all (2)', exact=True).is_enabled())
+            self.assertTrue(self.page.get_by_role('button', name='Update AutoDarts', exact=True).is_disabled())
+            self.page.get_by_text('Docker image upgrade required', exact=True).wait_for()
             for item in status['modules']:
                 item['available'] = '1'
             self.page.reload()
@@ -153,6 +159,56 @@ class NavigationTests(unittest.TestCase):
             self.page.locator('[data-update-dot="autodarts"]').wait_for(state='visible')
             self.assertEqual(self.page.locator('[data-update-dot="updates"]:visible').count(), 2)
             self.assertEqual(self.errors, [])
+
+    def test_self_update_waits_in_outer_page_then_reloads_after_health_check(self):
+        status = {'enabled': True, 'boot_id': 'old-boot',
+                  'job': {'status': 'complete', 'action': 'check', 'message': ''},
+                  'modules': [{'name': 'oche', 'active': '1', 'available': '2', 'pending': False}]}
+        offline = False
+        def route_status(route):
+            if offline:
+                route.fulfill(status=503, body='Restarting')
+            else:
+                route.fulfill(json=status)
+        def submit(action, name):
+            status['job'] = {'status': 'running', 'action': action, 'module': name, 'message': 'Downloading and verifying oche'}
+        self.page.route('**/updates/status', route_status)
+        with patch('app.routers.updates.manager.submit', side_effect=submit):
+            self.page.goto('http://oche.test/supervisor')
+            self.view().locator('.supervisor-selector a[href="/supervisor?service=updates"]').click()
+            self.page.wait_for_url('http://oche.test/supervisor?service=updates')
+            self.view().get_by_role('button', name='Update Oche', exact=True).click()
+            self.page.locator('#oche-update-wait').wait_for(state='visible')
+            self.assertEqual(self.view().locator('#oche-update-wait').count(), 0)
+            status['modules'][0]['pending'] = True
+            self.page.get_by_text('Waiting for Oche to start and pass its health check…', exact=True).wait_for()
+            offline = True
+            self.page.get_by_role('heading', name='Reconnecting to Oche', exact=True).wait_for()
+            offline = False
+            status['boot_id'] = 'new-boot'
+            # A new process alone is insufficient: wait until pending is cleared.
+            self.page.get_by_text('Waiting for Oche to start and pass its health check…', exact=True).wait_for()
+            self.assertTrue(self.page.locator('#oche-update-wait').is_visible())
+            with self.page.expect_navigation():
+                status['modules'][0].update(active='2', pending=False)
+                status['job'] = {'status': 'idle', 'message': ''}
+            self.page.get_by_role('heading', name='Software updates').wait_for()
+            self.assertEqual(self.page.locator('#oche-update-wait').count(), 0)
+            self.assertEqual(self.errors, [])
+
+    def test_self_update_wait_screen_reports_rollback(self):
+        status = {'enabled': True, 'boot_id': 'old-boot',
+                  'job': {'status': 'running', 'action': 'update', 'module': 'oche', 'message': 'Activating oche'},
+                  'modules': [{'name': 'oche', 'active': '2', 'available': '2', 'pending': True}]}
+        self.page.route('**/updates/status', lambda route: route.fulfill(json=status))
+        self.page.goto('http://oche.test/supervisor?service=updates')
+        self.page.locator('#oche-update-wait').wait_for(state='visible')
+        status['boot_id'] = 'rollback-boot'
+        status['modules'][0].update(active='1', pending=False, error='Startup health check failed')
+        status['job'] = {'status': 'idle', 'message': ''}
+        self.page.get_by_text('Oche restored the previous version. Startup health check failed', exact=True).wait_for()
+        self.assertTrue(self.page.get_by_role('button', name='Return to Oche').is_visible())
+        self.assertEqual(self.errors, [])
 
     def test_autoglow_embeds_same_origin_with_https_assets_api_and_websocket(self):
         from test_autoglow_proxy import FakeAutoGlow

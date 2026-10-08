@@ -24,6 +24,10 @@ class UpdateTests(unittest.TestCase):
             patcher.start()
             self.addCleanup(patcher.stop)
         self.manager = updates.UpdateManager()
+        for name in ("discover_core", "discover_autodarts"):
+            patcher = patch.object(updates, name, side_effect=RuntimeError("Upstream unavailable in fixture"))
+            patcher.start()
+            self.addCleanup(patcher.stop)
 
     def seed(self, name="oche", version="1"):
         path = store.BUNDLES / name
@@ -149,8 +153,12 @@ class UpdateTests(unittest.TestCase):
         def download(url, destination, limit):
             destination.write_text(json.dumps(manifest))
         with patch.object(updates, "download", side_effect=download), patch.object(updates.platform, "machine", return_value="x86_64"):
-            with self.assertRaisesRegex(ValueError, "newer Docker"):
-                self.manager.check()
+            self.manager.check()
+        item = next(m for m in self.manager.status()["modules"] if m["name"] == "oche")
+        self.assertEqual(item["available"], "2")
+        self.assertFalse(item["runtime_compatible"])
+        with self.assertRaisesRegex(ValueError, "different Docker"):
+            self.manager.install("oche", refresh=False)
         with self.assertRaises(ValueError):
             updates.https_url("http://example.com/release")
 
@@ -196,6 +204,35 @@ class UpdateTests(unittest.TestCase):
         install.assert_called_once_with("autodarts", refresh=False)
         self.assertEqual(self.manager.job["status"], "error")
         self.assertEqual(self.manager.job["module"], "autodarts")
+
+    def test_update_all_skips_incompatible_releases(self):
+        for name in store.MODULES:
+            self.seed(name)
+        self.manager.available = {name: {"version": "2", "runtime": "other" if name == "autoglow" else store.RUNTIME} for name in store.MODULES}
+        with patch.object(self.manager, "check"), patch.object(self.manager, "install") as install:
+            self.manager.lock.acquire()
+            self.manager._run("update-all", None)
+        self.assertEqual([call.args[0] for call in install.call_args_list], ["autodarts", "ochecore", "oche"])
+
+    def test_upstream_discovery_survives_missing_oche_feed(self):
+        release = {"version": "0.1.3", "display_version": "0.1.3", "format": "ochecore-wheel"}
+        with patch.object(self.manager, "_check_bundle_feed", side_effect=ValueError("Feed missing")), \
+             patch.object(updates, "discover_core", return_value=release):
+            self.manager.check()
+        self.assertEqual(self.manager.available["ochecore"]["version"], "0.1.3")
+        self.assertIn("oche", self.manager.check_errors)
+        self.assertNotIn("ochecore", self.manager.check_errors)
+
+    def test_upstream_version_comparison_handles_bundled_commit_identity(self):
+        source = store.BUNDLES / "ochecore"
+        source.mkdir(parents=True)
+        (source / "VERSION").write_text("0.1.3")
+        (source / "REVISION").write_text("a" * 40)
+        store.initialize()
+        for version, expected in (("0.1.2", False), ("0.1.3", False), ("0.1.4", True)):
+            self.manager.available["ochecore"] = {"version": version, "display_version": version, "format": "ochecore-wheel"}
+            item = next(m for m in self.manager.status()["modules"] if m["name"] == "ochecore")
+            self.assertEqual(item["has_update"], expected)
 
     def test_web_page_and_cross_origin_rejection(self):
         from fastapi.testclient import TestClient

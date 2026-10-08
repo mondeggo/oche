@@ -25,6 +25,10 @@ def installed() -> bool:
         SOURCE = source("ochecore", SOURCE)
         PYTHON = SOURCE / ".venv" / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
         _process.command = [str(PYTHON), "-u", "-m", "ochecore.main", "serve"]
+    if (SOURCE / "INSTALL_KIND").is_file() and (SOURCE / "INSTALL_KIND").read_text().strip() == "wheel":
+        packages = list((SOURCE / ".venv").glob("lib/python*/site-packages/ochecore"))
+        packages += list((SOURCE / ".venv").glob("Lib/site-packages/ochecore"))
+        return PYTHON.is_file() and any((p / "main.py").is_file() and (p / "static/index.html").is_file() for p in packages)
     return all(path.is_file() for path in (
         PYTHON, SOURCE / "src/ochecore/main.py", SOURCE / "src/ochecore/static/index.html",
     ))

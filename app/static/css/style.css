@@ -877,3 +877,14 @@ button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 .service-update-status .service-update-dot { margin-left: 0; }
 .service-update-status[data-state="available"] { color: var(--fg); }
 .service-update-status a { margin-left: auto; white-space: nowrap; }
+
+/* Self-update overlay remains rendered while the application restarts. */
+.update-wait { width: min(440px, calc(100vw - 48px)); box-sizing: border-box; padding: 36px 28px; border: 1px solid var(--border); border-radius: 16px; background: var(--card); color: var(--fg); text-align: center; box-shadow: 0 20px 70px var(--shadow); }
+.update-wait::backdrop { background: var(--overlay); backdrop-filter: blur(8px); }
+.update-wait h1 { font-size: 1.5rem; margin: 20px 0 12px; }
+.update-wait p { line-height: 1.6; overflow-wrap: anywhere; }
+.update-wait-hint { color: var(--fg-dim); font-size: .85rem; }
+.update-wait-spinner { width: 36px; height: 36px; margin: 0 auto; border: 3px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: update-wait-spin 1s linear infinite; }
+.update-wait [hidden] { display: none; }
+@keyframes update-wait-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .update-wait-spinner { animation: none; } }

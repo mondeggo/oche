@@ -305,6 +305,18 @@ enabled; device mounts refer to its Linux VM. No local Python installation is ne
 
 This builds and launches a local image, shows logs, and reloads Python changes automatically. Open **http://localhost:8180**; refresh the browser after editing templates or styles. Press **Ctrl+C** to stop.
 
+To test application installation and Oche self-updates in the development
+container, run `.\scripts\dev.bat --updates` on Windows or
+`bash scripts/dev.sh --updates` on Linux. This adds `docker-compose.updates.yml`
+and starts the stable launcher. It keeps the development ports and `./data`
+mount, but runs persistent application versions instead of live-reloading your
+source checkout. Existing active versions remain selected across rebuilds.
+Run the helper without `--updates` to return to source live reload.
+
+During a self-update or rollback, a waiting screen covers the full interface.
+It reconnects automatically after the launcher confirms the new process is
+healthy. Failed updates and automatic rollbacks are shown with a return action.
+
 Oche development uses Compose project `oche-dev` and runs its bundled OcheCore on
 loopback port `9280` (override with `OCHE_DEV_OCHECORE_PORT`). The sibling OcheCore
 project's development scripts use a separate `ochecore-dev` project and the standard
@@ -374,6 +386,22 @@ copies. A self-update restarts Oche through `/app/launcher.py` and reconnects th
 page automatically. Checking for releases also works without the launcher;
 installation and rollback require it.
 
+OcheCore checks its own GitHub stable releases and installs the published wheel
+into a separate, relocatable Python environment. Its wheel is verified against
+the GitHub asset SHA-256 (or the release's `SHA256SUMS`). Dependencies must be
+available as compatible wheels; installation and import checks finish before
+the active application changes. AutoDarts checks the official Headless stable
+feed directly and installs its architecture-specific archive. Neither needs a
+new Oche release to discover an upstream update. Version comparisons also avoid
+offering an upstream release already installed under a bundled commit ID.
+
+AutoDarts' current official feed has no publisher checksum. Oche pins the SHA-256
+of the archive downloaded over official HTTPS during discovery, checks its size
+against the feed, and verifies the installation download against that pinned
+hash. This is not a publisher signature or independently published checksum;
+the verification method is shown in Version history. Checks run separately for
+each publisher, so one unavailable source does not hide other releases.
+
 The updater requires HTTPS release metadata and a matching SHA-256 for each
 archive. It rejects archive links, traversal paths, oversized archives, and
 incompatible runtime fingerprints. Applications must pass process and HTTP health
@@ -410,7 +438,8 @@ its package and assets, while the wheel is also available for Python distributio
 Publish a release with these assets before expecting the update check to succeed.
 The default feed is
 `https://github.com/mondeggo/oche/releases/latest/download/updates.json`.
-`OCHE_UPDATE_FEED` can select another trusted HTTPS manifest; it is an executable
+This manifest supplies Oche and AutoGlow updates; OcheCore and AutoDarts use
+their official upstream sources. `OCHE_UPDATE_FEED` can select another trusted HTTPS manifest; it is an executable
 software trust source, not a browser-editable URL. Private source credentials are
 used only in CI and are not needed at runtime. A missing feed or unavailable
 network is shown as an update error and does not stop applications.

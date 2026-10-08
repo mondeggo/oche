@@ -11,9 +11,17 @@ if errorlevel 1 (
 
 set "COMPOSE_OVERRIDE="
 if exist docker-compose.override.yml set "COMPOSE_OVERRIDE=-f docker-compose.override.yml"
+set "UPDATE_OVERRIDE="
+if "%~1"=="--updates" (
+    set "UPDATE_OVERRIDE=-f docker-compose.updates.yml"
+    echo Launcher mode: application updates enabled; source live reload disabled.
+) else if not "%~1"=="" (
+    echo Usage: scripts\dev.bat [--updates]
+    exit /b 2
+)
 
 echo Oche development: http://localhost:8180
 echo Stop other Oche containers first; standalone OcheCore development can run alongside on port 9180.
 echo Press Ctrl+C to stop; logs appear below.
-docker compose -p oche-dev -f docker-compose.yml %COMPOSE_OVERRIDE% -f docker-compose.build.yml up --build
+docker compose -p oche-dev -f docker-compose.yml %COMPOSE_OVERRIDE% -f docker-compose.build.yml %UPDATE_OVERRIDE% up --build
 exit /b %errorlevel%

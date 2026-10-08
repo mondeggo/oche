@@ -20,7 +20,7 @@ def submit(action: str, name: str = None):
         manager.submit(action, name)
     except ValueError as error:
         raise HTTPException(status_code=409, detail=str(error)) from error
-    return {"accepted": True}
+    return {"accepted": True, "job_id": manager.job.get("id")}
 
 
 @router.post("/update-all", status_code=202)

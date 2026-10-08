@@ -3,7 +3,7 @@
   const panel = document.querySelector('[data-service-update]');
   // Cached-page navigation replaces navbar markup, so resolve current dots.
   const dots = () => document.querySelectorAll('[data-update-dot]');
-  const hasUpdate = item => Boolean(item.available && item.available !==
+  const hasUpdate = item => item.has_update ?? Boolean(item.available && item.available !==
     (item.active || item.bundled_revision || item.bundled));
   function render(data) {
     for (const dot of dots()) {
@@ -20,9 +20,11 @@
     if (working) message = 'Update in progress…';
     else if (available) message = `Update available${item.available_version ? ` · ${item.available_version}` : ''}`;
     else if (item?.available) message = 'Up to date · No update available.';
+    else if (item?.discovery_error) message = 'Update availability could not be checked.';
     else if (data.job.status === 'running' && data.job.action === 'check') message = 'Checking for updates…';
     else if (data.job.status === 'error') message = 'Update availability could not be checked.';
     else if (data.job.status === 'complete') message = 'No release information available for this service.';
+    if (available && item.runtime_compatible === false && !working) message += ' · Docker image upgrade required';
     panel.querySelector('[data-service-update-message]').textContent = message;
   }
   document.addEventListener('oche:updates', event => render(event.detail));
@@ -35,7 +37,7 @@
     try {
       const response = await fetch('/updates/status', {cache: 'no-store'});
       if (!response.ok) throw new Error('Status unavailable');
-      render(await response.json());
+      document.dispatchEvent(new CustomEvent('oche:updates', {detail: await response.json()}));
     } catch (_) {
       dots().forEach(dot => { dot.hidden = true; });
       if (panel) {
