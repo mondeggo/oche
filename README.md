@@ -388,8 +388,12 @@ socket or host management privileges.
 
 ### Publishing application releases
 
-The **Publish application updates** workflow runs for `v*` tags or an existing tag
-selected manually. It pins upstream versions, prepares both Linux architectures,
+The **Publish application updates** workflow compares `project.version` in
+`pyproject.toml` before and after pushes to `main` or `master`, following
+OcheCore's release convention. Bump the version (for example, `0.1.0` to `0.1.1`)
+and push; the workflow creates the matching `v0.1.1` tag and release automatically.
+Ordinary pushes without a version change skip application publishing. A manual
+run builds the selected ref's declared version. It pins upstream versions, prepares both Linux architectures,
 and publishes `updates.json`, verified application archives, and an Oche Python
 wheel to the GitHub release. `AUTOGLOW_TOKEN` must have read access to AutoGlow2.
 The workflow prepares bundles in Docker on CI; users download only the selected

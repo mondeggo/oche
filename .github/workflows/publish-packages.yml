@@ -2,18 +2,38 @@ name: Publish application updates
 
 on:
   push:
-    tags: ['v*']
+    branches: [main, master]
   workflow_dispatch:
-    inputs:
-      tag:
-        description: Existing release tag to package
-        required: true
 
 permissions:
   contents: write
 
+concurrency:
+  group: publish-application-updates-${{ github.run_id }}
+  cancel-in-progress: false
+
 jobs:
+  version:
+    name: Detect version change
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.version.outputs.changed }}
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Compare project versions across the push
+        id: version
+        env:
+          BEFORE_SHA: ${{ github.event.before }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: python3 scripts/release_version.py
   versions:
+    needs: version
+    if: needs.version.outputs.changed == 'true'
     runs-on: ubuntu-latest
     outputs:
       autoglow: ${{ steps.versions.outputs.autoglow }}
@@ -33,20 +53,18 @@ jobs:
           test "$version" = "$(jq -er '.platforms["linux-arm64"].version' <<< "$releases")"
           echo "autodarts=$version" >> "$GITHUB_OUTPUT"
   packages:
-    needs: versions
+    needs: [version, versions]
     runs-on: ubuntu-latest
     strategy:
       matrix:
         arch: [amd64, arm64]
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ inputs.tag || github.ref_name }}
       - uses: docker/setup-qemu-action@v4
       - name: Build prepared runtime and export application bundles
         env:
           AUTOGLOW_TOKEN: ${{ secrets.AUTOGLOW_TOKEN }}
-          TAG: ${{ inputs.tag || github.ref_name }}
+          TAG: ${{ needs.version.outputs.tag }}
           ARCH: ${{ matrix.arch }}
           AUTOGLOW_VERSION: ${{ needs.versions.outputs.autoglow }}
           OCHECORE_VERSION: ${{ needs.versions.outputs.ochecore }}
@@ -62,12 +80,13 @@ jobs:
           name: packages-${{ matrix.arch }}
           path: output/*
   release:
-    needs: packages
+    needs: [version, packages]
     runs-on: ubuntu-latest
+    concurrency:
+      group: oche-application-release
+      queue: max
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ inputs.tag || github.ref_name }}
       - uses: actions/download-artifact@v4
         with:
           pattern: packages-*
@@ -77,14 +96,10 @@ jobs:
         with:
           python-version: '3.12'
       - name: Build wheel and combined manifest
-        env:
-          TAG: ${{ inputs.tag || github.ref_name }}
         run: |
           python -m pip install build
           python - <<'PY'
-          import json, os, pathlib, re
-          p = pathlib.Path('pyproject.toml')
-          p.write_text(re.sub(r'(?m)^version = ".*"$', 'version = "' + os.environ['TAG'].removeprefix('v') + '"', p.read_text()))
+          import json, pathlib
           platforms = {}
           for path in pathlib.Path('output').glob('updates-*.json'):
               platforms.update(json.loads(path.read_text())['platforms'])
@@ -94,7 +109,9 @@ jobs:
       - name: Publish release assets
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ inputs.tag || github.ref_name }}
+          TAG: ${{ needs.version.outputs.tag }}
+          RELEASE_SHA: ${{ github.sha }}
         run: |
-          gh release view "$TAG" || gh release create "$TAG" --generate-notes
+          set -euo pipefail
+          gh release view "$TAG" || gh release create "$TAG" --target "$RELEASE_SHA" --generate-notes
           gh release upload "$TAG" output/*

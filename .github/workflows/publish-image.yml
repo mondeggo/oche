@@ -27,6 +27,7 @@ jobs:
           GH_TOKEN: ${{ secrets.AUTOGLOW_TOKEN }}
         run: |
           set -euo pipefail
+          echo "oche_version=$(python3 -c 'import tomllib; print(tomllib.load(open("pyproject.toml", "rb"))["project"]["version"])')" >> "$GITHUB_OUTPUT"
           [[ -n "$GH_TOKEN" ]] || { echo "Set AUTOGLOW_TOKEN with Contents read access to mondeggo/AutoGlow2." >&2; exit 1; }
           releases=$(curl -fsSL --retry 3 "https://releases.autodarts.com/headless/downloads/latest.stable.json")
           for arch in amd64 arm64; do
@@ -65,7 +66,7 @@ jobs:
             AUTODARTS_VERSION=${{ steps.image.outputs.autodarts_version }}
             AUTOGLOW_VERSION=${{ steps.image.outputs.autoglow_version }}
             OCHECORE_VERSION=${{ steps.image.outputs.ochecore_version }}
-            OCHE_VERSION=${{ github.sha }}
+            OCHE_VERSION=${{ steps.image.outputs.oche_version }}
           tags: |
             mondeggo/oche:${{ steps.image.outputs.tag }}
             mondeggo/oche:latest
