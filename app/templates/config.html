@@ -90,33 +90,46 @@
   </div>
 </div>
 
-{% for key, name in [('autoglow', 'AutoGlow 2'), ('ochecore', 'Home')] %}
 <div class="card">
-  <h2>{{ name }}</h2>
-  {% if key != 'ochecore' %}
+  <h2>AutoGlow 2 <span class="badge badge-yellow">Legacy</span></h2>
+  <p class="hint">AutoGlow 2 was OcheCore's predecessor for board lighting. OcheCore now
+    handles Autodarts connection, WLED lighting, and callers from <strong>Home</strong> —
+    leave this on only if you still rely on AutoGlow 2's own setup.</p>
   <div class="toggle-row">
     <div class="toggle-label">
       <span>Show in navbar</span>
-      <p class="hint">Show the {{ name }} tab in the top navigation.</p>
+      <p class="hint">Show the AutoGlow 2 tab in the top navigation and in Supervisor.</p>
     </div>
     <label class="toggle">
-      <input type="checkbox" aria-label="Show {{ name }} in navbar" id="cfg-show-{{ key }}" {{ 'checked' if config['show_' ~ key ~ '_in_navbar'] }}>
+      <input type="checkbox" aria-label="Show AutoGlow 2 in navbar" id="cfg-show-autoglow" {{ 'checked' if config.show_autoglow_in_navbar }}>
       <span class="toggle-track"><span class="toggle-thumb"></span></span>
     </label>
   </div>
-  {% endif %}
   <div class="toggle-row">
     <div class="toggle-label">
       <span>Auto-hide navbar</span>
-      <p class="hint">Default the {{ name }} page's header to hidden. Can still be toggled per-browser from that page.</p>
+      <p class="hint">Default the AutoGlow 2 page's header to hidden. Can still be toggled per-browser from that page.</p>
     </div>
     <label class="toggle">
-      <input type="checkbox" aria-label="Auto-hide navbar on {{ name }}" id="cfg-autohide-navbar-{{ key }}" {{ 'checked' if config['autohide_navbar_on_' ~ key] }}>
+      <input type="checkbox" aria-label="Auto-hide navbar on AutoGlow 2" id="cfg-autohide-navbar-autoglow" {{ 'checked' if config.autohide_navbar_on_autoglow }}>
       <span class="toggle-track"><span class="toggle-thumb"></span></span>
     </label>
   </div>
 </div>
-{% endfor %}
+
+<div class="card">
+  <h2>Home</h2>
+  <div class="toggle-row">
+    <div class="toggle-label">
+      <span>Auto-hide navbar</span>
+      <p class="hint">Default the Home page's header to hidden. Can still be toggled per-browser from that page.</p>
+    </div>
+    <label class="toggle">
+      <input type="checkbox" aria-label="Auto-hide navbar on Home" id="cfg-autohide-navbar-ochecore" {{ 'checked' if config.autohide_navbar_on_ochecore }}>
+      <span class="toggle-track"><span class="toggle-thumb"></span></span>
+    </label>
+  </div>
+</div>
 
 <section class="card" id="panels">
   <h2>Panels</h2>

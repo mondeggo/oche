@@ -16,7 +16,7 @@ DEFAULTS = {
     "lang": "en",
     "https_enabled": False,
     "autostart_autodarts": True,
-    "autostart_autoglow": True,
+    "autostart_autoglow": False,
     "autostart_ochecore": True,
     "autohide_navbar_on_play": False,
     "autohide_navbar_on_autodarts": False,
@@ -25,7 +25,7 @@ DEFAULTS = {
     "autohide_navbar_on_panels": False,
     "show_play_in_navbar": True,
     "show_autodarts_in_navbar": True,
-    "show_autoglow_in_navbar": True,
+    "show_autoglow_in_navbar": False,
     "show_panels_in_navbar": True,
     "panels": [],
     "autoglow": {

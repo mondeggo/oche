@@ -431,6 +431,7 @@ a.card:hover { border-color: var(--accent); }
 .badge-green { background: var(--success-soft); color: var(--success-bright); }
 .badge-red { background: var(--danger-soft); color: var(--danger-bright); }
 .badge-yellow { background: var(--warning-soft); color: var(--warning); }
+.card h2 .badge { margin-left: 8px; vertical-align: 2px; }
 
 .btn-row, .link-row {
   display: flex;
