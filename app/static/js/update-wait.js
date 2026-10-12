@@ -107,8 +107,7 @@
       return;
     }
     heading.textContent = oche?.pending ? 'Restarting Oche' : 'Updating applications';
-    description.textContent = oche?.pending ? 'Waiting for Oche to start and pass its health check…' :
-      data.job.message === 'update' || data.job.message === 'update-all' ? 'Preparing the update…' : data.job.message || 'Preparing the update…';
+    description.textContent = oche?.pending ? 'Waiting for Oche to start and pass its health check…' : data.job.message || 'Preparing the update…';
   }
 
   async function poll() {

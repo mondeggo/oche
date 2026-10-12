@@ -80,7 +80,7 @@
     badge.dataset.state = working || incompatible ? 'pending' : item.error || item.discovery_error ? 'error' : available ? 'available' : '';
     const readable = value => value && !/^[a-f0-9]{40,64}$/i.test(value) ? value : null;
     version(article, 'Installed', item.active_version || readable(active), 'Version unavailable');
-    version(article, 'Available', item.available_version || readable(item.available), item.available ? 'Version unavailable' : 'Not checked');
+    version(article, 'Available', item.available_version || readable(item.available), item.discovery_error ? 'Check failed' : item.available ? 'Version unavailable' : 'Not checked');
     const actions = element(article, 'div', '', 'update-actions');
     for (const [verb, label, enabled, explanation] of [
       ['update', 'Update', available && !incompatible, incompatible ? 'Upgrade the Docker image before installing this package.' : item.available ? 'This release is already installed.' : 'Check for an available release first.'],
