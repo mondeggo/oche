@@ -1,5 +1,20 @@
 {% extends "base.html" %}
 {% block title %}Oche - Play{% endblock %}
 {% block content %}
-<iframe id="play-frame" class="board-frame" title="Autodarts Play" src="https://play.autodarts.com/"></iframe>
+<iframe id="play-frame" class="board-frame" title="Autodarts Play" data-src="https://play.autodarts.com/" hidden></iframe>
+<div id="play-https-required" class="container play-https-required" hidden>
+  <section class="card" aria-labelledby="play-https-title">
+    <h1 id="play-https-title">Play needs HTTPS</h1>
+    <p>You are connected to Oche over HTTP. Open Oche with HTTPS to use Autodarts Play on your local network.</p>
+    <p id="play-https-status" role="status" aria-live="polite">Checking your HTTPS settings…</p>
+    <div class="https-actions">
+      <a id="play-https-open" class="btn-link" target="_top" hidden>Open Play with HTTPS</a>
+      <a id="play-https-settings" class="btn-link" href="/config/https">Set up HTTPS</a>
+    </div>
+    <p id="play-https-warning" class="hint" hidden>Local HTTPS may show a certificate warning. Check that the address is your Oche device, then choose Advanced → Continue (or Accept the Risk and Continue in Firefox).</p>
+  </section>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="/static/js/play.js"></script>
 {% endblock %}

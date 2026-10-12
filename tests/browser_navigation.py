@@ -817,6 +817,78 @@ class NavigationTests(unittest.TestCase):
         self.assertEqual(self.view().evaluate('window.pageMarker'), 'retained')
         self.assertEqual(self.errors, [])
 
+    def test_play_on_http_offers_https_setup_and_recovers_from_status_failure(self):
+        data = {'enabled': False, 'running': False, 'port': 443}
+        requests = []
+        self.page.on('request', lambda request: requests.append(request.url))
+        self.page.route('**/config/https/status', lambda route: route.fulfill(json=data))
+        self.page.goto('http://oche.test/config')
+        self.go('/play')
+        self.view().get_by_text('HTTPS is off.', exact=False).wait_for()
+        self.assertTrue(self.view().locator('#play-frame').is_hidden())
+        self.assertIsNone(self.view().locator('#play-frame').get_attribute('src'))
+        self.assertTrue(self.view().locator('#play-https-open').is_hidden())
+        self.view().get_by_role('link', name='Set up HTTPS', exact=True).click()
+        self.page.wait_for_url('http://oche.test/config/https')
+        self.view().get_by_role('heading', name='HTTPS for Play', exact=True).wait_for()
+
+        data['enabled'] = True
+        self.go('/play')
+        self.view().get_by_text('Your selected HTTPS method is not running.', exact=False).wait_for()
+        self.assertTrue(self.view().get_by_role('link', name='Check HTTPS settings').is_visible())
+        self.assertTrue(self.view().locator('#play-https-open').is_hidden())
+
+        self.page.route('**/config/https/status', lambda route: route.fulfill(status=503, body='Unavailable'))
+        self.page.reload()
+        self.view().get_by_text('Could not check your HTTPS settings.', exact=False).wait_for()
+        self.assertEqual(self.view().get_by_role('link', name='HTTPS settings').get_attribute('href'), '/config/https')
+        self.assertTrue(self.view().locator('#play-https-open').is_hidden())
+        self.assertFalse(any(url.startswith('https://play.autodarts.com/') for url in requests))
+        self.assertEqual(self.errors, [])
+
+    def test_play_opens_selected_https_method_in_the_whole_tab(self):
+        data = {'enabled': True, 'running': True, 'port': 8443,
+                'mode': 'local', 'local_ip': '192.168.1.24', 'domain': 'oche.example.com'}
+        self.page.route('**/config/https/status', lambda route: route.fulfill(json=data))
+        self.page.route('https://192.168.1.24:8443/**', self.route_app)
+        self.page.route('https://oche.example.com/**', self.route_app)
+        for mode, port, expected in (
+            ('local', 8443, 'https://192.168.1.24:8443/play'),
+            ('letsencrypt', 443, 'https://oche.example.com/play'),
+        ):
+            with self.subTest(mode=mode):
+                data.update(mode=mode, port=port)
+                self.page.goto('http://oche.test:8180/config')
+                self.go('/play')
+                link = self.view().get_by_role('link', name='Open Play with HTTPS', exact=True)
+                link.wait_for()
+                self.assertEqual(link.get_attribute('href'), expected)
+                self.assertEqual(link.get_attribute('target'), '_top')
+                self.assertEqual(self.view().locator('#play-https-warning').is_visible(), mode == 'local')
+                for width in (320, 390, 1280):
+                    self.page.set_viewport_size({'width': width, 'height': 844})
+                    self.assertLessEqual(self.view().evaluate('document.documentElement.scrollWidth'), width)
+                link.click()
+                self.page.wait_for_url(expected)
+                self.page.locator('#play-frame').wait_for()
+                self.assertEqual(self.page.locator('#play-frame').get_attribute('src'), 'https://play.autodarts.com/')
+                self.assertTrue(self.page.locator('#play-https-required').is_hidden())
+                self.assertEqual(len(self.page.context.pages), 1)
+        self.assertEqual(self.errors, [])
+
+    def test_play_loads_directly_on_https_and_loopback_http(self):
+        requests = []
+        self.page.on('request', lambda request: requests.append(request.url))
+        for origin in ('https://oche.test', 'http://localhost:8180', 'http://127.0.0.1:8180'):
+            with self.subTest(origin=origin):
+                self.page.route(origin + '/**', self.route_app)
+                self.page.goto(origin + '/play')
+                self.page.locator('#play-frame').wait_for()
+                self.assertEqual(self.page.locator('#play-frame').get_attribute('src'), 'https://play.autodarts.com/')
+                self.assertTrue(self.page.locator('#play-https-required').is_hidden())
+        self.assertFalse(any(url.endswith('/config/https/status') for url in requests))
+        self.assertEqual(self.errors, [])
+
     def test_https_setting_reports_failure_and_switches_the_whole_tab(self):
         data = {'enabled': False, 'running': False, 'port': 8443,
                 'http_port': 8180, 'error': None}
