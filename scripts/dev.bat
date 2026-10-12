@@ -21,6 +21,7 @@ if "%~1"=="--updates" (
 )
 
 echo Oche development: http://localhost:8180
+echo HTTPS uses port 8443 by default when enabled in Settings; override with OCHE_DEV_HTTPS_PORT.
 echo Stop other Oche containers first; standalone OcheCore development can run alongside on port 9180.
 echo Press Ctrl+C to stop; logs appear below.
 docker compose -p oche-dev -f docker-compose.yml %COMPOSE_OVERRIDE% -f docker-compose.build.yml %UPDATE_OVERRIDE% up --build

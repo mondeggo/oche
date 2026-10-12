@@ -16,6 +16,7 @@ if [[ -f docker-compose.override.yml ]]; then
 fi
 
 echo "Oche development: http://localhost:8180"
+echo "HTTPS uses port 8443 by default when enabled in Settings; override with OCHE_DEV_HTTPS_PORT."
 echo "Stop other Oche containers first; standalone OcheCore development can run alongside on port 9180."
 echo "Press Ctrl+C to stop; logs appear below."
 compose+=(-f docker-compose.build.yml)

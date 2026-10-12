@@ -305,6 +305,12 @@ enabled; device mounts refer to its Linux VM. No local Python installation is ne
 
 This builds and launches a local image, shows logs, and reloads Python changes automatically. Open **http://localhost:8180**; refresh the browser after editing templates or styles. Press **Ctrl+C** to stop.
 
+When HTTPS is enabled in Settings, development uses **https://localhost:8443**
+(or your device's IP address or configured domain with `:8443`). HTTP remains on
+port `8180`. Set `OCHE_DEV_HTTPS_PORT` in `.env` to use another development HTTPS
+port, then restart the dev script to recreate the container. Standard Compose
+runs use `OCHE_HTTPS_PORT`, which defaults to `443`.
+
 To test application installation and Oche self-updates in the development
 container, run `.\scripts\dev.bat --updates` on Windows or
 `bash scripts/dev.sh --updates` on Linux. This adds `docker-compose.updates.yml`
