@@ -30,7 +30,9 @@ def main():
     output.mkdir(parents=True, exist_ok=True)
     arch = {"x86_64": "amd64", "aarch64": "arm64"}[platform.machine()]
     entries = {}
-    for source in sorted(Path("/opt/oche-bundles").iterdir()):
+    # OcheCore and AutoDarts updates come from their own upstream releases
+    # (see upstream_releases.py); only Oche and AutoGlow need Oche's own feed.
+    for source in sorted(p for p in Path("/opt/oche-bundles").iterdir() if p.name in ("oche", "autoglow")):
         display_version = (source / "VERSION").read_text().strip()
         revision_file = source / "REVISION"
         revision = revision_file.read_text().strip() if revision_file.exists() else None
