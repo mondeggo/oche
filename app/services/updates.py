@@ -124,6 +124,7 @@ class UpdateManager:
             elif action == "update":
                 self.install(name)
             elif action == "update-all":
+                self.job["message"] = "Checking for the latest releases"
                 self.check()
                 candidates = [m["name"] for m in self.status()["modules"] if m["has_update"] and m["runtime_compatible"]]
                 # MODULES keeps Oche last: its restart must not interrupt others.
@@ -142,8 +143,8 @@ class UpdateManager:
             self.lock.release()
 
     def check(self):
-        self.available = {}
-        self.check_errors = {}
+        discovered = {}
+        errors = {}
         architecture = {"x86_64": "amd64", "amd64": "amd64", "aarch64": "arm64", "arm64": "arm64"}.get(platform.machine().lower(), platform.machine().lower())
         # An unavailable Oche feed must not hide independent upstream releases.
         with ThreadPoolExecutor(max_workers=3) as pool:
@@ -154,11 +155,15 @@ class UpdateManager:
                 try:
                     result = future.result()
                     if len(names) == 1:
-                        self.available[names[0]] = result
+                        discovered[names[0]] = result
                     else:
-                        self.available.update(result)
+                        discovered.update(result)
                 except Exception as error:
-                    self.check_errors.update({name: str(error) for name in names})
+                    errors.update({name: str(error) for name in names})
+        # Swap in the new results only once discovery finishes, so a concurrent
+        # status() read never observes a transiently empty "available" dict.
+        self.available = discovered
+        self.check_errors = errors
         if not self.available and self.check_errors:
             raise ValueError("; ".join(dict.fromkeys(self.check_errors.values())))
 
@@ -200,6 +205,7 @@ class UpdateManager:
 
     def install(self, name, refresh=True):
         if refresh:
+            self.job["message"] = "Checking for the latest release"
             self.check()
         release = self.available.get(name)
         if not release:
