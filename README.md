@@ -444,8 +444,9 @@ its package and assets, while the wheel is also available for Python distributio
 Publish a release with these assets before expecting the update check to succeed.
 The default feed is
 `https://github.com/mondeggo/oche/releases/latest/download/updates.json`.
-This manifest supplies Oche and AutoGlow updates; OcheCore and AutoDarts use
-their official upstream sources. `OCHE_UPDATE_FEED` can select another trusted HTTPS manifest; it is an executable
+This manifest supplies Oche updates; OcheCore and AutoDarts use their official
+upstream sources, and AutoGlow 2 is legacy and no longer published or checked
+for updates. `OCHE_UPDATE_FEED` can select another trusted HTTPS manifest; it is an executable
 software trust source, not a browser-editable URL. Private source credentials are
 used only in CI and are not needed at runtime. A missing feed or unavailable
 network is shown as an update error and does not stop applications.

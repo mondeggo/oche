@@ -190,7 +190,7 @@ class UpdateManager:
             releases = manifest["platforms"]["linux-" + architecture]
             candidates = {}
             for name, entry in releases.items():
-                if name not in ("oche", "autoglow"):
+                if name != "oche":  # AutoGlow 2 is legacy and no longer published here.
                     continue
                 store.valid_version(entry["version"])
                 https_url(entry["url"])
