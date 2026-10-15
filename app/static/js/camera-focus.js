@@ -169,5 +169,25 @@
     }
   }
 
-  window.OcheCameraFocus = Object.freeze({ analyze, clampROI, Meter });
+  // Visualization only: never feed filtered pixels back into the focus meter.
+  function filterDetail(image, mode) {
+    const output = new ImageData(new Uint8ClampedArray(image.data), image.width, image.height);
+    if (!['edges', 'heatmap'].includes(mode)) return output;
+    const { width, height, data } = image;
+    const gray = (x, y) => {
+      const i = (y * width + x) * 4;
+      return .2126 * data[i] + .7152 * data[i + 1] + .0722 * data[i + 2];
+    };
+    for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
+      const edge = Math.min(255, Math.abs(gray(Math.max(0, x - 1), y) - gray(Math.min(width - 1, x + 1), y)) +
+        Math.abs(gray(x, Math.max(0, y - 1)) - gray(x, Math.min(height - 1, y + 1))));
+      const i = (y * width + x) * 4;
+      output.data[i] = mode === 'edges' ? edge : Math.min(255, edge * 2);
+      output.data[i + 1] = mode === 'edges' ? edge : Math.max(0, 255 - Math.abs(edge - 128) * 2);
+      output.data[i + 2] = mode === 'edges' ? edge : 255 - edge;
+    }
+    return output;
+  }
+
+  window.OcheCameraFocus = Object.freeze({ analyze, clampROI, Meter, filterDetail });
 })();

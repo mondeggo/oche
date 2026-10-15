@@ -13,6 +13,7 @@ from app.services import autodarts as autodarts_service
 from app.services import autoglow as autoglow_service
 from app.services import ochecore as ochecore_service
 from app.services import system_metrics
+from app.services import camera_controls
 from app.services.local_https import LocalHTTPS
 from app.templating import templates
 from app.security import same_origin
@@ -39,7 +40,10 @@ async def lifespan(app: FastAPI):
         yield
     finally:
         try:
-            await app.state.local_https.close()
+            try:
+                await camera_controls.shutdown()
+            finally:
+                await app.state.local_https.close()
         finally:
             try:
                 await run_in_threadpool(autodarts_service.stop)

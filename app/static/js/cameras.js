@@ -19,6 +19,10 @@
   let loadingData = false, lastDataAttempt = -Infinity, running = false;
   let generation = 0, dataGeneration = 0, lastMode = '', lastResult = null, drag = null;
   let settingsRenderKey = '';
+  const historyCanvas = $('camera-focus-history');
+  const historyContext = historyCanvas.getContext('2d');
+  const baseline = document.createElement('canvas');
+  let baselineScore = null, history = [];
   let audio = null, oscillator = null, gain = null;
 
   async function request(path, options = {}) {
@@ -181,7 +185,35 @@
     $('camera-focus-empty').hidden = false;
   }
 
+  function drawHistory() {
+    const ctx = historyContext, w = historyCanvas.width, h = historyCanvas.height;
+    ctx.clearRect(0, 0, w, h);
+    const peak = Math.max(1, ...history.filter(value => value !== null));
+    ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--brand').trim();
+    ctx.lineWidth = 2;
+    ctx.fillStyle = ctx.strokeStyle;
+    ctx.beginPath();
+    let connected = false;
+    history.forEach((value, index) => {
+      if (value === null) { connected = false; return; }
+      const x = index * w / 119, y = h - 4 - value / peak * (h - 8);
+      ctx.fillRect(x, y - 1, 2, 2);
+      if (connected) ctx.lineTo(x, y); else ctx.moveTo(x, y);
+      connected = true;
+    });
+    ctx.stroke();
+  }
+
   function resetFocus() {
+    history = [];
+    drawHistory();
+    baselineScore = null;
+    baseline.width = baseline.height = 0;
+    $('camera-baseline-show').checked = false;
+    $('camera-baseline-show').disabled = true;
+    $('camera-baseline-save').disabled = true;
+    $('camera-baseline-status').textContent = 'Capture a reference before adjusting the lens.';
+    $('camera-lighting-stats').textContent = '';
     meter.reset();
     lastResult = null;
     $('camera-focus-current').textContent = '—';
@@ -211,7 +243,10 @@
     const cropHeight = Math.min(bitmap.height, cropWidth * zoom.height / zoom.width);
     const cropX = Math.min(bitmap.width - cropWidth, Math.max(0, x + width / 2 - cropWidth / 2));
     const cropY = Math.min(bitmap.height - cropHeight, Math.max(0, y + height / 2 - cropHeight / 2));
-    zoomContext.drawImage(bitmap, cropX, cropY, cropWidth, cropHeight, 0, 0, zoom.width, zoom.height);
+    const detailImage = $('camera-baseline-show').checked && baselineScore !== null ? baseline : bitmap;
+    zoomContext.drawImage(detailImage, cropX, cropY, cropWidth, cropHeight, 0, 0, zoom.width, zoom.height);
+    const filter = $('camera-focus-filter').value;
+    if (filter !== 'normal') zoomContext.putImageData(focus.filterDetail(zoomContext.getImageData(0, 0, zoom.width, zoom.height), filter), 0, 0);
     $('camera-focus-empty').hidden = true;
   }
 
@@ -226,7 +261,16 @@
     const width = Math.max(1, Math.ceil((roi.x + roi.width) * source.width) - x);
     const height = Math.max(1, Math.ceil((roi.y + roi.height) * source.height) - y);
     // Read only the selected pixels. The crop is already the ROI.
-    const result = meter.push(focus.analyze(sourceContext.getImageData(x, y, width, height)));
+    const sample = focus.analyze(sourceContext.getImageData(x, y, width, height));
+    const result = meter.push(sample);
+    history.push(result.usable ? result.current : null);
+    if (history.length > 120) history.shift();
+    drawHistory();
+    $('camera-lighting-stats').textContent = `Brightness ${sample.brightness.toFixed(0)}/255 ? Dark clipping ${(sample.clippedDark * 100).toFixed(0)}% ? Bright clipping ${(sample.clippedBright * 100).toFixed(0)}%`;
+    $('camera-baseline-save').disabled = !result.usable || paused;
+    if (baselineScore !== null) $('camera-baseline-status').textContent = result.usable
+      ? `Focus compared with before: ${((result.current / baselineScore - 1) * 100).toFixed(1)}%. Keep lighting and selection unchanged.`
+      : 'Before reference retained. Waiting for a usable image.';
     lastResult = result;
     $('camera-focus-current').textContent = result.usable ? result.current.toFixed(1) : '—';
     $('camera-focus-best').textContent = result.best > 0 ? result.best.toFixed(1) : '—';
@@ -270,6 +314,10 @@
         $('camera-focus-meter').value = 0;
         $('camera-focus-trend').textContent = 'No fresh image. Focus guidance will resume when this camera responds.';
         lastResult = null;
+        $('camera-baseline-save').disabled = true;
+        history.push(null);
+        if (history.length > 120) history.shift();
+        drawHistory();
         mute();
       }
     } finally {
@@ -388,13 +436,27 @@
     drawFocus();
   });
   $('camera-roi-reset').addEventListener('click', () => { cancelDrag(); roi = defaultROI(); resetFocus(); drawFocus(); });
-  $('camera-focus-reset').addEventListener('click', resetFocus);
+  $('camera-focus-filter').addEventListener('change', drawFocus);
+  $('camera-baseline-show').addEventListener('change', drawFocus);
+  $('camera-baseline-save').addEventListener('click', () => {
+    const bitmap = slots[selected].bitmap;
+    if (!bitmap || !lastResult?.usable || paused || drag || !running) return;
+    baseline.width = bitmap.width;
+    baseline.height = bitmap.height;
+    baseline.getContext('2d').drawImage(bitmap, 0, 0);
+    baselineScore = Math.max(Number.EPSILON, lastResult.current);
+    $('camera-baseline-show').disabled = false;
+    $('camera-baseline-status').textContent = 'Before captured. Adjust the lens, then toggle Show before to compare.';
+    drawFocus();
+  });
+  $('camera-focus-reset').addEventListener('click', () => { resetFocus(); drawFocus(); });
   $('camera-zoom').addEventListener('input', () => { $('camera-zoom-value').textContent = $('camera-zoom').value + '×'; drawFocus(); });
-  window.addEventListener('oche:themechange', drawFocus);
+  window.addEventListener('oche:themechange', () => { drawFocus(); drawHistory(); });
   $('camera-preview-toggle').addEventListener('click', () => {
     cancelDrag();
     drawFocus();
     paused = !paused;
+    $('camera-baseline-save').disabled = paused || !lastResult?.usable;
     $('camera-preview-toggle').textContent = paused ? 'Resume preview' : 'Pause preview';
     $('camera-preview-toggle').setAttribute('aria-pressed', String(paused));
     generation++;
@@ -464,6 +526,13 @@
   });
   window.addEventListener('pagehide', () => { generation++; for (const slot of slots) slot.controller?.abort(); mute(); });
   document.addEventListener('visibilitychange', tick);
+  window.OcheCameraWorkspace = Object.freeze({
+    selection: () => ({index: selected, device: data?.settings.devices[selected] || '',
+      revision: data?.revision, roi: {...roi}, width: slots[selected].bitmap?.width,
+      height: slots[selected].bitmap?.height, ready: running && !paused && Boolean(slots[selected].bitmap)}),
+    setROI: selection => { cancelDrag(); roi = focus.clampROI(selection); resetFocus(); drawFocus(); },
+    resetFocus: () => { resetFocus(); drawFocus(); },
+  });
   setInterval(tick, 200);
   loadData();
 })();

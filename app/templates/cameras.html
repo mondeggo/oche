@@ -38,23 +38,36 @@
         <span id="camera-focus-empty">Waiting for the selected camera</span>
       </div>
       <div class="camera-focus-actions">
+        <button id="camera-target-double" type="button" class="btn-neutral">Find furthest double</button>
+        <button id="camera-target-t20" type="button" class="btn-neutral">Find T20</button>
         <button id="camera-roi-reset" type="button" class="btn-neutral">Center selection</button>
         <span class="camera-hint">Arrow keys move the selection.</span>
       </div>
     </div>
     <aside class="camera-focus-tools">
       <canvas id="camera-zoom-canvas" width="320" height="240" aria-label="Magnified focus area"></canvas>
+      <label for="camera-focus-filter">Detail view</label>
+      <select id="camera-focus-filter"><option value="normal">Normal</option><option value="edges">Edges</option><option value="heatmap">Edge heatmap</option></select>
+      <p class="camera-hint">Filters change the magnifier only. Focus scores always use the original image.</p>
+      <button id="camera-baseline-save" type="button" class="btn-neutral" disabled>Capture before</button>
+      <label class="camera-audio-label"><input id="camera-baseline-show" type="checkbox" disabled> Show before in magnifier</label>
+      <p id="camera-baseline-status" class="camera-hint" role="status">Capture a reference before adjusting the lens.</p>
       <label class="camera-zoom-label" for="camera-zoom">Magnification <output id="camera-zoom-value">2.5×</output></label>
       <input id="camera-zoom" type="range" min="1" max="6" step="0.5" value="2.5">
       <div class="camera-score-row"><span>Current <strong id="camera-focus-current">—</strong></span><span>Best <strong id="camera-focus-best">—</strong></span></div>
       <meter id="camera-focus-meter" min="0" max="1" value="0" aria-label="Focus compared with the best this session"></meter>
       <p class="camera-hint">Compared with best this session. Scores help compare this area; they do not certify perfect focus.</p>
       <p id="camera-focus-trend" role="status">Select an area with visible wire or board detail.</p>
+      <canvas id="camera-focus-history" width="320" height="100" role="img" aria-label="Recent focus history, scaled to the best score"></canvas>
+      <p class="camera-hint">Recent focus samples, oldest on the left. Gaps indicate unusable images.</p>
+      <p id="camera-lighting-stats" class="camera-hint"></p>
       <button id="camera-focus-reset" type="button" class="btn-neutral">Reset best</button>
       <label class="camera-audio-label"><input id="camera-audio" type="checkbox"> Audio guidance</label>
       <p class="camera-hint">A higher tone means closer to your best. Sound plays on this device.</p>
     </aside>
   </section>
+
+  <p id="camera-target-status" class="camera-hint" role="status"></p>
 
   <section class="camera-settings" aria-labelledby="camera-settings-title">
     <div class="camera-settings-heading"><h2 id="camera-settings-title">Camera settings</h2><button id="camera-refresh" type="button" class="btn-neutral">Refresh devices</button></div>
@@ -74,8 +87,39 @@
     </form>
     <p id="camera-settings-status" role="status"></p>
   </section>
+  <section class="camera-settings" aria-labelledby="camera-controls-title">
+    <div class="camera-settings-heading"><h2 id="camera-controls-title">Camera controls and profiles</h2><button id="camera-controls-refresh" type="button" class="btn-neutral">Read controls</button></div>
+    <p class="camera-hint">Controls apply to the selected camera while Autodarts runs. Switch automatic modes off and apply before adjusting dependent controls. Drivers may refuse changes during capture. Profiles are saved per camera and applied on request.</p>
+    <p id="camera-controls-status" role="status">Select a camera to read its controls.</p>
+    <form id="camera-controls-form">
+      <fieldset id="camera-controls-fields" disabled><legend id="camera-controls-legend">Selected camera</legend><div id="camera-controls-list" class="camera-control-grid"></div>
+      <div class="btn-row"><button type="submit" id="camera-controls-apply">Apply controls</button><button id="camera-controls-defaults" type="button" class="btn-neutral">Restore driver defaults</button></div></fieldset>
+    </form>
+    <button id="camera-controls-recover" type="button" class="btn-neutral">Restore interrupted changes</button>
+    <div class="camera-profile-fields">
+      <div class="camera-profile-row">
+        <label for="camera-profile-name">Profile name<input id="camera-profile-name" maxlength="64" pattern="[\w .-]+" placeholder="Evening lighting"></label>
+        <div class="camera-profile-actions"><button id="camera-profile-save" type="button" class="btn-neutral">Save current controls</button></div>
+      </div>
+      <div class="camera-profile-row">
+        <label for="camera-profile-select">Saved profiles<select id="camera-profile-select"><option value="">No profile selected</option></select></label>
+        <div class="camera-profile-actions"><button id="camera-profile-apply" type="button" class="btn-neutral">Apply profile</button><button id="camera-profile-delete" type="button" class="btn-neutral">Delete profile</button></div>
+      </div>
+    </div>
+  </section>
+  <section class="camera-settings" aria-labelledby="camera-calibration-title">
+    <h2 id="camera-calibration-title">Exposure and gain calibration</h2>
+    <ol class="camera-hint"><li>Set up your usual lighting and focus the lens. Select a detailed area containing board wire and, if useful, a stationary dart.</li><li>Start a sweep for the selected camera. Keep the board, lighting and lens still. Detection may be less reliable while exposure changes.</li><li>Review the measured scores. Previous controls are restored after the sweep; apply the proposal only if you want to keep it.</li></ol>
+    <p class="camera-hint">The sweep compares detail and clipping, with exposure tested at low gain before trying higher gain. It does not replace Autodarts board calibration. A higher image score is not a guarantee of better dart detection.</p>
+    <div class="btn-row"><button id="camera-calibration-start" type="button">Start sweep for Camera 1</button><button id="camera-calibration-cancel" type="button" class="btn-neutral" disabled>Cancel and restore</button><button id="camera-calibration-apply" type="button" disabled>Apply proposal</button></div>
+    <progress id="camera-calibration-progress" max="1" value="0" aria-label="Calibration progress"></progress>
+    <p id="camera-calibration-status" role="status">Ready. Each sweep is limited to three minutes.</p>
+    <p id="camera-calibration-proposal" class="camera-hint"></p>
+    <div id="camera-calibration-results" class="camera-calibration-results"></div>
+  </section>
 </main>
 <script src="/static/js/camera-focus.js"></script>
 <script src="/static/js/cameras.js"></script>
+<script src="/static/js/camera-advanced.js"></script>
 </body>
 </html>

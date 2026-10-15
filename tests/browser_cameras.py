@@ -103,6 +103,10 @@ class CameraWorkspaceTests(unittest.TestCase):
                         for index, device in enumerate(['cam-a', 'cam-b', 'cam-c'])],
             'warnings': [],
         }
+        self.advanced_values = {'gain': 10, 'auto_exposure': 3}
+        self.advanced_writes = []
+        self.profiles = {}
+        self.job = {'state': 'idle'}
         self.page.route('**/*', self.route)
         self.page.route_web_socket('**/autodarts/terminal/ws', lambda socket: socket.send(b'Ready\r\n'))
         self.addCleanup(self.release_requests)
@@ -154,6 +158,41 @@ class CameraWorkspaceTests(unittest.TestCase):
                 route.fulfill(status=failure[0], json={'detail': failure[1]})
             else:
                 route.fulfill(content_type='image/png', body=self.frames[index])
+        elif url.path.startswith('/autodarts/cameras/target/'):
+            route.fulfill(json={'roi': {'x': .2, 'y': .25, 'width': .15, 'height': .2},
+                                'width': 320, 'height': 240, 'method': 'Autodarts calibration'})
+        elif url.path.startswith('/autodarts/cameras/controls/'):
+            if request.method == 'PATCH':
+                self.advanced_writes.append(request.post_data_json)
+                self.advanced_values.update(request.post_data_json['values'])
+            index = int(url.path.rsplit('/', 1)[-1])
+            route.fulfill(json={'device': self.state['settings']['devices'][index], 'controls': [
+                {'name': 'gain', 'kind': 'int', 'min': 0, 'max': 20, 'step': 1,
+                 'value': self.advanced_values['gain'], 'writable': True, 'inactive': False, 'menu': {}},
+                {'name': 'auto_exposure', 'kind': 'menu', 'min': 0, 'max': 3, 'step': 1,
+                 'value': self.advanced_values['auto_exposure'], 'writable': True, 'inactive': False,
+                 'menu': {'1': 'Manual Mode', '3': 'Aperture Priority Mode'}},
+            ]})
+        elif url.path == '/autodarts/cameras/profiles':
+            route.fulfill(json=self.profiles)
+        elif url.path.startswith('/autodarts/cameras/profiles/'):
+            if request.method == 'DELETE':
+                self.profiles.clear()
+            else:
+                payload = request.post_data_json
+                self.advanced_writes.append(payload)
+                self.profiles[payload['name']] = {'device': payload['device'], 'values': self.advanced_values.copy()}
+            route.fulfill(json={'saved': True})
+        elif url.path.startswith('/autodarts/cameras/calibration'):
+            if '/start/' in url.path:
+                self.job = {'id': 'test-job', 'state': 'running', 'index': 0, 'progress': .3,
+                            'message': 'Comparing exposure settings', 'samples': []}
+                self.advanced_writes.append(request.post_data_json)
+            elif url.path.endswith('/cancel'):
+                self.job.update(state='cancelled', message='Previous controls restored')
+            elif '/apply/' in url.path:
+                self.job.update(state='applied', message='Calibration controls applied')
+            route.fulfill(json=self.job)
         elif url.path == '/autodarts/status':
             route.fulfill(json={'status': 'running', 'pid': 100})
         elif url.path == '/ochecore/ui/api/ui':
@@ -167,6 +206,63 @@ class CameraWorkspaceTests(unittest.TestCase):
                 headers={key: value for key, value in request.headers.items()
                          if key in ('content-type', 'origin', 'sec-fetch-site')})
             route.fulfill(status=response.status_code, body=response.content, headers=dict(response.headers))
+
+    def test_reference_filters_and_history_reset_with_selection(self):
+        page = self.open_workspace()
+        capture = page.locator('#camera-baseline-save')
+        expect(capture).to_be_enabled()
+        capture.click()
+        toggle = page.locator('#camera-baseline-show')
+        expect(toggle).to_be_enabled()
+        toggle.check()
+        for mode in ('edges', 'heatmap', 'normal'):
+            page.locator('#camera-focus-filter').select_option(mode)
+            self.assertEqual(page.locator('#camera-focus-filter').input_value(), mode)
+        expect(page.locator('#camera-lighting-stats')).to_contain_text('Brightness')
+        self.assertTrue(page.evaluate("""() => {
+            const c = document.getElementById('camera-focus-history');
+            return c.getContext('2d').getImageData(0, 0, c.width, c.height).data.some(v => v > 0);
+        }"""))
+        page.locator('#camera-roi-reset').click()
+        expect(toggle).to_be_disabled()
+        expect(toggle).not_to_be_checked()
+        expect(capture).to_be_enabled()
+        capture.click()
+        page.locator('[data-camera="1"]').click()
+        expect(toggle).to_be_disabled()
+        expect(toggle).not_to_be_checked()
+
+    def test_advanced_controls_profiles_targets_and_calibration_review(self):
+        page = self.open_workspace()
+        gain = page.locator('[data-control="gain"]')
+        expect(gain).to_be_enabled()
+        gain.fill('7')
+        page.locator('#camera-controls-apply').click()
+        expect(page.locator('#camera-controls-status')).to_have_text('Controls read from the camera.')
+        self.assertEqual(self.advanced_writes[-1]['values'], {'gain': 7})
+        page.locator('#camera-profile-name').fill('Evening')
+        page.locator('#camera-profile-save').click()
+        expect(page.locator('#camera-profile-select')).to_have_value('Evening')
+        self.assertEqual(self.profiles['Evening']['device'], 'cam-a')
+        page.locator('#camera-target-double').click()
+        expect(page.locator('#camera-target-status')).to_contain_text('Autodarts calibration')
+        page.locator('#camera-calibration-start').click()
+        expect(page.locator('#camera-calibration-cancel')).to_be_enabled()
+        for name, value in {'x': .2, 'y': .25, 'width': .15, 'height': .2}.items():
+            self.assertAlmostEqual(self.advanced_writes[-1]['roi'][name], value)
+        expect(gain).to_be_disabled()
+        page.locator('#camera-calibration-cancel').click()
+        expect(page.locator('#camera-calibration-status')).to_contain_text('Previous controls restored')
+        self.job.update(state='review', proposal={'gain': 5}, baseline_score=100, proposed_score=120,
+                        samples=[{'values': {}, 'score': 100, 'brightness': 128, 'clipped_dark': 0, 'clipped_bright': 0}],
+                        message='Previous controls restored. Review proposal')
+        expect(page.locator('#camera-calibration-apply')).to_be_enabled(timeout=5000)
+        expect(page.locator('#camera-calibration-proposal')).to_contain_text('gain: 5')
+        page.locator('#camera-calibration-apply').click()
+        expect(page.locator('#camera-calibration-status')).to_contain_text('Calibration controls applied')
+        page.locator('[data-camera="1"]').click()
+        expect(page.locator('#camera-controls-legend')).to_have_text('Camera 2', timeout=5000)
+        expect(page.locator('#camera-profile-select option')).to_have_count(1)
 
     def open_workspace(self):
         self.page.goto('https://oche.test/autodarts/cameras')

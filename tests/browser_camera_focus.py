@@ -167,6 +167,24 @@ class CameraFocusTests(unittest.TestCase):
         self.assertTrue(all(sample['trend'] == 'steady' for sample in result))
         self.assertTrue(all(0 <= sample['relative'] <= 1 for sample in result))
 
+    def test_detail_filters_preserve_source_and_highlight_edges(self):
+        result = self.page.evaluate("""() => {
+            const image = makeImage(32, 24, (x, y) => x < 16 ? 50 : 205);
+            const before = Array.from(image.data);
+            const edges = OcheCameraFocus.filterDetail(image, 'edges');
+            const heat = OcheCameraFocus.filterDetail(image, 'heatmap');
+            const flat = (12 * 32 + 4) * 4, wire = (12 * 32 + 15) * 4;
+            return {unchanged: before.every((v, i) => v === image.data[i]),
+                flat: edges.data[flat], edge: edges.data[wire],
+                colored: heat.data[wire] !== heat.data[wire + 2],
+                alpha: edges.data[wire + 3]};
+        }""")
+        self.assertTrue(result['unchanged'])
+        self.assertEqual(result['flat'], 0)
+        self.assertGreater(result['edge'], 100)
+        self.assertTrue(result['colored'])
+        self.assertEqual(result['alpha'], 255)
+
 
 if __name__ == '__main__':
     unittest.main()

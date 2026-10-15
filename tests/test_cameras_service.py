@@ -296,8 +296,10 @@ class CameraServiceTests(unittest.IsolatedAsyncioTestCase):
     async def test_save_timeout_requires_reload_instead_of_claiming_failure(self):
         payload = await self.payload()
         payload.update(width=640, height=480, fps=20)
-        self.patch_delay = .1
-        with patch.object(cameras, "REQUEST_TIMEOUT", aiohttp.ClientTimeout(total=.04)), self.assertRaises(cameras.CameraError) as raised:
+        # Leave enough time for the four initial GETs on Windows; only the
+        # deliberately delayed PATCH should time out.
+        self.patch_delay = 1
+        with patch.object(cameras, "REQUEST_TIMEOUT", aiohttp.ClientTimeout(total=.3)), self.assertRaises(cameras.CameraError) as raised:
             await cameras.apply_settings(payload)
         self.assertEqual(raised.exception.status_code, 503)
         self.assertIn("Reload", raised.exception.detail)

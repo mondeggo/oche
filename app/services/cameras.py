@@ -33,9 +33,7 @@ class CameraError(Exception):
         self.detail = detail
 
 
-def _api_base() -> str:
-    if autodarts.get_status().get("status") != "running":
-        raise CameraError(503, "Start Autodarts in Supervisor to use the camera tools.")
+def _config_path():
     # The running daemon uses this link (or the native configuration directory).
     # Reading its target also respects the user's choice to reuse host settings.
     path = autodarts.CONFIG_LINK / "config.toml"
@@ -43,6 +41,13 @@ def _api_base() -> str:
         host = autodarts.HOST_CONFIG_DIR / "config.toml"
         reuse = os.environ.get("OCHE_REUSE_AUTODARTS_CONFIG", "true").strip().lower() == "true"
         path = host if reuse and host.is_file() else autodarts.AUTODARTS_DIR / "config.toml"
+    return path
+
+
+def _api_base() -> str:
+    if autodarts.get_status().get("status") != "running":
+        raise CameraError(503, "Start Autodarts in Supervisor to use the camera tools.")
+    path = _config_path()
     try:
         if path.is_file():
             with path.open("rb") as stream:
@@ -279,8 +284,11 @@ def _validate_payload(payload: dict) -> dict:
 
 
 async def apply_settings(payload: dict) -> dict:
+    from app.services import camera_controls
+    camera_controls.idle()
     desired = _validate_payload(payload)
     async with _settings_lock:
+        camera_controls.idle()
         base = _api_base()
         async with aiohttp.ClientSession(timeout=REQUEST_TIMEOUT, trust_env=False) as session:
             current, identities = await _data(session, base)
@@ -311,6 +319,7 @@ async def apply_settings(payload: dict) -> dict:
             result, _ = await _data(session, base)
             if result["revision"] != _revision(desired):
                 raise CameraError(409, "Camera settings changed while saving. Reload them to see the current values.")
+            camera_controls.invalidate_review()
             return result
 
 

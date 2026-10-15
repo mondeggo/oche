@@ -12,7 +12,7 @@ ARG OCHE_VERSION
 RUN apt-get update && apt-get install -y --no-install-recommends \
   curl ca-certificates openssl \
   libgl1 libglib2.0-0 libusb-1.0-0 libasound2 libpulse0 \
-  udev libcap2-bin \
+  udev libcap2-bin v4l-utils \
   && rm -rf /var/lib/apt/lists/*
 
 # Fetch the official v2 headless bundle. Oche supervises `autodarts run`;
