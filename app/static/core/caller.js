@@ -1,0 +1,529 @@
+import { tr } from "../js/i18n.mjs";
+import { $, api, poll, callerTestState } from "./client.mjs";
+import { sourceControls } from "./sources.mjs";
+import {
+  page,
+  notice,
+  setIntegrationEnabled,
+  registerProfileEditor,
+  profileChanging,
+} from "./app.js";
+
+/* The service selects calls. This optional player only plays the supplied local clips. */
+(() => {
+  let voices = [],
+    config = null,
+    current = null,
+    dirty = false,
+    working = false,
+    polling = null;
+  let voiceChanged = false,
+    settingsTimer = null,
+    settingsSave = null,
+    settingsError = "",
+    catalogueSignature = "",
+    catalogueVersion = "",
+    stateRevision = 0;
+  const pendingSettings = {};
+  const sources = sourceControls("caller", (key, value) => {
+    stateRevision += 1;
+    pendingSettings[key] = value;
+    dirty = true;
+    settingsError = "";
+    clearTimeout(settingsTimer);
+    settingsTimer = setTimeout(saveSettings, 500);
+    voiceState();
+  });
+  let configurationETag = null;
+  let saveConflict = false;
+  let context = null,
+    socket = null,
+    source = null,
+    audioQueue = [],
+    playing = false,
+    generation = 0;
+  const flags = [
+    "turn_totals",
+    "checkouts",
+    "players",
+    "include_bots",
+    "local_only",
+  ];
+  const languages = new Intl.DisplayNames([document.documentElement.lang], { type: "language" });
+
+  function error(message = "") {
+    for (const id of ["caller-error", "caller-integration-error"]) {
+      $(id).textContent = message;
+      $(id).hidden = !message;
+    }
+  }
+
+  function options(selected) {
+    const language = $("caller-language").value;
+    const select = $("caller-voice");
+    select.replaceChildren(new Option(tr("Choose a voice"), ""));
+    voices
+      .filter((v) => v.language === language)
+      .forEach((v) => {
+        select.add(
+          new Option(
+            `${v.name} · ${v.provider}${v.installed ? " · Installed" : ""}`,
+            v.id,
+          ),
+        );
+      });
+    select.value = selected || "";
+    voiceState();
+  }
+
+  function voiceState() {
+    sources.render(config && { ...config, ...pendingSettings }, working || saveConflict);
+    $("caller-form").inert = !config;
+    $("caller-language").disabled = $("caller-voice").disabled = working;
+    const voice = voices.find((v) => v.id === $("caller-voice").value);
+    const download = current?.download;
+    const installing = ["downloading", "installing"].includes(download?.state);
+    $("caller-retry").hidden =
+      !current?.voice ||
+      installing ||
+      (current.installed && download?.state !== "error");
+    $("caller-retry").disabled = working || dirty;
+    $("caller-preview").hidden = !voice;
+    if (voice) $("caller-preview").href = voice.preview_url;
+    $("caller-download").textContent = installing
+      ? `${download.state === "installing" ? "Installing" : "Downloading"} voice… ${Math.round(download.bytes / 1048576)} MiB${download.total ? ` / ${Math.round(download.total / 1048576)} MiB` : ""}`
+      : download?.error ||
+        (voice?.installed
+          ? tr("Installed locally. Ready to use.")
+          : tr("Choose Download and use voice. The previous pack is removed when the new one is ready."));
+    $("caller-save").disabled =
+      working ||
+      !voiceChanged ||
+      !config ||
+      !voice ||
+      (installing && voice.id !== current.voice);
+    $("caller-save").textContent = voice?.installed
+      ? tr("Use voice")
+      : tr("Download and use voice");
+    $("caller-unsaved").hidden = !voiceChanged;
+    $("caller-autosave").textContent =
+      settingsError ||
+      (settingsSave
+        ? tr("Saving settings…")
+        : Object.keys(pendingSettings).length
+          ? tr("Waiting to save settings…")
+          : tr("Volume, output and announcements save automatically."));
+    $("caller-autosave").classList.toggle("error", !!settingsError);
+    $("caller-settings-retry").hidden = !settingsError;
+    const test = callerTestState(current, { voiceChanged, dirty, working });
+    $("caller-test").disabled = test.disabled;
+    $("caller-test").textContent = test.label;
+    $("caller-test").setAttribute(
+      "aria-busy",
+      String(["downloading", "installing"].includes(current?.download?.state)),
+    );
+    const installedVoice = voices.find((item) => item.id === current?.voice);
+    $("caller-test-status").textContent =
+      !test.disabled && installedVoice
+        ? `${installedVoice.name} · ${test.message}`
+        : test.message;
+    $("caller-test-call").disabled = test.disabled;
+    $("caller-settings-retry").textContent = saveConflict
+      ? tr("Discard changes and reload")
+      : tr("Retry saving");
+  }
+
+  function fill(value) {
+    config = value;
+    if (dirty) return;
+    const signature = JSON.stringify([voices, value]);
+    if (signature === catalogueSignature) return;
+    catalogueSignature = signature;
+    const voice = voices.find((v) => v.id === value.voice);
+    const previous = $("caller-language").value;
+    $("caller-language").replaceChildren();
+    [...new Set(voices.map((v) => v.language))].sort().forEach((code) => {
+      $("caller-language").add(new Option(languages.of(code), code));
+    });
+    $("caller-language").value = voice?.language || previous || "en-GB";
+    options(value.voice);
+    $("caller-volume").value = Math.round(value.volume * 100);
+    $("caller-output").value = value.output;
+    $("caller-darts").value = value.darts;
+    flags.forEach((key) => {
+      $("caller-" + key).checked = value[key];
+    });
+  }
+
+  function saveSettings() {
+    if (
+      working ||
+      settingsSave ||
+      saveConflict ||
+      !Object.keys(pendingSettings).length
+    )
+      return;
+    if (!$("caller-form").checkValidity()) {
+      settingsError = tr("Enter a volume from 0 to 100 to save your settings.");
+      voiceState();
+      return;
+    }
+    const values = { ...pendingSettings };
+    settingsSave = (async () => {
+      try {
+        const saved = await api("/api/caller", "PATCH", values, {
+          etag: configurationETag,
+          metadata: true,
+        });
+        configurationETag = saved.etag;
+        stateRevision += 1;
+        Object.assign(config, values);
+        for (const [key, value] of Object.entries(values)) {
+          if (pendingSettings[key] === value) delete pendingSettings[key];
+        }
+        settingsError = "";
+      } catch (cause) {
+        saveConflict = cause.status === 412;
+        settingsError = tr("Not saved: {0}", {"0": (cause.message)});
+      } finally {
+        settingsSave = null;
+        dirty = voiceChanged || !!Object.keys(pendingSettings).length;
+        voiceState();
+        if (Object.keys(pendingSettings).length && !settingsError) {
+          settingsTimer = setTimeout(saveSettings, 500);
+        }
+      }
+    })();
+    voiceState();
+    return settingsSave;
+  }
+
+  function stopAudio() {
+    generation++;
+    audioQueue = [];
+    if (source) {
+      source.stop();
+      source = null;
+    }
+  }
+
+  async function playQueue() {
+    if (playing || !context || context.state !== "running") return;
+    playing = true;
+    try {
+      while (audioQueue.length) {
+        const item = audioQueue.shift(),
+          version = generation;
+        if (item.expires_at * 1000 < Date.now()) continue;
+        for (const clip of item.clips) {
+          if (version !== generation || item.expires_at * 1000 < Date.now())
+            break;
+          const response = await fetch(clip.url, {
+            signal: AbortSignal.timeout(10000),
+          });
+          if (!response.ok)
+            throw new Error(
+              tr("Cannot load a voice clip. Check the installed pack."),
+            );
+          const buffer = await context.decodeAudioData(
+            await response.arrayBuffer(),
+          );
+          if (version !== generation) break;
+          const node = context.createBufferSource(),
+            gain = context.createGain();
+          source = node;
+          node.buffer = buffer;
+          gain.gain.value = item.volume;
+          node.connect(gain).connect(context.destination);
+          await new Promise((resolve) => {
+            node.onended = resolve;
+            node.start();
+            node.stop(context.currentTime + Math.min(buffer.duration, 12));
+          });
+          if (source === node) source = null;
+        }
+      }
+    } catch (cause) {
+      stopAudio();
+      $("caller-browser-state").textContent = tr(cause.message);
+    } finally {
+      playing = false;
+    }
+  }
+
+  function syncPlayer() {
+    const wanted =
+      context &&
+      current?.enabled &&
+      ["browser", "both"].includes(current?.output);
+    $("caller-browser").hidden = !["browser", "both"].includes(current?.output);
+    if (!wanted) {
+      stopAudio();
+      if (socket) {
+        const old = socket;
+        socket = null;
+        old.close();
+      }
+      return;
+    }
+    if (socket) return;
+    const ws = new WebSocket(
+      `${location.protocol === "https:" ? "wss:" : "ws:"}//${location.host}/caller/audio`,
+    );
+    socket = ws;
+    ws.onopen = () => {
+      $("caller-browser-state").textContent = tr("Sound enabled on this browser");
+    };
+    ws.onmessage = (event) => {
+      const item = JSON.parse(event.data);
+      if (item.type === "stop") return stopAudio();
+      if (item.type !== "play") return;
+      if (audioQueue.length >= 16) audioQueue.shift();
+      audioQueue.push(item);
+      playQueue();
+    };
+    ws.onclose = () => {
+      if (socket !== ws) return;
+      socket = null;
+      stopAudio();
+      $("caller-browser-state").textContent =
+        tr("Sound disconnected. Reconnecting…");
+    };
+  }
+
+  async function refreshCaller(force = false) {
+    if (working || polling || (profileChanging && force !== true))
+      return polling;
+    const revision = stateRevision;
+    polling = (async () => {
+      try {
+        const response = await api("/api/caller/status", "GET", undefined, {
+          metadata: true,
+        });
+        current = response.data;
+        if (!config && !dirty) configurationETag = response.etag;
+        setIntegrationEnabled("caller", current.enabled);
+        $("caller-toggle").disabled = false;
+        $("caller-toggle").setAttribute(
+          "aria-checked",
+          String(current.enabled),
+        );
+        $("caller-toggle-label").textContent = current.enabled ? tr("On") : tr("Off");
+        $("caller-settings").hidden = !current.enabled;
+        $("caller-state").textContent = ["downloading", "installing"].includes(
+          current.download.state,
+        )
+          ? tr("Preparing voice…")
+          : current.error
+            ? tr("Needs attention")
+            : current.installed
+              ? tr("Ready")
+              : current.voice
+                ? tr("Voice unavailable")
+                : tr("Choose a voice");
+        $("overview-caller").textContent = !current.enabled
+          ? tr("Disabled")
+          : $("caller-state").textContent;
+        error(current.error || "");
+        if (page === "caller" || !config || (!dirty && response.etag !== configurationETag)) {
+          const version = `${current.voice}:${current.installed}:${current.download.state}`;
+          const loadVoices = page === "caller" && catalogueVersion !== version;
+          const [catalogue, settings] = await Promise.all([
+            loadVoices ? api("/api/caller/voices") : voices,
+            api("/api/caller", "GET", undefined, { metadata: true }),
+          ]);
+          voices = catalogue;
+          if (loadVoices) catalogueVersion = version;
+          if (revision === stateRevision && !dirty) {
+            fill(settings.data);
+            configurationETag = settings.etag;
+          }
+        }
+        voiceState();
+        const last = current.recent_calls.at(-1);
+        $("caller-recent").textContent = current.missing_sounds.length
+          ? tr("Not in this pack: {0}", {"0": (current.missing_sounds.join(", "))})
+          : last
+            ? tr("Last call: {0}", {"0": (last.sounds.join(" · "))})
+            : tr("No calls yet.");
+        syncPlayer();
+      } catch (cause) {
+        error(cause.message || tr("Cannot reach Caller."));
+        $("caller-toggle").disabled =
+          $("caller-test").disabled =
+          $("caller-save").disabled =
+            true;
+        $("overview-caller").textContent = tr("Unavailable");
+      }
+    })().finally(() => {
+      polling = null;
+    });
+    return polling;
+  }
+
+  async function change(work) {
+    if (working || profileChanging) return;
+    working = true;
+    clearTimeout(settingsTimer);
+    $("caller-toggle").disabled = true;
+    voiceState();
+    try {
+      await polling;
+      await settingsSave;
+      await work();
+    } catch (cause) {
+      notice(cause.message, true);
+    } finally {
+      working = false;
+      await refreshCaller();
+      if (Object.keys(pendingSettings).length && !settingsError)
+        settingsTimer = setTimeout(saveSettings, 500);
+    }
+  }
+
+  $("caller-toggle").addEventListener("click", () =>
+    change(async () => {
+      if (dirty)
+        throw new Error(
+          tr("Apply your Caller changes before toggling the integration."),
+        );
+      const latest = await api("/api/caller", "GET", undefined, {
+        metadata: true,
+      });
+      const enabled = !latest.data.enabled;
+      const saved = await api(
+        "/api/caller",
+        "PATCH",
+        { enabled },
+        { etag: latest.etag, metadata: true },
+      );
+      configurationETag = saved.etag;
+      fill({ ...latest.data, enabled });
+      setIntegrationEnabled("caller", enabled);
+      if (enabled) window.ocheNavigate("/integrations/caller");
+    }),
+  );
+  $("caller-language").addEventListener("change", () => options(""));
+  function editSettings(event) {
+    stateRevision += 1;
+    const key = event.target.id.replace("caller-", "");
+    if (["language", "voice"].includes(key)) {
+      voiceChanged = $("caller-voice").value !== config?.voice;
+    } else if (["volume", "output", "darts", ...flags].includes(key)) {
+      pendingSettings[key] =
+        key === "volume"
+          ? Number(event.target.value) / 100
+          : flags.includes(key)
+            ? event.target.checked
+            : event.target.value;
+      settingsError = "";
+      clearTimeout(settingsTimer);
+      settingsTimer = setTimeout(saveSettings, 500);
+    } else return;
+    dirty = voiceChanged || !!Object.keys(pendingSettings).length;
+    voiceState();
+  }
+  $("caller-form").addEventListener("input", editSettings);
+  $("caller-form").addEventListener("change", editSettings);
+  $("caller-settings-retry").addEventListener("click", async () => {
+    if (!saveConflict) return saveSettings();
+    Object.keys(pendingSettings).forEach((key) => delete pendingSettings[key]);
+    saveConflict = false;
+    settingsError = "";
+    voiceChanged = dirty = false;
+    catalogueSignature = "";
+    await refreshCaller();
+  });
+  $("caller-form").addEventListener("submit", (event) => {
+    event.preventDefault();
+    change(async () => {
+      const values = { voice: $("caller-voice").value };
+      const saved = await api("/api/caller", "PATCH", values, {
+        etag: configurationETag,
+        metadata: true,
+      });
+      configurationETag = saved.etag;
+      stateRevision += 1;
+      voiceChanged = false;
+      dirty = !!Object.keys(pendingSettings).length;
+      notice(
+        tr("Voice selected. Download progress appears below the voice selector."),
+      );
+    });
+  });
+  $("caller-retry").addEventListener("click", () =>
+    change(async () => {
+      await api(
+        `/api/caller/voices/${encodeURIComponent(current.voice)}/install`,
+        "POST",
+        undefined,
+        { etag: configurationETag },
+      );
+    }),
+  );
+  $("caller-browser").addEventListener("click", async () => {
+    try {
+      context ||= new AudioContext();
+      await context.resume();
+      syncPlayer();
+    } catch {
+      $("caller-browser-state").textContent =
+        tr("This browser could not enable audio.");
+    }
+  });
+  $("caller-test").addEventListener("click", () =>
+    change(async () => {
+      const call = $("caller-test-call").value;
+      await api("/api/caller/test", "POST", {
+        call,
+        score: call === "checkout" ? 40 : 180,
+      });
+    }),
+  );
+  $("caller-stop").addEventListener("click", () =>
+    change(async () => {
+      stopAudio();
+      await api("/api/caller/stop", "POST");
+    }),
+  );
+  registerProfileEditor(tr("Caller"), {
+    async prepare() {
+      if (working) throw new Error(tr("Wait for the Caller action to finish."));
+      await polling;
+      clearTimeout(settingsTimer);
+      await settingsSave;
+      await saveSettings();
+      if (voiceChanged)
+        throw new Error(
+          tr("Apply your selected Caller voice before changing profiles."),
+        );
+      if (Object.keys(pendingSettings).length)
+        throw new Error(settingsError || tr("Save your Caller changes first."));
+    },
+    lock() {
+      $("caller-form").inert = true;
+    },
+    async reload(applied) {
+      $("caller-form").inert = false;
+      if (applied) {
+        catalogueSignature = "";
+        stateRevision += 1;
+      }
+      await refreshCaller(true);
+      voiceState();
+    },
+  });
+  window.addEventListener("hashchange", refreshCaller);
+  window.addEventListener("oche:route", refreshCaller);
+  window.addEventListener("pagehide", () => {
+    stopAudio();
+    socket?.close();
+  });
+  window.addEventListener("beforeunload", (event) => {
+    if (Object.keys(pendingSettings).length || settingsSave) {
+      event.preventDefault();
+      event.returnValue = "";
+    }
+  });
+  poll(refreshCaller, { background: true });
+})();

@@ -1,0 +1,1313 @@
+/* Home reads the shared Oche tokens from theme.css; these names map them for its controls. */
+.core-workspace .play-sources { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-block: 12px; }
+.core-workspace .play-sources .hint { margin: 0; }
+.core-workspace .play-sources > .hint { flex-basis: 100%; }
+.core-workspace .play-sources [data-play-source-state] { min-width: 2em; color: var(--muted); }
+.core-workspace .play-sources button[aria-checked="true"] { background: var(--selected-bg); color: var(--selected-fg); border-color: var(--primary); }
+.core-workspace {
+  font-family: "Segoe UI", Roboto, system-ui, sans-serif;
+  color: var(--text);
+  background: var(--background);
+  --background: var(--bg);
+  --surface: var(--card);
+  --text: var(--fg);
+  --muted: var(--fg-dim);
+  --button: var(--surface-2);
+  --button-border: var(--border-strong);
+  --input: var(--bg-inset);
+  --control-border: var(--input-border);
+  --hover: var(--surface-hover);
+  --hover-border: var(--input-border);
+  --primary-text: var(--on-primary);
+  --focus: var(--focus-ring);
+  --selected: var(--selected-bg);
+  --selected-text: var(--selected-fg);
+  --badge: var(--surface-2);
+  --badge-text: var(--fg-dim);
+  --success: var(--success-soft);
+  --success-text: var(--success-bright);
+  --warning: var(--warning-soft);
+  --warning-text: var(--warning-fg);
+  --error: var(--danger-bright);
+  --inset: var(--bg-inset);
+  --disabled: var(--surface-2);
+  --disabled-text: var(--fg-dim);
+  --online: var(--success-bright);
+  --offline: var(--fg-dim);
+}
+.core-workspace * {
+  box-sizing: border-box;
+}
+.core-workspace [hidden] {
+  display: none !important;
+}
+.core-workspace {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.5;
+}
+.core-workspace a {
+  color: var(--link);
+  text-underline-offset: 3px;
+}
+.core-workspace button,
+.core-workspace input,
+.core-workspace select {
+  font: inherit;
+}
+.core-workspace button,
+.core-workspace .button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 9px 16px;
+  border: 1px solid var(--button-border);
+  border-radius: var(--radius-sm);
+  background: var(--button);
+  color: var(--text);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.core-workspace button:hover,
+.core-workspace .button:hover {
+  background: var(--hover);
+  border-color: var(--hover-border);
+}
+.core-workspace .primary {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--primary-text);
+}
+.core-workspace .primary:hover {
+  background: var(--primary-hover);
+  border-color: var(--primary-hover);
+}
+.core-workspace button:disabled,
+.core-workspace input:disabled,
+.core-workspace select:disabled {
+  background: var(--disabled);
+  border-color: var(--border);
+  color: var(--disabled-text);
+  opacity: 1;
+  cursor: default;
+}
+.core-workspace :focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+}
+.core-workspace .skip-link {
+  position: fixed;
+  top: -70px;
+  left: 16px;
+  z-index: 2;
+  padding: 12px;
+  background: var(--surface);
+}
+.core-workspace .skip-link:focus {
+  top: 12px;
+}
+.core-workspace .eyebrow {
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  font-weight: 650;
+}
+.core-workspace .switch {
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  font-size: 13px;
+}
+.core-workspace .switch-track {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  width: 32px;
+  height: 20px;
+  padding: 2px;
+  border: 1px solid var(--muted);
+  border-radius: 20px;
+  background: var(--inset);
+}
+.core-workspace .switch-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--muted);
+}
+.core-workspace .switch[aria-checked="true"] .switch-track {
+  border-color: var(--primary);
+  background: var(--primary);
+}
+.core-workspace .switch[aria-checked="true"] .switch-thumb {
+  transform: translateX(12px);
+  background: var(--primary-text);
+}
+.core-workspace .core-main {
+  width: 100%;
+  min-width: 0;
+  max-width: 1120px;
+  margin-inline: auto;
+  padding: 42px 40px 64px;
+}
+.core-workspace .page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+  margin-bottom: 30px;
+}
+.core-workspace .eyebrow {
+  margin: 0 0 8px;
+}
+.core-workspace h1 {
+  margin: 0;
+  font-size: 30px;
+  line-height: 1.2;
+  font-weight: 650;
+  letter-spacing: -0.8px;
+}
+.core-workspace h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 650;
+}
+.core-workspace p {
+  margin: 8px 0 0;
+}
+.core-workspace .muted,
+.core-workspace .hint,
+.core-workspace dt {
+  color: var(--muted);
+}
+.core-workspace .hint {
+  font-size: 13px;
+}
+.core-workspace .text-link {
+  font-size: 13px;
+  white-space: nowrap;
+}
+.core-workspace .panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+  margin-bottom: 16px;
+}
+.core-workspace .panel-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+.core-workspace .badge {
+  display: inline-block;
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--badge);
+  color: var(--badge-text);
+  white-space: nowrap;
+}
+.core-workspace .badge[data-tone="good"] {
+  background: var(--success);
+  color: var(--success-text);
+}
+.core-workspace .badge[data-tone="warning"] {
+  background: var(--warning);
+  color: var(--warning-text);
+}
+.core-workspace .board-panel {
+  border-top: 3px solid var(--accent);
+}
+.core-workspace .board-name {
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -0.6px;
+  overflow-wrap: anywhere;
+}
+.core-workspace .board-panel .button {
+  margin-top: 24px;
+}
+.core-workspace .metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin: 0;
+}
+.core-workspace .metrics dt {
+  font-size: 13px;
+}
+.core-workspace .metrics dd {
+  margin: 10px 0 0;
+  font-size: 20px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.core-workspace .metrics a {
+  display: block;
+  margin-top: 10px;
+  font-size: 12px;
+}
+.core-workspace .compact-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+.core-workspace .compact-panel p {
+  font-size: 13px;
+}
+.core-workspace .compact-panel .button {
+  flex-shrink: 0;
+}
+.core-workspace .integration-list {
+  padding: 0 25px;
+}
+.core-workspace .integration-row {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 25px 0;
+}
+.core-workspace .integration-row + .integration-row {
+  border-top: 1px solid var(--border);
+}
+.core-workspace .integration-description {
+  flex: 1;
+}
+.core-workspace .integration-description h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.core-workspace .integration-row p {
+  font-size: 13px;
+}
+.core-workspace .integration-controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 13px;
+}
+.core-workspace .integration-controls .switch {
+  min-width: 100px;
+}
+.core-workspace .actions,
+.core-workspace .field-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.core-workspace .actions {
+  margin-top: 22px;
+}
+.core-workspace label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  margin: 18px 0 7px;
+}
+.core-workspace input,
+.core-workspace select {
+  width: 100%;
+  min-height: 43px;
+  border: 1px solid var(--control-border);
+  border-radius: 6px;
+  padding: 10px 12px;
+  background: var(--input);
+  color: inherit;
+}
+.core-workspace .field-row select {
+  flex: 1;
+  min-width: 0;
+}
+.core-workspace input::placeholder {
+  color: var(--muted);
+  opacity: 1;
+}
+.core-workspace .advanced {
+  margin-top: 24px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
+}
+.core-workspace summary {
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+}
+.core-workspace .device {
+  margin-top: 24px;
+  padding: 20px;
+  border-radius: var(--radius-sm);
+  background: var(--inset);
+}
+.core-workspace #user-code {
+  display: block;
+  margin: 16px 0;
+  font:
+    28px ui-monospace,
+    monospace;
+  letter-spacing: 3px;
+}
+.core-workspace .detail-list {
+  font-size: 13px;
+  margin: 18px 0 0;
+}
+.core-workspace .detail-list > div {
+  display: flex;
+  gap: 24px;
+  padding: 7px 0;
+}
+.core-workspace .detail-list dt {
+  flex-shrink: 0;
+  width: 65px;
+}
+.core-workspace .detail-list dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.core-workspace .notice,
+.core-workspace .warning {
+  margin-bottom: 20px;
+  padding: 12px 16px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+}
+.core-workspace .notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  background: var(--success);
+  color: var(--success-text);
+}
+.core-workspace .notice.error,
+.core-workspace .warning {
+  background: var(--warning);
+  color: var(--warning-text);
+}
+.core-workspace .quiet {
+  padding: 0 8px;
+  min-height: 30px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-size: 20px;
+}
+.core-workspace .error {
+  color: var(--error);
+}
+.core-workspace .stream-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 8px;
+  background: var(--inset);
+}
+.core-workspace .stream-picker button {
+  background: transparent;
+  border-color: transparent;
+  min-height: 35px;
+  padding: 6px 12px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.core-workspace .stream-picker button[aria-pressed="true"] {
+  background: var(--surface);
+  border-color: var(--border);
+  color: var(--text);
+}
+.core-workspace .empty-state {
+  padding: 52px 8px;
+  text-align: center;
+}
+.core-workspace .empty-state p {
+  font-size: 13px;
+}
+.core-workspace #event-list details {
+  padding: 15px 0;
+  border-bottom: 1px solid var(--border);
+}
+.core-workspace #event-list summary {
+  overflow-wrap: anywhere;
+}
+.core-workspace .event-time {
+  margin-right: 15px;
+  font-weight: 400;
+  color: var(--muted);
+}
+.core-workspace pre {
+  padding: 15px;
+  border-radius: 6px;
+  background: var(--background);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.core-workspace .event-footer {
+  margin-top: 20px;
+}
+@media (max-width: 1000px) {.core-workspace .core-main {
+    padding: 32px 24px;
+  }
+.core-workspace .metrics {
+    gap: 10px;
+  }
+.core-workspace .metrics .panel {
+    padding: 18px;
+  }
+.core-workspace .metrics dd {
+    font-size: 17px;
+  }
+}
+@media (max-width: 760px) {.core-workspace .core-main {
+    padding: 26px 20px 40px;
+  }
+.core-workspace .page-header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 16px;
+  }
+.core-workspace h1 {
+    font-size: 27px;
+  }
+.core-workspace .panel {
+    padding: 20px;
+  }
+.core-workspace .compact-panel {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+.core-workspace .metrics {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+.core-workspace .metrics .panel {
+    margin-bottom: 12px;
+  }
+.core-workspace .integration-row {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+.core-workspace .integration-description {
+    flex-basis: 65%;
+  }
+.core-workspace .event-toolbar {
+    flex-wrap: wrap;
+  }
+}
+/* Shared integration forms */
+.core-workspace .wled-grid,
+.core-workspace .form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 18px;
+}
+.core-workspace .check-label,
+.core-workspace .checkbox {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.core-workspace .check-label {
+  margin: 0;
+}
+.core-workspace input[type="checkbox"] {
+  width: 17px;
+  min-height: 17px;
+  height: 17px;
+  flex-shrink: 0;
+  accent-color: var(--primary);
+}
+.core-workspace input[type="color"] {
+  width: 100%;
+  padding: 4px;
+  min-width: 48px;
+}
+@media (max-width: 600px) {.core-workspace .form-grid,
+.core-workspace .wled-grid {
+    grid-template-columns: 1fr;
+  }
+}
+/* WLED workspace */
+.core-workspace .wled-overview {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px 24px;
+  padding: 16px 24px;
+  border-top: 2px solid var(--accent);
+}
+.core-workspace .wled-live {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.core-workspace .wled-live .eyebrow {
+  margin-bottom: 6px;
+}
+.core-workspace #wled-phase {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.4px;
+}
+.core-workspace #wled-phase::before {
+  content: "";
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--offline);
+}
+.core-workspace #wled-phase[data-phase="ready"]::before {
+  background: var(--online);
+}
+.core-workspace #wled-phase[data-phase="takeout"]::before {
+  background: var(--warning-text);
+}
+.core-workspace #wled-phase[data-phase="waiting"]::before {
+  background: var(--accent);
+}
+.core-workspace .wled-workspace {
+  padding: 24px;
+}
+.core-workspace .wled-device-picker {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+}
+.core-workspace .wled-device-picker label {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+}
+.core-workspace .wled-device-picker select {
+  margin-top: 6px;
+}
+.core-workspace .wled-controller-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+}
+.core-workspace #wled-device-status {
+  flex: 1;
+  min-width: 180px;
+  display: grid;
+  gap: 3px;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.core-workspace .wled-connection-state {
+  color: var(--text);
+  font-weight: 600;
+  font-size: 13px;
+}
+.core-workspace .wled-connection-state::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 7px;
+  background: var(--offline);
+  border-radius: 50%;
+}
+.core-workspace .wled-connection-state[data-connected="true"]::before {
+  background: var(--online);
+}
+.core-workspace .wled-bar-live {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding-left: 14px;
+  border-left: 1px solid var(--border);
+}
+.core-workspace .wled-power {
+  display: inline-flex;
+  padding: 3px;
+  gap: 2px;
+  border: 1px solid var(--border);
+  background: var(--inset);
+  border-radius: 8px;
+}
+.core-workspace .wled-power button {
+  min-height: 32px;
+  padding: 5px 10px;
+  border-color: transparent;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+}
+.core-workspace .wled-power button[aria-pressed="true"] {
+  background: var(--surface);
+  color: var(--text);
+  border-color: var(--border);
+}
+.core-workspace #wled-probe {
+  font-size: 12px;
+  min-height: 40px;
+}
+.core-workspace .wled-connection {
+  margin-top: 16px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+}
+.core-workspace .wled-connection > summary {
+  color: var(--muted);
+  font-weight: 500;
+  font-size: 12px;
+}
+.core-workspace .wled-remove {
+  background: transparent;
+  color: var(--error);
+  border-color: transparent;
+  font-size: 12px;
+  padding-inline: 8px;
+}
+.core-workspace .wled-discovered-device {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+}
+.core-workspace .wled-discovered-device > div {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.core-workspace .wled-discovered-device .hint {
+  margin-top: 4px;
+}
+.core-workspace #wled-outputs-section {
+  margin-top: 24px;
+}
+.core-workspace #wled-outputs-section .panel-heading {
+  margin-bottom: 10px;
+}
+.core-workspace #wled-outputs-section .panel-heading .hint {
+  font-size: 11px;
+}
+.core-workspace #wled-outputs-section > .hint {
+  margin: 0 0 14px;
+  font-size: 12px;
+}
+.core-workspace .wled-outputs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+}
+.core-workspace .wled-outputs button {
+  display: grid;
+  grid-template-columns: 30px 1fr;
+  gap: 2px 10px;
+  justify-content: stretch;
+  align-items: center;
+  text-align: left;
+  padding: 16px;
+  border-color: var(--border);
+  background: var(--input);
+  border-radius: 10px;
+}
+.core-workspace .wled-outputs button strong {
+  font-size: 14px;
+}
+.core-workspace .wled-output-kind {
+  grid-column: 2;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+.core-workspace .wled-output-detail {
+  grid-column: 1 / -1;
+  margin-top: 12px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 400;
+}
+.core-workspace .wled-output-icon {
+  width: 26px;
+  height: 26px;
+  grid-row: 1 / 3;
+  border-radius: 50%;
+  border: 5px solid var(--border);
+}
+.core-workspace .wled-output-icon[data-mode="color"],
+.core-workspace .wled-output-icon[data-mode="color_white"] {
+  border: 0;
+  background: conic-gradient(#d96072, #d3af6b, #6baa90, #7b8bd0, #d96072);
+  mask: radial-gradient(circle, transparent 43%, #000 46%);
+}
+.core-workspace .wled-output-icon[data-mode="white"] {
+  border-color: #d5cba7;
+  box-shadow: 0 0 12px #cabc8b22;
+}
+.core-workspace .wled-outputs button[aria-pressed="true"] {
+  background: var(--selected);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+  color: var(--selected-text);
+}
+.core-workspace .wled-outputs button:hover {
+  border-color: var(--hover-border);
+}
+.core-workspace .wled-target-heading {
+  margin-top: 30px;
+}
+.core-workspace .wled-target-heading p {
+  margin-top: 3px;
+  font-size: 12px;
+}
+.core-workspace #wled-add-target {
+  font-size: 12px;
+  white-space: normal;
+}
+.core-workspace .wled-empty {
+  text-align: center;
+  background: var(--input);
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  padding: 28px 20px;
+}
+.core-workspace .wled-empty h3 {
+  margin: 6px 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+.core-workspace .wled-empty p {
+  color: var(--muted);
+  font-size: 13px;
+  max-width: 380px;
+  margin: 6px auto 0;
+}
+.core-workspace .wled-light-icon {
+  display: block;
+  font-size: 30px;
+  color: var(--brand);
+  line-height: 1.3;
+}
+.core-workspace #wled-no-device {
+  margin-top: 24px;
+}
+.core-workspace .wled-target {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin-top: 16px;
+  padding: 20px;
+}
+.core-workspace .wled-target > summary {
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+.core-workspace .wled-target-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 12px 0;
+}
+.core-workspace .wled-target-toolbar p {
+  margin: 0;
+  font-size: 12px;
+}
+.core-workspace .wled-target-toolbar label {
+  font-size: 12px;
+  white-space: nowrap;
+}
+.core-workspace .wled-target-setup {
+  padding-bottom: 16px;
+}
+.core-workspace .wled-editor-tabs {
+  display: flex;
+  gap: 22px;
+  border-bottom: 1px solid var(--border);
+}
+.core-workspace .wled-editor-tabs button {
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  color: var(--muted);
+  min-height: 40px;
+  padding: 8px 2px;
+  font-size: 13px;
+}
+.core-workspace .wled-editor-tabs button[aria-selected="true"] {
+  border-bottom-color: var(--accent);
+  color: var(--text);
+}
+.core-workspace .wled-editor-tabs button:hover {
+  color: var(--text);
+}
+.core-workspace .wled-section-intro {
+  font-size: 12px;
+  color: var(--muted);
+  margin: 16px 0;
+  max-width: 540px;
+}
+.core-workspace .wled-phase-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+.core-workspace .wled-appearance {
+  border-bottom: 1px solid var(--border);
+  padding: 14px 0;
+}
+.core-workspace .wled-rule-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.core-workspace .wled-rule-heading label {
+  margin: 0;
+  font-weight: 500;
+  font-size: 13px;
+  flex-direction: row-reverse;
+}
+.core-workspace .wled-rule-heading strong {
+  font-size: 14px;
+  font-weight: 600;
+}
+.core-workspace .wled-rule-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 12px;
+  margin-top: 14px;
+}
+.core-workspace .wled-rule-controls label {
+  margin: 0;
+  font-size: 11px;
+  flex: 0 0 66px;
+  min-width: 0;
+  font-weight: 500;
+}
+.core-workspace .wled-rule-controls input,
+.core-workspace .wled-rule-controls select {
+  margin-top: 5px;
+  min-height: 36px;
+  font-size: 12px;
+  padding: 7px 9px;
+}
+.core-workspace .wled-rule-controls [data-native-effect] {
+  flex: 1 1 140px;
+}
+.core-workspace .wled-rule-controls [data-colour-control] {
+  flex: 0 0 46px;
+}
+.core-workspace .wled-rule-controls input[type="color"] {
+  padding: 3px;
+  min-width: 0;
+  height: 36px;
+  cursor: pointer;
+}
+.core-workspace .wled-rule-controls button {
+  min-height: 36px;
+  padding: 7px 10px;
+  font-size: 11px;
+  font-weight: 500;
+}
+.core-workspace .wled-rule-controls .wled-brightness {
+  flex: 1 1 90px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+}
+.core-workspace .wled-brightness output {
+  grid-column: 2;
+  grid-row: 1;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.core-workspace .wled-rule-controls input[type="range"] {
+  grid-column: 1 / -1;
+  border: none;
+  min-width: 0;
+  width: 100%;
+  padding: 0;
+  min-height: 36px;
+  height: 36px;
+  accent-color: var(--accent);
+  background: transparent;
+}
+.core-workspace .wled-rule-controls label:has([data-value="name_filter"]) {
+  flex: 1 1 160px;
+}
+.core-workspace .wled-phase-card {
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--input);
+  border-top: 3px solid var(--phase-colour, var(--border));
+}
+.core-workspace .wled-phase-card[data-color-mode="white"] {
+  border-top-color: #d5cba7;
+}
+.core-workspace .wled-phase-card[data-color-mode="on_off"] {
+  border-top-color: var(--muted);
+}
+.core-workspace .wled-phase-card .wled-rule-heading {
+  display: block;
+}
+.core-workspace .wled-phase-card .wled-rule-heading p {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 4px;
+  min-height: 33px;
+}
+.core-workspace .wled-phase-card [data-native-effect] {
+  flex-basis: 100%;
+}
+.core-workspace .wled-phase-card [data-preview] {
+  flex: 1 0 100%;
+  background: transparent;
+  border-color: var(--border);
+  margin-top: 2px;
+}
+.core-workspace .wled-phase-card[aria-current="step"] {
+  border-color: var(--accent);
+}
+.core-workspace .wled-phase-card[aria-current="step"] .wled-rule-heading strong::after {
+  content: "NOW";
+  color: var(--selected-text);
+  background: var(--selected);
+  padding: 2px 5px;
+  border-radius: 3px;
+  font-size: 9px;
+  letter-spacing: 0.5px;
+  margin-left: 8px;
+}
+.core-workspace .wled-event-group {
+  margin-top: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0 16px;
+}
+.core-workspace .wled-event-group > summary {
+  padding: 16px 0;
+  font-size: 13px;
+}
+.core-workspace .wled-event-group .wled-appearance:first-of-type {
+  border-top: 1px solid var(--border);
+}
+.core-workspace .wled-event-group .wled-appearance:last-child {
+  border-bottom: 0;
+}
+.core-workspace .wled-save-bar {
+  margin-top: 20px;
+  padding: 12px 0;
+  border-top: 1px solid var(--border);
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  background: var(--surface);
+}
+@media (max-width: 1200px) {.core-workspace .wled-phase-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.core-workspace #wled-save-state {
+  font-size: 11px;
+}
+.core-workspace #wled-save-state[data-state="saved"]::before {
+  content: "✓";
+  color: var(--online);
+  margin-right: 6px;
+}
+.core-workspace .board-controls,
+.core-workspace .event-filters {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.core-workspace .board-phase {
+  font-size: 18px;
+}
+.core-workspace .board-phase::before {
+  content: "";
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--offline);
+  margin-right: 8px;
+}
+.core-workspace .board-phase[data-phase="ready"]::before {
+  background: var(--online);
+}
+.core-workspace .board-phase[data-phase="takeout"]::before {
+  background: var(--warning-text);
+}
+.core-workspace .board-phase[data-phase="waiting"]::before {
+  background: var(--accent);
+}
+.core-workspace .event-filters {
+  align-items: flex-end;
+  margin-bottom: 16px;
+}
+.core-workspace .event-filters label {
+  flex: 1;
+  margin: 0;
+  min-width: 180px;
+}
+.core-workspace .event-filters button[aria-pressed="true"] {
+  color: var(--selected-text);
+  background: var(--selected);
+}
+.core-workspace .event-copy {
+  margin: 8px 12px 0;
+  font-size: 12px;
+}
+.core-workspace .clipboard-buffer {
+  position: fixed;
+  left: -10000px;
+  top: 0;
+}
+@media (max-width: 1000px) {.core-workspace .wled-workspace {
+    padding: 20px;
+  }
+.core-workspace .wled-controller-bar {
+    gap: 10px;
+  }
+.core-workspace .wled-outputs {
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  }
+}
+@media (max-width: 600px) {.core-workspace .wled-overview {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+.core-workspace .wled-device-picker {
+    flex-wrap: wrap;
+  }
+.core-workspace .wled-device-picker label {
+    flex-basis: 100%;
+  }
+.core-workspace .wled-device-picker button {
+    flex: 1;
+  }
+.core-workspace .wled-controller-bar #wled-device-status {
+    flex-basis: 100%;
+  }
+.core-workspace .wled-controller-bar #wled-probe {
+    flex: 1;
+  }
+.core-workspace .wled-target {
+    padding: 14px;
+  }
+.core-workspace .wled-target-toolbar {
+    flex-wrap: wrap;
+  }
+.core-workspace .wled-target-toolbar p {
+    flex-basis: 100%;
+  }
+.core-workspace .wled-target-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 10px;
+  }
+.core-workspace .wled-editor-tabs {
+    gap: 18px;
+  }
+}
+@media (max-width: 440px) {.core-workspace .wled-phase-grid {
+    grid-template-columns: 1fr;
+  }
+.core-workspace .wled-outputs {
+    grid-template-columns: 1fr;
+  }
+.core-workspace .wled-phase-card .wled-rule-heading p {
+    min-height: 0;
+  }
+}
+/* A viewport-bounded menu keeps long WLED effect and segment names readable. */
+.core-workspace .select-menu {
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  padding: 8px;
+  border: 1px solid var(--control-border);
+  border-radius: 10px;
+  color: var(--text);
+  background: var(--surface);
+  box-shadow: 0 14px 40px #0003;
+  max-height: min(460px, calc(100dvh - 24px));
+  max-width: calc(100vw - 24px);
+  overflow: hidden;
+}
+.core-workspace .select-menu[open] {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.core-workspace .select-menu::backdrop {
+  background: transparent;
+}
+.core-workspace .select-menu-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-left: 6px;
+  flex-shrink: 0;
+  font-size: 12px;
+}
+.core-workspace .select-menu-heading button {
+  background: transparent;
+  border: 0;
+  min-height: 28px;
+  padding: 2px 8px;
+  color: var(--muted);
+  font-size: 20px;
+}
+.core-workspace .select-menu-search {
+  font-size: 13px;
+  flex-shrink: 0;
+  min-height: 38px;
+  padding: 8px 10px;
+}
+.core-workspace .select-menu-options {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+.core-workspace .select-menu-options button {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  min-height: 38px;
+  padding: 8px 10px;
+  font-size: 13px;
+  font-weight: 400;
+}
+.core-workspace .select-menu-options button[aria-selected="true"] {
+  color: var(--selected-text);
+  background: var(--selected);
+}
+.core-workspace .select-menu-options button[aria-selected="true"]::after {
+  content: "✓";
+}
+.core-workspace .select-menu-options button:hover:not(:disabled),
+.core-workspace .select-menu-options button[data-active="true"] {
+  border-color: var(--hover-border);
+  background: var(--hover);
+}
+.core-workspace .select-menu-options button:disabled {
+  color: var(--disabled-text);
+}
+.core-workspace .select-menu-empty {
+  margin: 8px;
+  font-size: 13px;
+  color: var(--muted);
+}
+/* Shared application controls */
+.core-workspace dialog {
+  width: min(540px, calc(100vw - 32px));
+  max-height: calc(100dvh - 48px);
+  padding: 24px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 20px 80px #0005;
+}
+.core-workspace dialog::backdrop {
+  background: #0008;
+}
+.core-workspace dialog .panel-heading {
+  margin-bottom: 16px;
+}
+.core-workspace #profile-import-preview {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+.core-workspace .danger {
+  color: var(--error);
+}
+.core-workspace .wled-target-toolbar p {
+  flex: 1;
+}
+.core-workspace .wled-target-toolbar .wled-remove {
+  border-color: var(--border);
+}
+.core-workspace .wled-target-setup .wled-grid {
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 1fr);
+}
+.core-workspace .wled-connection[open] {
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--inset);
+}
+.core-workspace .caller-test-controls {
+  align-items: center;
+}
+.core-workspace .caller-test-controls > label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+}
+.core-workspace .caller-test-controls select {
+  width: 165px;
+}
+@media (max-width: 600px) {.core-workspace .wled-target-setup .wled-grid {
+    grid-template-columns: 1fr;
+  }
+.core-workspace .caller-test-controls > label {
+    flex-basis: 100%;
+  }
+.core-workspace .caller-test-controls select {
+    flex: 1;
+  }
+}
+
+/* Integrations: AutoDarts connection first, then each integration as a card. */
+[data-theme="light"] .core-workspace .panel { box-shadow: 0 1px 2px var(--shadow); }
+.core-workspace .connection-card { border-top: 3px solid var(--accent); }
+.core-workspace .connection-title { display: flex; align-items: center; gap: 14px; }
+.core-workspace .connection-title .hint { margin: 2px 0 0; }
+.core-workspace .connection-logo { display: grid; place-items: center; flex: none; width: 40px; height: 40px; border-radius: var(--radius-sm); background: var(--inset); }
+.core-workspace .connection-logo img { width: 26px; height: 26px; }
+.core-workspace .connection-board { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border); font-size: 13px; }
+.core-workspace .section-heading { margin: 28px 0 12px; color: var(--muted); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; }
+.core-workspace .integration-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-bottom: 16px; }
+.core-workspace .integration-card { display: flex; flex-direction: column; margin: 0; }
+.core-workspace .integration-card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.core-workspace .integration-card-head h3 { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 17px; font-weight: 650; }
+.core-workspace .integration-card .muted { flex: 1; font-size: 13px; }
+.core-workspace .integration-card .switch { min-width: 104px; }
+.core-workspace .integration-card-link { align-self: flex-start; margin-top: 16px; font-size: 13px; font-weight: 600; }
+@media (max-width: 760px) {
+  .core-workspace .integration-grid { grid-template-columns: 1fr; }
+}
+.core-workspace .events-card { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 24px; color: inherit; text-decoration: none; }
+.core-workspace .events-card:hover { border-color: var(--border-strong); }
+.core-workspace .events-card h3 { margin: 0; font-size: 15px; font-weight: 650; }
+.core-workspace .events-card .muted { margin-top: 2px; font-size: 13px; }
+.core-workspace .events-card .integration-card-link { margin: 0; color: var(--link); text-decoration: underline; text-underline-offset: 3px; white-space: nowrap; }

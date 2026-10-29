@@ -15,7 +15,7 @@
   async function checkHTTPS() {
     try {
       const response = await fetch('/config/https/status', {cache: 'no-store'});
-      if (!response.ok) throw new Error('HTTPS status unavailable');
+      if (!response.ok) throw new Error(tr("HTTPS status unavailable"));
       const data = await response.json();
       if (data.running) {
         const trusted = data.mode === 'letsencrypt';
@@ -26,20 +26,20 @@
         const link = document.getElementById('play-https-open');
         link.href = url.href;
         link.hidden = false;
-        status.textContent = 'Your selected ' + (trusted ? 'domain' : 'local')
+        status.textContent = (tr("Your selected") + " ") + (trusted ? 'domain' : 'local')
           + ' HTTPS method is ready at ' + url.origin + '. Switch to HTTPS to continue.';
-        settings.textContent = 'HTTPS settings';
+        settings.textContent = tr("HTTPS settings");
         settings.classList.add('btn-neutral');
         document.getElementById('play-https-warning').hidden = trusted;
       } else if (data.enabled) {
-        status.textContent = 'Your selected HTTPS method is not running. Open HTTPS settings to check it and try again.';
-        settings.textContent = 'Check HTTPS settings';
+        status.textContent = tr("Your selected HTTPS method is not running. Open HTTPS settings to check it and try again.");
+        settings.textContent = tr("Check HTTPS settings");
       } else {
-        status.textContent = 'HTTPS is off. Choose and enable an HTTPS method in Settings to continue.';
+        status.textContent = tr("HTTPS is off. Choose and enable an HTTPS method in Settings to continue.");
       }
     } catch (_) {
-      status.textContent = 'Could not check your HTTPS settings. Open Settings to choose or check your HTTPS method.';
-      settings.textContent = 'HTTPS settings';
+      status.textContent = tr("Could not check your HTTPS settings. Open Settings to choose or check your HTTPS method.");
+      settings.textContent = tr("HTTPS settings");
     }
   }
 

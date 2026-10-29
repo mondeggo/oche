@@ -28,11 +28,11 @@
       method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body),
     });
     const data = await response.json();
-    if (!response.ok) throw new Error(typeof data.detail === 'string' ? data.detail : 'Could not update HTTPS.');
+    if (!response.ok) throw new Error(typeof data.detail === 'string' ? data.detail : tr("Could not update HTTPS."));
     return data;
   }
 
-  const date = value => value ? new Date(value).toLocaleString() : '';
+  const date = value => value ? new Date(value).toLocaleString(document.documentElement.lang) : '';
 
   function renderSetup() {
     if (!current) return;
@@ -45,24 +45,24 @@
     byId('https-activate-step').hidden = !prepared;
     byId('https-next-steps').hidden = Boolean(prepared);
     byId('https-next-steps').textContent = acme.prepared
-      ? 'Your details have changed. Select Prepare DNS records again to update the next steps.'
-      : 'Prepare your domain to see the DNS records and the next steps.';
+      ? tr("Your details have changed. Select Prepare DNS records again to update the next steps.")
+      : tr("Prepare your domain to see the DNS records and the next steps.");
     byId('https-record-name').textContent = acme.domain || '';
     byId('https-record-ip').textContent = acme.local_ip || '';
     byId('https-cname-name').textContent = acme.cname_name || '';
     byId('https-cname-target').textContent = acme.cname_target || '';
     byId('https-domain-fields').disabled = busy || !acme.available;
     byId('https-prepare').disabled = busy || Boolean(prepared);
-    byId('https-prepare').textContent = prepared ? 'DNS records prepared' : 'Prepare DNS records';
+    byId('https-prepare').textContent = prepared ? tr("DNS records prepared") : tr("Prepare DNS records");
     byId('https-domain-submit').disabled = busy || !acme.available || !prepared;
-    byId('https-domain-submit').textContent = active ? 'Check DNS and certificate' : 'Verify and activate domain HTTPS';
+    byId('https-domain-submit').textContent = active ? tr("Check DNS and certificate") : tr("Verify and activate domain HTTPS");
     byId('https-replace-registration').hidden = !prepared;
     byId('https-replace').disabled = busy || !acme.available;
     const domainLink = byId('https-domain-open');
     domainLink.hidden = !active;
     if (active) {
       domainLink.href = address('https:', current.port, current.domain, '/play');
-      domainLink.textContent = 'Open Play: ' + new URL(domainLink.href).origin;
+      domainLink.textContent = (tr("Open Play:") + " ") + new URL(domainLink.href).origin;
     }
   }
 
@@ -84,28 +84,28 @@
     }
     const trusted = data.mode === 'letsencrypt';
     const localActive = data.running && !trusted;
-    byId('https-state').textContent = data.running ? (trusted ? 'Domain HTTPS' : 'Local HTTPS') : data.enabled ? 'Needs attention' : 'Off';
+    byId('https-state').textContent = data.running ? (trusted ? tr("Domain HTTPS") : tr("Local HTTPS")) : data.enabled ? tr("Needs attention") : tr("Off");
     byId('https-local-active').hidden = !data.enabled || trusted;
     byId('https-domain-active').hidden = !data.enabled || !trusted;
     byId('https-local').disabled = busy || localActive;
-    byId('https-local').textContent = localActive ? 'Local HTTPS is active' : data.running ? 'Switch to local HTTPS' : 'Enable local HTTPS';
+    byId('https-local').textContent = localActive ? tr("Local HTTPS is active") : data.running ? tr("Switch to local HTTPS") : tr("Enable local HTTPS");
     byId('https-disable').hidden = !data.enabled;
     byId('https-disable').disabled = busy;
     byId('https-retry').hidden = !data.enabled || data.running;
     byId('https-retry').disabled = busy;
-    byId('https-retry').textContent = trusted ? 'Retry domain HTTPS' : 'Retry local HTTPS';
+    byId('https-retry').textContent = trusted ? tr("Retry domain HTTPS") : tr("Retry local HTTPS");
     byId('https-expiry').hidden = !data.running || !data.expires;
-    byId('https-expiry').textContent = data.expires ? 'Certificate expires: ' + date(data.expires) : '';
+    byId('https-expiry').textContent = data.expires ? (tr("Certificate expires:") + " ") + date(data.expires) : '';
     status.textContent = data.error || (data.running
-      ? trusted ? 'Domain HTTPS is active for ' + data.domain + '.' : 'Local HTTPS is active. Accept the certificate warning when you first connect in each browser.'
-      : data.enabled ? 'HTTPS could not start. Check your settings, then try again.' : 'HTTPS is off. Choose a method below to enable it.');
-    byId('https-connection').textContent = 'This page is using ' + (location.protocol === 'https:' ? 'HTTPS' : 'HTTP') + ': ' + location.origin;
+      ? trusted ? (tr("Domain HTTPS is active for") + " ") + data.domain + '.' : tr("Local HTTPS is active. Accept the certificate warning when you first connect in each browser.")
+      : data.enabled ? tr("HTTPS could not start. Check your settings, then try again.") : tr("HTTPS is off. Choose a method below to enable it."));
+    byId('https-connection').textContent = (tr("This page is using") + " ") + (location.protocol === 'https:' ? 'HTTPS' : 'HTTP') + ': ' + location.origin;
     const link = byId('https-open');
     const host = trusted ? data.domain : (data.local_ip || location.hostname);
     link.hidden = !data.running;
     if (data.running) {
       link.href = address('https:', data.port, host);
-      link.textContent = 'Open ' + (trusted ? 'domain' : 'local') + ' HTTPS: ' + new URL(link.href).origin;
+      link.textContent = (tr("Open") + " ") + (trusted ? 'domain' : 'local') + ' HTTPS: ' + new URL(link.href).origin;
       link.hidden = new URL(link.href).origin === location.origin;
     }
     const httpLink = byId('http-open');
@@ -113,24 +113,24 @@
     httpLink.href = address('http:', data.http_port, data.local_ip || location.hostname);
     byId('https-service').textContent = acme.server || 'https://auth.acme-dns.io';
     const phases = {
-      preparing: 'Setting up acme-dns and preparing your DNS records…',
-      issuing: 'Checking DNS and requesting your certificate. This may take a few minutes. You can leave this page while Oche finishes.',
-      renewing: 'Checking whether your domain certificate needs renewal…',
+      preparing: tr("Setting up acme-dns and preparing your DNS records…"),
+      issuing: tr("Checking DNS and requesting your certificate. This may take a few minutes. You can leave this page while Oche finishes."),
+      renewing: tr("Checking whether your domain certificate needs renewal…"),
     };
-    domainStatus.textContent = acme.busy ? phases[acme.phase] || 'Updating the certificate…'
-      : acme.error || acme.renewal_error || (!acme.available ? 'Domain certificates need a newer Oche installation. Update Oche, or rebuild its Docker image, to continue.'
-        : acme.last_success ? 'Last successful certificate check: ' + date(acme.last_success)
-          : acme.prepared ? 'Your DNS records are ready. Add both records to your DNS settings, then select Verify and activate domain HTTPS.' : '');
+    domainStatus.textContent = acme.busy ? phases[acme.phase] || tr("Updating the certificate…")
+      : acme.error || acme.renewal_error || (!acme.available ? tr("Domain certificates need a newer Oche installation. Update Oche, or rebuild its Docker image, to continue.")
+        : acme.last_success ? (tr("Last successful certificate check:") + " ") + date(acme.last_success)
+          : acme.prepared ? tr("Your DNS records are ready. Add both records to your DNS settings, then select Verify and activate domain HTTPS.") : '');
     byId('https-renewal-status').textContent = data.enabled && trusted
-      ? (acme.next_check ? 'Next automatic certificate check: ' + date(acme.next_check) : 'Automatic renewal checks are enabled.')
-      : 'Automatic renewal starts when you activate domain HTTPS.';
+      ? (acme.next_check ? (tr("Next automatic certificate check:") + " ") + date(acme.next_check) : tr("Automatic renewal checks are enabled."))
+      : tr("Automatic renewal starts when you activate domain HTTPS.");
     renderSetup();
   }
 
   async function changeHTTPS(enabled, mode) {
     saving = true;
     if (current) render(current);
-    status.textContent = enabled ? 'Activating ' + (mode === 'letsencrypt' ? 'domain' : 'local') + ' HTTPS…' : 'Turning HTTPS off…';
+    status.textContent = enabled ? (tr("Activating") + " ") + (mode === 'letsencrypt' ? 'domain' : 'local') + ' HTTPS…' : tr("Turning HTTPS off…");
     try {
       const data = await request('status', {enabled, mode});
       saving = false;
@@ -141,14 +141,14 @@
     } catch (error) {
       saving = false;
       if (current) render(current);
-      status.textContent = error.message;
+      status.textContent = tr(error.message);
     }
   }
 
   async function certificateRequest(path, body) {
     saving = true;
     if (current) render(current);
-    domainStatus.textContent = path === 'prepare' ? 'Preparing DNS records…' : 'Starting DNS verification…';
+    domainStatus.textContent = path === 'prepare' ? tr("Preparing DNS records…") : tr("Starting DNS verification…");
     try {
       await request(path, body);
       saving = false;
@@ -158,7 +158,7 @@
     } catch (error) {
       saving = false;
       if (current) render(current);
-      domainStatus.textContent = error.message;
+      domainStatus.textContent = tr(error.message);
     }
   }
 
@@ -190,17 +190,17 @@
         field.select();
         const copied = document.execCommand('copy');
         field.remove();
-        if (!copied) throw new Error('Copy unavailable');
+        if (!copied) throw new Error(tr("Copy unavailable"));
       }
-      domainStatus.textContent = 'Copied to clipboard.';
-    } catch (_) { domainStatus.textContent = 'Select the record value above and copy it manually.'; }
+      domainStatus.textContent = tr("Copied to clipboard.");
+    } catch (_) { domainStatus.textContent = tr("Select the record value above and copy it manually."); }
   }));
 
   async function refresh() {
     try {
       if (!saving) render(await request('status'));
     } catch (_) {
-      status.textContent = 'Could not read HTTPS status. Check the connection or reload this page.';
+      status.textContent = tr("Could not read HTTPS status. Check the connection or reload this page.");
     } finally {
       refreshTimer = setTimeout(refresh, current?.acme_dns?.busy ? 2000 : 30000);
     }

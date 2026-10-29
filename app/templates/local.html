@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+{%- macro mode(name, tag, label, text, available=False) -%}
+{%- set body -%}
+<span class="game-mode-head"><span class="game-mode-name">{{ name }}</span><span class="game-tag" data-tag="{{ tag }}">{{ label if available else _("Coming soon") }}</span></span>
+<span class="game-mode-text">{{ text }}</span>
+{%- endset -%}
+{%- if available %}<button type="button" class="game-mode" data-mode="{{ tag }}">{{ body }}</button>
+{%- else %}<div class="game-mode" aria-disabled="true">{{ body }}</div>{% endif -%}
+{%- endmacro -%}
+{%- macro choice(name, value, label, checked=False) -%}
+<label class="game-choice"><input type="radio" name="{{ name }}" value="{{ value }}"{{ ' checked' if checked }}><span>{{ label }}</span></label>
+{%- endmacro -%}
+{% block title %}{{ _("Oche - Play on Oche") }}{% endblock %}
+{% block content %}
+<link rel="stylesheet" href="/static/css/local.css">
+<div id="game-page" class="game-page" data-view="modes">
+<p id="local-error" class="card game-error" role="alert" hidden></p>
+
+<section id="game-modes" class="game-view" aria-labelledby="game-modes-title">
+  <header class="page-head">
+    <div><p class="eyebrow">{{ _("Play on Oche") }}</p><h1 id="game-modes-title">{{ _("Choose a game") }}</h1>
+    <p class="subtitle">{{ _("Games run on this device. Manual darts work without internet.") }}</p></div>
+  </header>
+  <h2 class="game-group">{{ _("Match") }}</h2>
+  <div class="game-modes">
+    {{ mode("X01", "x01", _("Match"), _("Race from 501 or 301 down to exactly zero"), True) }}
+    {{ mode("Cricket", "match", _("Match"), _("Close 15 to 20 and the bull before your opponents")) }}
+  </div>
+  <h2 class="game-group">{{ _("Practice") }}</h2>
+  <div class="game-modes">
+    {{ mode(_("Around the Clock"), "practice", _("Practice"), _("Hit every number from 1 to 20 in order")) }}
+    {{ mode(_("Count Up"), "practice", _("Practice"), _("Score as many points as you can in eight rounds")) }}
+    {{ mode("Bob's 27", "practice", _("Practice"), _("Hit each double to gain points; miss them all and lose points")) }}
+  </div>
+  <h2 class="game-group">{{ _("Party") }}</h2>
+  <div class="game-modes">
+    {{ mode("Shanghai", "party", _("Party"), _("Hit a single, double and triple of the round's number")) }}
+  </div>
+</section>
+
+<form id="local-setup" class="game-view game-setup" aria-labelledby="local-setup-title" hidden>
+  <header class="page-head">
+    <div><button id="local-back" type="button" class="game-back"><svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>{{ _("Game modes") }}</button>
+    <h1 id="local-setup-title">X01</h1>
+    <p class="subtitle">{{ _("One leg · Single in · Saved on this device") }}</p></div>
+  </header>
+  <section class="card game-setup-panel" aria-labelledby="local-players-title">
+    <div class="card-head"><h2 id="local-players-title">{{ _("Players") }}</h2><span id="local-player-count" class="badge"></span></div>
+    <ol id="local-players" class="game-roster"></ol>
+    <div class="game-add">
+      <button id="local-add-player" type="button" class="btn-neutral">+ {{ _("Add player") }}</button>
+      <button id="local-add-bot" type="button" class="btn-neutral">+ {{ _("Add bot") }}</button>
+    </div>
+    <div class="game-settings" role="group" aria-labelledby="local-options-title">
+      <h2 id="local-options-title">{{ _("Settings") }}</h2>
+      <div class="game-options">
+        <fieldset class="game-option"><legend>{{ _("Starting score") }}</legend>
+          <div class="game-choices">{{ choice("score", "501", "501", True) }}{{ choice("score", "301", "301") }}</div></fieldset>
+        <fieldset class="game-option"><legend>{{ _("Finish") }}</legend>
+          <div class="game-choices">{{ choice("out", "double", _("Double out"), True) }}{{ choice("out", "straight", _("Straight out")) }}</div>
+          <p class="hint">{{ _("Double out ends the leg on a double or the bull.") }}</p></fieldset>
+        <fieldset class="game-option"><legend>{{ _("Player names") }}</legend>
+          <div class="game-choices">{{ choice("names", "random", _("Random"), True) }}{{ choice("names", "numbered", _("Numbered")) }}</div>
+          <p class="hint">{{ _("Numbered names follow the list: Player 1, Player 2 and so on. Names you type are kept.") }}</p></fieldset>
+        <fieldset class="game-option"><legend>{{ _("Dartboard") }}</legend>
+          <div class="game-choices">{{ choice("board", "show", _("Show"), True) }}{{ choice("board", "hide", _("Hide")) }}</div>
+          <p class="hint">{{ _("Shows where each dart of the visit lands.") }}</p></fieldset>
+        <fieldset class="game-option"><legend>{{ _("Input") }}</legend>
+          <div class="game-choices">{{ choice("input", "autodarts", _("Local Autodarts"), True) }}{{ choice("input", "manual", _("Manual darts")) }}</div>
+          <p class="hint">{{ _("Starting a local game pauses cloud game events. Clear the board before starting detection.") }}</p>
+          <div id="local-detection" class="game-detection">
+            <div class="card-head"><span>{{ _("Local detection") }}</span><span id="local-setup-detector" class="badge">{{ _("Waiting") }}</span></div>
+            <p class="hint">{{ _("Automatic scoring requires a local Autodarts API that exposes scored throws. Offline scoring with the bundled v2 detector is not verified. Manual input works without internet.") }}</p>
+          </div></fieldset>
+      </div>
+    </div>
+  </section>
+  <div class="game-start">
+    <button id="local-start" type="submit">{{ _("Start game") }}</button>
+  </div>
+</form>
+
+<dialog id="local-bot-dialog" class="game-dialog" aria-labelledby="local-bot-title">
+  <form method="dialog">
+    <div class="card-head"><h2 id="local-bot-title">{{ _("Bot settings") }}</h2><button type="submit" class="icon-button" value="cancel" aria-label="{{ _('Close') }}">✕</button></div>
+    <fieldset class="game-option"><legend>{{ _("Play speed") }}</legend>
+      <div class="game-choices">{{ choice("speed", "slow", _("Slow")) }}{{ choice("speed", "normal", _("Normal"), True) }}{{ choice("speed", "fast", _("Fast")) }}</div>
+      <p class="hint">{{ _("Applies to every bot in this game.") }}</p></fieldset>
+    <fieldset id="local-bot-auto" class="game-option" hidden><legend>{{ _("Auto difficulty") }}</legend>
+      <div class="game-levels game-auto">
+        {%- for mode, label, text in [("easy", _("Easy"), _("About 15% below the players")), ("medium", _("Medium"), _("Matches the players")), ("hard", _("Hard"), _("About 15% above the players"))] %}<button type="submit" class="btn-neutral" name="level" value="auto-{{ mode }}"><span>{{ label }}</span><small>{{ text }}</small></button>{% endfor -%}
+      </div>
+      <p class="hint">{{ _("An auto bot follows the human players' three-dart average in this game. It starts near 45 and adjusts after every visit.") }}</p></fieldset>
+    <fieldset class="game-option"><legend>{{ _("Bot level") }}</legend>
+      <div class="game-levels">
+        <button id="local-bot-auto-open" type="button" class="btn-neutral" aria-pressed="false" aria-controls="local-bot-auto"><span>{{ _("Auto") }}</span><small>{{ _("Adapts") }}</small></button>
+        {%- for level in range(1, 12) %}<button type="submit" class="btn-neutral" name="level" value="{{ level }}"><span>{{ _("Level {0}", **{"0": level}) }}</span><small>{{ 10 + 10 * level }}+</small></button>{% endfor -%}
+      </div>
+      <p class="hint">{{ _("The number is the bot's approximate three-dart average.") }}</p></fieldset>
+  </form>
+</dialog>
+
+<section id="local-match" class="game-view game-screen" aria-labelledby="local-match-title" hidden>
+  <header class="game-bar">
+    <div class="game-bar-side">
+      <div class="game-bar-actions">
+      <button id="local-stop" type="button" class="game-back game-exit"><svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 8l-4 4 4 4M6 12h10"/></svg>{{ _("End game") }}</button>
+      </div>
+      <ul class="game-chips" aria-label="{{ _('Game') }}">
+        <li><h1 id="local-match-title" class="badge game-title">X01</h1></li>
+        <li><span id="local-detector" class="badge" title="">{{ _("Waiting") }}</span></li>
+        <li><span id="local-chip-score" class="badge"></span></li>
+        <li><span id="local-chip-out" class="badge"></span></li>
+        <li><span id="local-chip-round" class="badge"></span></li>
+      </ul>
+    </div>
+    <div id="local-turn-head" class="game-turn-head">
+      <p id="local-phase" class="game-phase" role="status"></p>
+      <p id="local-checkout" class="game-checkout" hidden></p>
+    </div>
+  </header>
+  <p id="local-detector-detail" class="hint game-detail" role="status"></p>
+  <div id="local-winner" class="card game-winner" hidden>
+    <p class="eyebrow">{{ _("Game over") }}</p>
+    <p id="local-winner-name" class="game-winner-name"></p>
+    <div class="btn-row"><button id="local-rematch" type="button">{{ _("Rematch") }}</button><button id="local-new" type="button" class="btn-neutral">{{ _("New game") }}</button></div>
+  </div>
+  <div id="local-stage" class="game-stage">
+  <div id="local-side-left" class="game-side"></div>
+  <div id="local-center" class="game-center">
+  <section id="local-board" class="game-board" aria-label="{{ _('Dartboard') }}">
+    <svg id="local-board-svg" viewBox="-125 -125 250 250" role="img" aria-label="{{ _('Dartboard with the darts of the current visit') }}"></svg>
+  </section>
+  <section id="local-turn" class="game-turn" aria-label="{{ _('Current visit') }}">
+    <div class="game-visit">
+      <ol id="local-darts" class="game-darts" aria-label="{{ _('Darts') }}"></ol>
+      <div class="game-visit-total"><span>{{ _("Visit") }}</span><strong id="local-visit">0</strong></div>
+      <div class="game-turn-actions">
+        <button id="local-undo" type="button" class="btn-neutral">{{ _("Undo dart") }}</button>
+        <button id="local-next" type="button">{{ _("Next turn") }}</button>
+      </div>
+    </div>
+  </section>
+  </div>
+  <div id="local-side-right" class="game-side"></div>
+  </div>
+  <section id="local-manual" class="card game-pad" aria-label="{{ _('Enter a dart') }}" hidden>
+    <div class="game-rings" role="radiogroup" aria-label="{{ _('Ring') }}">
+      {{ choice("ring", "1", _("Single"), True) }}{{ choice("ring", "2", _("Double")) }}{{ choice("ring", "3", _("Triple")) }}
+    </div>
+    <div id="local-keys" class="game-keys">
+      {%- for number in range(1, 21) %}<button type="button" class="btn-neutral" data-number="{{ number }}">{{ number }}</button>{% endfor -%}
+      <button type="button" class="btn-neutral game-key-wide" data-number="25">{{ _("Bull") }}</button>
+      <button type="button" class="btn-neutral game-key-wide" data-number="0">{{ _("Miss") }}</button>
+    </div>
+  </section>
+  <button id="local-history-open" type="button" class="game-back game-history-open" aria-haspopup="dialog" aria-label="{{ _('Recent visits') }}"><svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 2.6-6.4L3 8M3 3v5h5M12 7v5l3 2"/></svg><span>{{ _("Recent visits") }}</span></button>
+  <dialog id="local-history-dialog" class="game-dialog game-history" aria-labelledby="local-history-title">
+    <form method="dialog">
+      <div class="card-head"><h2 id="local-history-title">{{ _("Recent visits") }}</h2><button type="submit" class="icon-button" aria-label="{{ _('Close') }}">✕</button></div>
+      <div class="game-history-wrap"><table><thead><tr><th>{{ _("Round") }}</th><th>{{ _("Player") }}</th><th>{{ _("Darts") }}</th><th>{{ _("Score") }}</th><th>{{ _("Remaining") }}</th></tr></thead><tbody id="local-history"></tbody></table></div>
+      <p id="local-history-empty" class="hint">{{ _("No visits yet.") }}</p>
+    </form>
+  </dialog>
+</section>
+</div>
+<template id="local-player-row"><li><input type="text" maxlength="60" autocomplete="off"><button type="button" class="game-bot-level" hidden></button><button type="button" class="btn-neutral game-remove">✕</button></li></template>
+{% endblock %}
+{% block scripts %}<script type="module" src="/static/core/local.js"></script>{% endblock %}

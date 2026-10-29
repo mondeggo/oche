@@ -34,19 +34,12 @@ class CameraError(Exception):
 
 
 def _config_path():
-    # The running daemon uses this link (or the native configuration directory).
-    # Reading its target also respects the user's choice to reuse host settings.
-    path = autodarts.CONFIG_LINK / "config.toml"
-    if not path.is_file():
-        host = autodarts.HOST_CONFIG_DIR / "config.toml"
-        reuse = os.environ.get("OCHE_REUSE_AUTODARTS_CONFIG", "true").strip().lower() == "true"
-        path = host if reuse and host.is_file() else autodarts.AUTODARTS_DIR / "config.toml"
-    return path
+    return autodarts.AUTODARTS_DIR / "config.toml"
 
 
 def _api_base() -> str:
     if autodarts.get_status().get("status") != "running":
-        raise CameraError(503, "Start Autodarts in Supervisor to use the camera tools.")
+        raise CameraError(503, "Start Autodarts on the Autodarts page to use the camera tools.")
     path = _config_path()
     try:
         if path.is_file():

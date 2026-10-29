@@ -3,6 +3,7 @@
 !Dockerfile
 !requirements.txt
 !pyproject.toml
+!uv.lock
 !app/
 !app/**
 !launcher.py

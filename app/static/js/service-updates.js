@@ -16,14 +16,14 @@
     const working = item?.pending || (data.job.status === 'running' && data.job.module === item?.name);
     panel.dataset.state = working ? 'running' : available ? 'available' : '';
     panel.querySelector('[data-service-update-dot]').hidden = !available;
-    let message = 'Updates not checked yet.';
-    if (working) message = 'Update in progress…';
-    else if (available) message = `Update available${item.available_version ? ` · ${item.available_version}` : ''}`;
-    else if (item?.available) message = 'Up to date · No update available.';
-    else if (item?.discovery_error) message = 'Update availability could not be checked.';
-    else if (data.job.status === 'running' && data.job.action === 'check') message = 'Checking for updates…';
-    else if (data.job.status === 'error') message = 'Update availability could not be checked.';
-    else if (data.job.status === 'complete') message = 'No release information available for this service.';
+    let message = tr("Updates not checked yet.");
+    if (working) message = tr("Update in progress…");
+    else if (available) message = tr("Update available{0}", {"0": (item.available_version ? ` · ${item.available_version}` : '')});
+    else if (item?.available) message = tr("Up to date · No update available.");
+    else if (item?.discovery_error) message = tr("Update availability could not be checked.");
+    else if (data.job.status === 'running' && data.job.action === 'check') message = tr("Checking for updates…");
+    else if (data.job.status === 'error') message = tr("Update availability could not be checked.");
+    else if (data.job.status === 'complete') message = tr("No release information available for this service.");
     if (available && item.runtime_compatible === false && !working) message += ' · Docker image upgrade required';
     panel.querySelector('[data-service-update-message]').textContent = message;
   }
@@ -36,14 +36,14 @@
     loading = true;
     try {
       const response = await fetch('/updates/status', {cache: 'no-store'});
-      if (!response.ok) throw new Error('Status unavailable');
+      if (!response.ok) throw new Error(tr("Status unavailable"));
       document.dispatchEvent(new CustomEvent('oche:updates', {detail: await response.json()}));
     } catch (_) {
       dots().forEach(dot => { dot.hidden = true; });
       if (panel) {
         panel.dataset.state = '';
         panel.querySelector('[data-service-update-dot]').hidden = true;
-        panel.querySelector('[data-service-update-message]').textContent = 'Update status unavailable. Reconnecting…';
+        panel.querySelector('[data-service-update-message]').textContent = tr("Update status unavailable. Reconnecting…");
       }
     } finally {
       loading = false;

@@ -1,0 +1,267 @@
+/* Play on Oche: game modes, match setup and the game screen. */
+/* The bottom padding keeps the last controls clear of the floating Recent visits button. */
+/* The game screen spans the whole content area so the cards can centre between the board and
+   the sidebar or window edge. */
+#main:has(.game-page[data-view="match"]) { max-width: none; padding-bottom: 72px; }
+.game-view[hidden], .game-page [hidden] { display: none; }
+.game-error { color: var(--danger-bright); border-color: var(--danger-bright); }
+
+/* Game modes */
+.game-group { margin: 28px 0 12px; font-size: 1.15rem; }
+.game-view > .page-head + .game-group { margin-top: 0; }
+.game-modes { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+.game-mode {
+  display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 12px;
+  min-height: 0; padding: 18px; border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--card); color: var(--fg); font-weight: 400; text-align: left;
+}
+button.game-mode:hover:not(:disabled) { background: var(--surface-hover); border-color: var(--border-strong); }
+.game-mode[aria-disabled="true"] { opacity: .55; }
+.game-mode-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.game-mode-name { font-size: 1rem; font-weight: 700; }
+.game-mode-text { color: var(--fg-dim); font-size: .85rem; line-height: 1.35; }
+.game-tag { flex: none; padding: 3px 10px; border-radius: 999px; background: var(--surface-2); color: var(--fg-dim); font-size: .75rem; font-weight: 650; }
+button.game-mode .game-tag { background: var(--selected-bg); color: var(--primary); }
+
+/* Match setup */
+.game-back {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 40px; margin: 0 0 14px; padding: 6px 14px 6px 8px;
+  border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--surface-2);
+  color: var(--fg); font-size: 1rem; font-weight: 650;
+}
+.game-back:hover:not(:disabled) { background: var(--surface-hover); }
+/* Setup is one focused column; the start bar spans the content area at the bottom of the window. */
+#main:has(.game-page[data-view="setup"]) { --setup-gutter: 32px; max-width: none; padding-inline: var(--setup-gutter); padding-bottom: 0; }
+.game-setup:not([hidden]) { display: flex; flex-direction: column; min-height: calc(100dvh - 40px); }
+.game-page[data-view="setup"] > .game-error, .game-setup > :not(.game-start) { width: 100%; max-width: 680px; margin-inline: auto; }
+.game-setup-panel { margin: 0 0 16px; }
+.game-roster { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; margin-block: 16px; padding: 0; list-style: none; counter-reset: player; }
+.game-roster li { display: flex; align-items: center; gap: 8px; counter-increment: player; }
+.game-roster li::before { content: counter(player); flex: none; width: 28px; color: var(--fg-dim); font-weight: 700; text-align: center; font-variant-numeric: tabular-nums; }
+.game-roster input { flex: 1; width: 0; min-width: 0; min-height: 40px; padding: 9px 12px; font: inherit; color: var(--fg); background: var(--bg-inset); border: 1px solid var(--input-border); border-radius: var(--radius-sm); }
+.game-remove { flex: none; width: 40px; padding: 0; }
+.game-bot-level { flex: none; min-height: 40px; padding: 6px 12px; border: 1px solid transparent; background: var(--selected-bg); color: var(--primary); font-size: .85rem; font-variant-numeric: tabular-nums; }
+.game-bot-level:hover:not(:disabled) { background: var(--selected-bg); border-color: var(--primary); }
+.game-add { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.game-add button { min-height: 44px; }
+/* Settings: labelled fields with full-width segmented choices. */
+.game-settings { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border); }
+.game-settings h2 { margin-block: 0 20px; }
+.game-options { display: flex; flex-direction: column; gap: 24px; }
+.game-option { margin: 0; padding: 0; border: 0; min-width: 0; }
+.game-option legend { margin-bottom: 12px; padding: 0; font-weight: 700; }
+.game-option .hint { margin-top: 10px; }
+.game-choices, .game-rings { display: inline-flex; flex-wrap: wrap; gap: 4px; padding: 4px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg-inset); }
+.game-choices { display: flex; flex-wrap: nowrap; }
+.game-choice { position: relative; display: inline-flex; }
+.game-choices .game-choice { flex: 1 1 0; min-width: 0; }
+.game-choice input { position: absolute; inset: 0; margin: 0; opacity: 0; cursor: pointer; }
+.game-choice span { display: flex; flex: 1; align-items: center; justify-content: center; min-height: 40px; padding: 6px 14px; border-radius: calc(var(--radius-sm) - 3px); color: var(--fg-dim); font-weight: 700; line-height: 1.2; text-align: center; transition: background .15s ease, color .15s ease; }
+.game-choice:hover span { color: var(--fg); }
+.game-choice input:checked + span { background: var(--primary); color: var(--on-primary); }
+.game-choice input:focus-visible + span { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.game-detection { margin-top: 10px; padding: 12px 14px; border-radius: var(--radius-sm); background: var(--surface-2); }
+.game-detection .card-head { margin: 0; }
+.game-detection .card-head > span:first-child { font-weight: 600; }
+.game-detection .hint { margin-top: 6px; }
+.game-start {
+  position: sticky; bottom: 0; z-index: 2; display: flex; flex-direction: column; align-items: center; gap: 10px;
+  margin: auto calc(-1 * var(--setup-gutter)) 0; padding: 12px var(--setup-gutter) 14px; text-align: center;
+  /* A card-coloured footer that sets the start action apart from the scrolling panel. */
+  border-top: 1px solid var(--border); background: var(--card); box-shadow: 0 -8px 24px var(--shadow);
+}
+#local-start { width: min(100%, 360px); min-height: 44px; background: var(--accent); color: var(--on-accent); font-size: 1rem; }
+#local-start:hover:not(:disabled) { background: var(--accent-hover); }
+
+/* Bot settings */
+.game-dialog {
+  width: min(520px, calc(100vw - 32px)); max-height: calc(100dvh - 48px); padding: 24px;
+  border: 1px solid var(--border); border-radius: var(--radius); background: var(--card); color: var(--fg);
+  box-shadow: 0 20px 80px var(--shadow);
+}
+.game-dialog::backdrop { background: #0009; }
+.game-dialog .card-head { margin-bottom: 16px; }
+.game-dialog .game-option { margin-bottom: 20px; }
+.game-dialog .game-option:last-child { margin-bottom: 0; }
+.game-levels { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; }
+.game-levels button { display: flex; flex-direction: column; align-items: flex-start; gap: 0; min-height: 0; padding: 10px 12px; text-align: left; }
+.game-levels small { color: var(--fg-dim); font-size: .85rem; font-variant-numeric: tabular-nums; }
+.game-levels button[aria-pressed="true"] { border-color: var(--primary); background: var(--selected-bg); }
+.game-auto { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+/* Game screen */
+/* The exit button on the left with the game's details, title first, as rounded badges below it. */
+/* Who is throwing sits in the header row, centred over the board, level with End game. */
+.game-bar { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: start; column-gap: 16px; margin-bottom: 12px; }
+.game-bar > .game-turn-head { grid-column: 2; min-height: 40px; }
+.game-bar-side { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; min-width: 0; }
+.game-bar-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.game-bar-actions .game-back { margin: 0; }
+.game-bar .game-title { margin: 0; background: var(--selected-bg); color: var(--primary); font-size: .8rem; font-weight: 750; line-height: normal; letter-spacing: 0; }
+.game-exit:hover:not(:disabled) { color: var(--danger-bright); }
+.game-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.game-chips .badge { font-variant-numeric: tabular-nums; }
+.game-detail { margin: -6px 0 16px; }
+/* Stage: the board in the middle with players split between both sides. */
+/* The board keeps its size in the middle. The cards are centred in the space on each side:
+   the gap next to the board matches the page margin, so each side is centred between the board
+   and the sidebar or the window edge. */
+.game-stage { container-type: inline-size; display: grid; grid-template-columns: minmax(170px, 1fr) auto minmax(170px, 1fr); align-items: center; gap: 24px 32px; margin-bottom: 16px; }
+.game-stage[data-board="true"] :is(#local-side-left, #local-side-right) { width: min(100%, 270px); justify-self: center; }
+/* Vertically, each side spans the board and visit line with equal space above, between and below its cards. */
+.game-stage[data-board="true"]:not([data-count="1"]) :is(#local-side-left, #local-side-right) { align-self: stretch; justify-content: space-evenly; gap: 0; }
+.game-side { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.game-center { display: flex; flex-direction: column; align-items: center; gap: 24px; min-width: 0; }
+.game-side { gap: 24px; }
+.game-side .game-player { padding: 22px 24px; }
+.game-side .game-player-name { font-size: 1.1rem; }
+.game-side .game-player-score { margin: 8px 0; }
+.game-side .game-player-meta { font-size: .95rem; }
+/* A single player and the current visit sit on the left; the board takes the rest of the space. */
+.game-stage[data-board="true"][data-count="1"] { grid-template-columns: minmax(240px, 300px) minmax(0, 1fr); }
+.game-side .game-turn { margin-top: 8px; }
+.game-side .game-visit { grid-template-columns: minmax(0, 1fr) auto; }
+.game-side .game-darts { grid-column: 1 / -1; }
+.game-stage[data-count="1"] .game-side:empty { display: none; }
+.game-stage:is([data-count="5"], [data-count="6"], [data-count="7"], [data-count="8"]) .game-player { padding: 14px 18px; }
+.game-stage:is([data-count="5"], [data-count="6"], [data-count="7"], [data-count="8"]) .game-player-score { margin: 2px 0; font-size: clamp(2.6rem, 32cqw, 4.2rem); }
+/* Without the board, or on narrow screens, players form a row above the board and visit. */
+.game-stage[data-board="false"] { display: flex; flex-wrap: wrap; justify-content: center; gap: 16px; }
+.game-stage[data-board="false"] .game-side { display: contents; }
+.game-stage[data-board="false"] .game-player { flex: 1 1 200px; }
+.game-stage[data-board="false"][data-count="1"] .game-player { flex: 0 1 420px; }
+.game-stage[data-board="false"] .game-center { flex: 1 0 100%; order: 10; }
+.game-stage[data-board="false"] .game-player { order: var(--seat); }
+/* The score is sized from the card's width, so it fills the card whatever the layout. */
+.game-player { container-type: inline-size; position: relative; overflow: hidden; padding: 18px 20px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card); transition: border-color .15s ease, background .15s ease; }
+.game-player::before { content: ''; position: absolute; inset: 0 0 auto; height: 4px; background: transparent; }
+.game-player[data-active="true"] { border-color: var(--primary); background: var(--selected-bg); }
+.game-player[data-active="true"]::before { background: var(--primary); }
+.game-player[data-winner="true"] { border-color: var(--success-bright); background: var(--success-soft); }
+.game-player[data-winner="true"]::before { background: var(--success-bright); }
+.game-player-name { margin: 0; font-weight: 700; overflow-wrap: anywhere; }
+.game-player-name .game-tag { vertical-align: 2px; white-space: nowrap; }
+.game-player-score { display: block; margin: 4px 0; font-size: clamp(3rem, 50cqw, 7.5rem); font-weight: 750; line-height: 1.05; text-align: center; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+.game-player:not([data-active="true"], [data-winner="true"]) .game-player-score { color: var(--fg-dim); }
+.game-player-meta { margin: 0; color: var(--fg-dim); font-size: .85rem; font-variant-numeric: tabular-nums; }
+
+/* Dartboard, scaled to the space between the players and the window height */
+/* --board-fit is set by the page so the whole game screen fits the window height. */
+.game-board { width: max(300px, min(var(--board-fit, 100dvh - 270px), 100cqw - 404px)); margin: 0; border-radius: 50%; transition: box-shadow .3s ease; }
+.game-board[data-halo="red"] { --halo: var(--danger-bright); }
+.game-board[data-halo="yellow"] { --halo: var(--warning); }
+.game-board[data-halo="green"] { --halo: var(--success-bright); }
+.game-board[data-halo]:not([data-halo=""]) { box-shadow: 0 0 0 2px var(--halo), 0 0 12px var(--halo); }
+.game-board svg { display: block; width: 100%; height: auto; }
+.board-surround { fill: var(--board-surround); }
+.board-dark { fill: var(--board-dark); }
+.board-light { fill: var(--board-light); }
+.board-red { fill: var(--board-red); }
+.board-green { fill: var(--board-green); }
+.game-board [data-hit] { stroke: var(--board-wire); stroke-width: .4; }
+.board-number { fill: var(--board-number); font-size: 11px; font-weight: 700; text-anchor: middle; dominant-baseline: central; }
+.game-board path[data-state], .game-board circle[data-state] { fill: var(--board-hit); }
+.game-board [data-hit][data-state="latest"] { animation: game-blink 1s ease-in-out infinite; }
+.game-dart-mark circle { fill: var(--board-hit); stroke: var(--board-surround); stroke-width: 1.2; }
+.game-dart-mark text { fill: var(--board-surround); font-size: 8px; font-weight: 800; text-anchor: middle; dominant-baseline: central; }
+.game-dart-mark .game-dart-pulse { fill: none; stroke: var(--board-hit); stroke-width: 2; opacity: 0; transform-box: fill-box; transform-origin: center; }
+.game-dart-mark[data-state="latest"] .game-dart-pulse { animation: game-pulse 1.2s ease-out infinite; }
+@keyframes game-blink { 50% { fill-opacity: .3; } }
+@keyframes game-pulse { from { opacity: .9; transform: scale(1); } to { opacity: 0; transform: scale(2.8); } }
+@media (prefers-reduced-motion: reduce) {
+  .game-board [data-hit][data-state="latest"], .game-dart-mark[data-state="latest"] .game-dart-pulse { animation: none; }
+}
+
+/* The current visit is a plain line under the board: who throws, then darts, total and actions. */
+.game-turn { width: 100%; max-width: 640px; }
+.game-turn-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px 12px; margin: 0; text-align: center; }
+.game-phase { margin: 0; font-size: 1.05rem; font-weight: 700; }
+.game-phase[data-bust="true"] { color: var(--danger-bright); }
+.game-checkout { margin: 0; padding: 4px 12px; border-radius: 999px; background: var(--selected-bg); color: var(--primary); font-weight: 700; font-variant-numeric: tabular-nums; }
+/* Dart tiles keep one fixed size, thrown or not, so the visit never shifts. */
+.game-visit { display: grid; grid-template-columns: minmax(0, 1fr) 88px auto; gap: 10px; }
+.game-darts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 0; padding: 0; list-style: none; }
+.game-dart { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; height: 72px; min-width: 0; padding: 6px; overflow: hidden; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--bg-inset); font-variant-numeric: tabular-nums; }
+.game-dart span { max-width: 100%; overflow: hidden; font-size: 1.7rem; font-weight: 750; line-height: 1.1; text-overflow: ellipsis; white-space: nowrap; }
+.game-dart small { color: var(--fg-dim); font-size: .8rem; font-weight: 650; line-height: 1; }
+.game-dart[data-empty="true"] { border-style: dashed; color: var(--border-strong); font-size: 1rem; font-weight: 700; }
+.game-dart:is([data-ring="2"], [data-ring="3"]) { border-color: var(--primary); background: var(--selected-bg); }
+.game-dart[data-latest="true"] { box-shadow: inset 0 -3px 0 var(--primary); }
+.game-visit-total { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 72px; padding: 6px 12px; border-radius: var(--radius-sm); background: var(--surface-2); }
+.game-visit-total span { color: var(--fg-dim); font-size: .72rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.game-visit-total strong { font-size: 1.8rem; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.game-turn-actions { display: flex; flex-direction: column; justify-content: center; gap: 8px; }
+.game-turn-actions button { min-width: 104px; min-height: 0; height: 32px; padding-block: 0; }
+
+.game-pad { display: grid; gap: 10px; width: 100%; max-width: 1176px; margin-inline: auto; padding: 16px 18px; }
+.game-rings { justify-self: start; }
+.game-keys { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 6px; }
+.game-keys button { min-height: 46px; padding: 6px; font-size: 1.1rem; font-variant-numeric: tabular-nums; }
+.game-key-wide { grid-column: span 5; }
+
+.game-winner { text-align: center; border-color: var(--success-bright); }
+.game-winner-name { margin: 0; font-size: clamp(1.8rem, 4vw, 2.6rem); font-weight: 750; letter-spacing: -.02em; }
+.game-winner .btn-row { justify-content: center; margin-bottom: 0; }
+
+.game-history { width: min(720px, calc(100vw - 32px)); }
+.game-history-open { position: fixed; right: 24px; bottom: 24px; z-index: 5; margin: 0; box-shadow: 0 8px 24px var(--shadow); }
+.game-history-wrap { max-height: 60dvh; overflow: auto; }
+.game-history .hint { margin-top: 0; }
+.game-history table { width: 100%; border-collapse: collapse; text-align: left; }
+.game-history :is(th, td) { padding: 8px 12px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+.game-history th { color: var(--fg-dim); font-size: .8rem; font-weight: 650; }
+
+/* One player on a wide screen: header, player and visit on the left; the board centred on the full window height. */
+@media (min-width: 901px) {
+  /* The board stays on the right; the player and visit are centred in the space to its left. */
+  .game-screen[data-solo="true"]:not([hidden]) { container-type: inline-size; display: grid; grid-template-columns: minmax(240px, 1fr) auto; grid-template-rows: repeat(4, auto) 1fr; column-gap: 32px; }
+  .game-screen[data-solo="true"] > * { grid-column: 1; }
+  .game-screen[data-solo="true"] > .game-stage { display: contents; }
+  .game-screen[data-solo="true"] .game-center { grid-column: 2; grid-row: 1 / 6; justify-content: center; min-height: calc(100dvh - 112px - var(--pad-space, 0px)); padding-block: 52px; }
+  .game-screen[data-solo="true"] .game-board { width: max(300px, min(var(--board-fit, 100dvh - 180px), 100cqw - 272px)); }
+  .game-screen[data-solo="true"] > .game-pad { grid-column: 1 / -1; }
+  /* The header spans both columns so the turn line sits over the board's column. */
+  .game-screen[data-solo="true"] > .game-bar { grid-column: 1 / -1; grid-template-columns: subgrid; }
+  .game-screen[data-solo="true"] .game-side { grid-column: 1; grid-row: 5; align-self: start; }
+  .game-screen[data-solo="true"] :is(#local-side-left, .game-winner) { width: min(100%, 300px); justify-self: center; }
+}
+/* With room to spare, the player and visit are centred on the board's line, below the header. */
+@media (min-width: 901px) and (min-height: 720px) {
+  .game-screen[data-solo="true"] > .game-bar { grid-row: 1; }
+  .game-screen[data-solo="true"] > .game-detail { grid-row: 2; }
+  .game-screen[data-solo="true"] > .game-winner { grid-row: 3; }
+  .game-screen[data-solo="true"] .game-side { grid-row: 1 / 6; align-self: center; }
+  .game-screen[data-solo="true"]:has(.game-winner:not([hidden])) .game-side { grid-row: 4; align-self: start; }
+  /* With the keypad below, the player and visit centre in the space under the header. */
+  .game-screen[data-solo="true"]:has(.game-pad:not([hidden])) .game-side { grid-row: 4 / 6; }
+}
+
+@media (max-width: 900px) {
+  .game-bar { grid-template-columns: minmax(0, 1fr); row-gap: 12px; }
+  .game-bar > .game-turn-head { grid-column: 1; min-height: 0; }
+  #main:has(.game-page[data-view="setup"]) { --setup-gutter: 20px; }
+  .game-stage { display: flex; flex-wrap: wrap; gap: 16px; }
+  .game-stage .game-side { display: contents; }
+  .game-stage .game-player, .game-stage[data-board="false"][data-count="1"] .game-player { flex: 1 1 140px; }
+  .game-stage .game-center { flex: 1 0 100%; order: 10; }
+  .game-stage .game-player { order: var(--seat); }
+  .game-side > .game-turn { flex: 1 0 100%; order: 11; margin-top: 0; }
+  .game-board, .game-stage[data-count="1"] .game-board { width: min(100%, 420px); }
+}
+
+@media (max-width: 600px) {
+  .game-history-open { right: 16px; bottom: 16px; padding: 10px; }
+  .game-history-open span { display: none; }
+  #main:has(.game-page[data-view="setup"]) { --setup-gutter: 16px; }
+}
+
+@media (max-width: 720px) {
+  .game-keys { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .game-key-wide { grid-column: span 3; }
+  .game-key-wide + .game-key-wide { grid-column: span 2; }
+  .game-visit { grid-template-columns: minmax(0, 1fr) auto; }
+  .game-darts { grid-column: 1 / -1; }
+  .game-player { padding: 14px 16px; }
+  #local-start { width: 100%; }
+  .game-add { grid-template-columns: 1fr; }
+}

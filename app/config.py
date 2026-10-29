@@ -5,7 +5,7 @@ from pathlib import Path
 DATA_DIR = Path(os.environ.get("OCHE_DATA_DIR", str(Path(__file__).resolve().parent.parent / "data")))
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 
-CONFIG_FILE = DATA_DIR / "oche_config.json"
+CONFIG_FILE = DATA_DIR / "settings.json"
 LOG_DIR = DATA_DIR / "logs"
 LOG_DIR.mkdir(exist_ok=True)
 
@@ -13,26 +13,23 @@ AUTODARTS_DIR = DATA_DIR / "autodarts"
 AUTODARTS_DIR.mkdir(exist_ok=True)
 
 DEFAULTS = {
-    "lang": "en",
     "https_enabled": False,
     "autostart_autodarts": True,
-    "autostart_autoglow": False,
-    "autostart_ochecore": True,
-    "autohide_navbar_on_play": False,
-    "autohide_navbar_on_autodarts": False,
-    "autohide_navbar_on_autoglow": False,
-    "autohide_navbar_on_ochecore": False,
-    "autohide_navbar_on_panels": False,
-    "show_play_in_navbar": True,
-    "show_autodarts_in_navbar": True,
-    "show_autoglow_in_navbar": False,
-    "show_panels_in_navbar": True,
     "panels": [],
-    "autoglow": {
-        "esp32_port": None,
-        "ws_host": "127.0.0.1",
-        "ws_port": 3180,
-    },
+    "autohide_navbar_on_home": False,
+    "autohide_navbar_on_play": True,
+    "autohide_navbar_on_autodarts": False,
+    "autohide_navbar_on_cameras": False,
+    "autohide_navbar_on_system": False,
+    "autohide_navbar_on_updates": False,
+    "autohide_navbar_on_panels": True,
+    "show_play_in_navbar": True,
+    "show_panels_in_navbar": True,
+    "show_page_autodarts": True,
+    "show_page_cameras": True,
+    "show_page_system": True,
+    "show_page_updates": True,
+    "metrics_history": {"enabled": True, "retention_minutes": 60, "sample_seconds": 30},
 }
 
 
@@ -42,9 +39,6 @@ def load_config() -> dict:
             with open(CONFIG_FILE, "r") as f:
                 data = json.load(f)
             merged = {**DEFAULTS, **data}
-            merged.pop("show_board_in_navbar", None)
-            merged.pop("autohide_navbar_on_board", None)
-            merged.pop("show_ochecore_in_navbar", None)
             return merged
         except Exception:
             pass

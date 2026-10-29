@@ -2,7 +2,7 @@ name: Publish application updates
 
 on:
   push:
-    branches: [main, master]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -31,29 +31,29 @@ jobs:
           BEFORE_SHA: ${{ github.event.before }}
           EVENT_NAME: ${{ github.event_name }}
         run: python3 scripts/release_version.py
-  versions:
+
+  checks:
     needs: version
     if: needs.version.outputs.changed == 'true'
+    uses: ./.github/workflows/checks.yml
+
+  autodarts:
+    needs: [version, checks]
     runs-on: ubuntu-latest
     outputs:
-      autoglow: ${{ steps.versions.outputs.autoglow }}
-      ochecore: ${{ steps.versions.outputs.ochecore }}
-      autodarts: ${{ steps.versions.outputs.autodarts }}
+      version: ${{ steps.autodarts.outputs.version }}
     steps:
-      - name: Pin upstream versions for both architectures
-        id: versions
-        env:
-          GH_TOKEN: ${{ secrets.AUTOGLOW_TOKEN }}
+      - name: Pin one Autodarts release for both architectures
+        id: autodarts
         run: |
           set -euo pipefail
-          echo "autoglow=$(gh api repos/mondeggo/AutoGlow2/commits/HEAD --jq .sha)" >> "$GITHUB_OUTPUT"
-          echo "ochecore=$(gh api repos/mondeggo/oche-core/commits/main --jq .sha)" >> "$GITHUB_OUTPUT"
-          releases=$(curl -fsSL https://releases.autodarts.com/headless/downloads/latest.stable.json)
+          releases=$(curl -fsSL --retry 3 https://releases.autodarts.com/headless/downloads/latest.stable.json)
           version=$(jq -er '.platforms["linux-amd64"].version' <<< "$releases")
           test "$version" = "$(jq -er '.platforms["linux-arm64"].version' <<< "$releases")"
-          echo "autodarts=$version" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
   packages:
-    needs: [version, versions]
+    needs: [version, autodarts]
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -63,28 +63,27 @@ jobs:
       - uses: docker/setup-qemu-action@v4
       - name: Build prepared runtime and export application bundles
         env:
-          AUTOGLOW_TOKEN: ${{ secrets.AUTOGLOW_TOKEN }}
           TAG: ${{ needs.version.outputs.tag }}
           ARCH: ${{ matrix.arch }}
-          AUTOGLOW_VERSION: ${{ needs.versions.outputs.autoglow }}
-          OCHECORE_VERSION: ${{ needs.versions.outputs.ochecore }}
-          AUTODARTS_VERSION: ${{ needs.versions.outputs.autodarts }}
+          AUTODARTS_VERSION: ${{ needs.autodarts.outputs.version }}
         run: |
           set -euo pipefail
           [[ "$TAG" =~ ^v[0-9][A-Za-z0-9._-]*$ ]]
-          docker build --platform "linux/$ARCH" --secret id=autoglow_token,env=AUTOGLOW_TOKEN --build-arg "OCHE_VERSION=${TAG#v}" --build-arg AUTOGLOW_VERSION --build-arg OCHECORE_VERSION --build-arg AUTODARTS_VERSION -t oche-packages .
+          docker build --platform "linux/$ARCH" --build-arg "OCHE_VERSION=${TAG#v}" --build-arg AUTODARTS_VERSION -t oche-packages .
           mkdir -p output
-          docker run --rm --platform "linux/$ARCH" --user root -v "$PWD/output:/output" --entrypoint python oche-packages /opt/oche-tools/package_updates.py --base-url "https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG"
+          docker run --rm --platform "linux/$ARCH" --user root -v "$PWD/output:/output" --entrypoint python oche-packages \
+            /opt/oche-tools/package_updates.py --base-url "https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG"
       - uses: actions/upload-artifact@v4
         with:
           name: packages-${{ matrix.arch }}
           path: output/*
+
   release:
     needs: [version, packages]
     runs-on: ubuntu-latest
     concurrency:
       group: oche-application-release
-      queue: max
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
@@ -94,7 +93,7 @@ jobs:
           path: output
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: "3.12"
       - name: Build wheel and combined manifest
         run: |
           python -m pip install build
@@ -114,4 +113,4 @@ jobs:
         run: |
           set -euo pipefail
           gh release view "$TAG" || gh release create "$TAG" --target "$RELEASE_SHA" --generate-notes
-          gh release upload "$TAG" output/*
+          gh release upload "$TAG" output/* --clobber

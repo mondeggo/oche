@@ -31,17 +31,17 @@
       description.setAttribute('aria-live', 'polite');
       const hint = document.createElement('p');
       hint.className = 'update-wait-hint';
-      hint.textContent = 'Keep this tab open. Oche will reconnect automatically when it is ready.';
+      hint.textContent = tr("Keep this tab open. Oche will reconnect automatically when it is ready.");
       returnButton = document.createElement('button');
       returnButton.type = 'button';
-      returnButton.textContent = 'Return to Oche';
+      returnButton.textContent = tr("Return to Oche");
       returnButton.addEventListener('click', () => location.reload());
       dialog.append(spinner, heading, description, hint, returnButton);
       dialog.addEventListener('cancel', event => { if (waiting) event.preventDefault(); });
       document.body.append(dialog);
     }
-    heading.textContent = 'Updating Oche';
-    description.textContent = 'Preparing the update…';
+    heading.textContent = tr("Updating Oche");
+    description.textContent = tr("Preparing the update…");
     spinner.hidden = false;
     returnButton.hidden = true;
     if (!dialog.open) dialog.showModal();
@@ -63,7 +63,7 @@
   function fail(reason) {
     if (!waiting) return;
     stop();
-    heading.textContent = 'Oche update needs attention';
+    heading.textContent = tr("Oche update needs attention");
     description.textContent = reason;
     spinner.hidden = true;
     returnButton.hidden = false;
@@ -80,17 +80,17 @@
     if (waiting.jobId && data.job.id !== waiting.jobId && !restarted && !oche?.pending) return;
     if (restarted && !oche?.pending) {
       if (oche?.error) {
-        fail(`Oche restored the previous version. ${oche.error}`);
+        fail(tr("Oche restored the previous version. {0}", {"0": (oche.error)}));
       } else {
         stop();
-        heading.textContent = 'Oche is ready';
-        description.textContent = 'Reloading the interface…';
+        heading.textContent = tr("Oche is ready");
+        description.textContent = tr("Reloading the interface…");
         location.reload(); // Reload the outer shell and all retained views.
       }
       return;
     }
     if (data.job.status === 'error' && !oche?.pending) {
-      fail(data.job.message || 'The update failed. Your previous version is still available.');
+      fail(data.job.message || tr("The update failed. Your previous version is still available."));
       return;
     }
     if (waiting.sawPending && !oche?.pending && data.boot_id) {
@@ -106,8 +106,8 @@
       dialog.close();
       return;
     }
-    heading.textContent = oche?.pending ? 'Restarting Oche' : 'Updating applications';
-    description.textContent = oche?.pending ? 'Waiting for Oche to start and pass its health check…' : data.job.message || 'Preparing the update…';
+    heading.textContent = oche?.pending ? tr("Restarting Oche") : tr("Updating applications");
+    description.textContent = oche?.pending ? tr("Waiting for Oche to start and pass its health check…") : data.job.message || tr("Preparing the update…");
   }
 
   async function poll() {
@@ -115,17 +115,17 @@
     polling = true;
     try {
       const response = await fetch('/updates/status', {cache: 'no-store', signal: AbortSignal.timeout(5000)});
-      if (!response.ok) throw new Error('Restarting');
+      if (!response.ok) throw new Error(tr("Restarting"));
       observe(await response.json());
     } catch (_) {
       if (waiting) {
-        heading.textContent = 'Reconnecting to Oche';
-        description.textContent = 'Oche is restarting. This page will reconnect automatically.';
+        heading.textContent = tr("Reconnecting to Oche");
+        description.textContent = tr("Oche is restarting. This page will reconnect automatically.");
       }
     } finally {
       polling = false;
       if (waiting && Date.now() - waiting.started > 180000) {
-        description.textContent = 'This is taking longer than expected. Still waiting for Oche; you can also retry loading the interface.';
+        description.textContent = tr("This is taking longer than expected. Still waiting for Oche; you can also retry loading the interface.");
         returnButton.hidden = false;
       }
     }

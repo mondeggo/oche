@@ -1,0 +1,30 @@
+/* Layout boundaries for the in-process Home controls inside the app shell. */
+[hidden] { display: none !important; }
+.home-viewport { overflow: hidden; }
+.core-workspace {
+  display: block;
+  height: 100%;
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
+}
+.core-workspace > .core-main {
+  height: 100%;
+  min-height: 0;
+  overflow: auto;
+}
+#application-message {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 90;
+  max-width: calc(100vw - 32px);
+  padding: 12px 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--card);
+  color: var(--fg);
+  box-shadow: 0 8px 24px var(--shadow);
+  font-size: 14px;
+}

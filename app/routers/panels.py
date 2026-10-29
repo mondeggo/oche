@@ -51,14 +51,10 @@ async def page(request: Request, panel_id: UUID):
     )
     if panel is None:
         raise HTTPException(status_code=404, detail="Panel not found")
-    return templates.TemplateResponse(
-        "panel.html",
-        {
+    return templates.TemplateResponse(request=request, name="panel.html", context={
             "request": request,
             "panel": panel,
             "active_nav": "panels",
             "full_width": True,
-            "allow_header_autohide": True,
-            "autohide_navbar_default": config.get("autohide_navbar_on_panels", False),
         },
     )

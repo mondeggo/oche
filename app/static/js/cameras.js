@@ -29,7 +29,7 @@
     const response = await fetch(api + path, { cache: 'no-store', ...options });
     if (!response.ok) {
       const body = await response.json().catch(() => ({}));
-      const detail = typeof body.detail === 'string' ? body.detail : 'The camera request failed. Please try again.';
+      const detail = typeof body.detail === 'string' ? body.detail : tr("The camera request failed. Please try again.");
       throw new Error(detail);
     }
     return response.json();
@@ -82,13 +82,13 @@
     for (const rate of sharedRates) option(fps, rate, `${rate} FPS`);
     if (!sharedRates.includes(draft.fps)) option(fps, draft.fps, `${draft.fps} FPS (not available for this selection)`);
     fps.value = String(draft.fps);
-    let hint = 'Resolution and FPS must be supported by all three selected cameras.';
-    if (!unique) hint = 'Choose three different cameras.';
-    else if (!known) hint = 'Supported modes are unavailable for a selected camera. Refresh devices or choose an available camera before applying.';
-    else if (!common.length) hint = 'These cameras have no shared resolution and FPS combination.';
-    else if (!supportedResolution) hint = 'Choose a resolution supported by all three cameras.';
-    else if (!sharedRates.length) hint = 'These cameras have no shared FPS at this resolution.';
-    else if (!sharedRates.includes(draft.fps)) hint = 'Choose an FPS supported by all three cameras.';
+    let hint = tr("Resolution and FPS must be supported by all three selected cameras.");
+    if (!unique) hint = tr("Choose three different cameras.");
+    else if (!known) hint = tr("Supported modes are unavailable for a selected camera. Refresh devices or choose an available camera before applying.");
+    else if (!common.length) hint = tr("These cameras have no shared resolution and FPS combination.");
+    else if (!supportedResolution) hint = tr("Choose a resolution supported by all three cameras.");
+    else if (!sharedRates.length) hint = tr("These cameras have no shared FPS at this resolution.");
+    else if (!sharedRates.includes(draft.fps)) hint = tr("Choose an FPS supported by all three cameras.");
     $('camera-settings-hint').textContent = hint;
     $('camera-apply').disabled = saving || !running || !unique || !known || !supportedResolution || !sharedRates.includes(draft.fps) || !hasUnsavedChanges();
     settingsRenderKey = settingsKey();
@@ -98,7 +98,7 @@
     for (let index = 0; index < 3; index++) {
       const select = $('camera-device-' + index);
       select.replaceChildren();
-      option(select, '', 'Choose a camera');
+      option(select, '', tr("Choose a camera"));
       for (const device of data.devices) option(select, device.id, device.label || device.id);
       const saved = draft.devices[index];
       if (saved && !data.devices.some(device => device.id === saved)) option(select, saved, `${saved} (not available)`);
@@ -123,8 +123,8 @@
     $('camera-settings-fields').disabled = saving || !running;
     // An unchanged status poll should not disturb an open native select menu.
     if (settingsRenderKey !== settingsKey()) renderSettings();
-    $('camera-status').textContent = paused ? 'Preview paused. Autodarts continues running.' : next.capturing === false
-      ? 'Autodarts is running but is not currently capturing camera images.' : 'Live camera views from Autodarts. Select a camera below to focus it.';
+    $('camera-status').textContent = paused ? tr("Preview paused. Autodarts continues running.") : next.capturing === false
+      ? tr("Autodarts is running but is not currently capturing camera images.") : tr("Live camera views from Autodarts. Select a camera below to focus it.");
     const warnings = $('camera-warnings');
     warnings.replaceChildren();
     for (const warning of next.warnings || []) {
@@ -135,7 +135,7 @@
     warnings.hidden = !warnings.children.length;
     for (let index = 0; index < 3; index++) {
       const camera = next.cameras.find(value => value.index === index);
-      const delivered = Number.isFinite(camera?.fps) ? `${Number(camera.fps.toFixed(1))} engine FPS` : 'Engine FPS unavailable';
+      const delivered = Number.isFinite(camera?.fps) ? `${Number(camera.fps.toFixed(1))} engine FPS` : tr("Engine FPS unavailable");
       const resolution = next.capture_resolution;
       $('camera-health-' + index).textContent = `${delivered} · ${next.settings.fps} requested` + (resolution ? ` · ${resolution.width} × ${resolution.height} actual` : '');
     }
@@ -155,7 +155,7 @@
       if (requestedGeneration !== dataGeneration) return;
       running = false;
       resetFrames();
-      $('camera-status').textContent = error.message || 'Could not reach Autodarts. Start it in Supervisor, then refresh.';
+      $('camera-status').textContent = tr(error.message) || tr("Could not reach Autodarts. Start it on the Autodarts page, then refresh.");
       $('camera-settings-fields').disabled = true;
       mute();
     } finally {
@@ -178,7 +178,7 @@
       slot.image.hidden = true;
       slot.lastAttempt = 0;
       slot.state.hidden = false;
-      slot.state.textContent = 'Waiting for an image';
+      slot.state.textContent = tr("Waiting for an image");
     }
     context.clearRect(0, 0, canvas.width, canvas.height);
     zoomContext.clearRect(0, 0, zoom.width, zoom.height);
@@ -212,14 +212,14 @@
     $('camera-baseline-show').checked = false;
     $('camera-baseline-show').disabled = true;
     $('camera-baseline-save').disabled = true;
-    $('camera-baseline-status').textContent = 'Capture a reference before adjusting the lens.';
+    $('camera-baseline-status').textContent = tr("Capture a reference before adjusting the lens.");
     $('camera-lighting-stats').textContent = '';
     meter.reset();
     lastResult = null;
     $('camera-focus-current').textContent = '—';
     $('camera-focus-best').textContent = '—';
     $('camera-focus-meter').value = 0;
-    $('camera-focus-trend').textContent = 'Keep the selected area still while adjusting the lens.';
+    $('camera-focus-trend').textContent = tr("Keep the selected area still while adjusting the lens.");
     mute();
   }
 
@@ -266,17 +266,17 @@
     history.push(result.usable ? result.current : null);
     if (history.length > 120) history.shift();
     drawHistory();
-    $('camera-lighting-stats').textContent = `Brightness ${sample.brightness.toFixed(0)}/255 ? Dark clipping ${(sample.clippedDark * 100).toFixed(0)}% ? Bright clipping ${(sample.clippedBright * 100).toFixed(0)}%`;
+    $('camera-lighting-stats').textContent = tr("Brightness {0}/255 ? Dark clipping {1}% ? Bright clipping {2}%", {"0": (sample.brightness.toFixed(0)), "1": ((sample.clippedDark * 100).toFixed(0)), "2": ((sample.clippedBright * 100).toFixed(0))});
     $('camera-baseline-save').disabled = !result.usable || paused;
     if (baselineScore !== null) $('camera-baseline-status').textContent = result.usable
-      ? `Focus compared with before: ${((result.current / baselineScore - 1) * 100).toFixed(1)}%. Keep lighting and selection unchanged.`
-      : 'Before reference retained. Waiting for a usable image.';
+      ? tr("Focus compared with before: {0}%. Keep lighting and selection unchanged.", {"0": (((result.current / baselineScore - 1) * 100).toFixed(1))})
+      : tr("Before reference retained. Waiting for a usable image.");
     lastResult = result;
     $('camera-focus-current').textContent = result.usable ? result.current.toFixed(1) : '—';
     $('camera-focus-best').textContent = result.best > 0 ? result.best.toFixed(1) : '—';
     $('camera-focus-meter').value = result.usable ? result.relative : 0;
-    const trends = { improving: 'Sharpness is improving.', declining: 'Sharpness has decreased.', steady: 'Sharpness is steady.' };
-    $('camera-focus-trend').textContent = result.warning || result.lightingWarning || (result.samples < 4 ? 'Measuring… keep the selection still.' : trends[result.trend] || 'Waiting for usable detail.');
+    const trends = { improving: tr("Sharpness is improving."), declining: tr("Sharpness has decreased."), steady: tr("Sharpness is steady.") };
+    $('camera-focus-trend').textContent = result.warning || result.lightingWarning || (result.samples < 4 ? tr("Measuring… keep the selection still.") : trends[result.trend] || tr("Waiting for usable detail."));
     updateAudio();
   }
 
@@ -291,12 +291,12 @@
       const response = await fetch(`${api}/frame/${slot.index}`, { cache: 'no-store', signal: controller.signal });
       if (!response.ok) {
         const body = await response.json().catch(() => ({}));
-        throw new Error(typeof body.detail === 'string' ? body.detail : 'Image unavailable');
+        throw new Error(typeof body.detail === 'string' ? body.detail : tr("Image unavailable"));
       }
       const blob = await response.blob();
       const bitmap = await createImageBitmap(blob);
       if (requestedGeneration !== generation) { bitmap.close(); return; }
-      if (controller.signal.aborted) { bitmap.close(); throw new Error('Image request timed out. Retrying…'); }
+      if (controller.signal.aborted) { bitmap.close(); throw new Error(tr("Image request timed out. Retrying…")); }
       slot.bitmap?.close();
       slot.bitmap = bitmap;
       if (slot.url) URL.revokeObjectURL(slot.url);
@@ -307,12 +307,12 @@
       if (slot.index === selected) { drawFocus(); analyze(bitmap); }
     } catch (error) {
       if (requestedGeneration !== generation) return;
-      slot.state.textContent = controller.signal.aborted ? 'Image request timed out. Retrying…' : error.message || 'Image unavailable';
+      slot.state.textContent = controller.signal.aborted ? tr("Image request timed out. Retrying…") : error.message || tr("Image unavailable");
       slot.state.hidden = false;
       if (slot.index === selected) {
         $('camera-focus-current').textContent = '—';
         $('camera-focus-meter').value = 0;
-        $('camera-focus-trend').textContent = 'No fresh image. Focus guidance will resume when this camera responds.';
+        $('camera-focus-trend').textContent = tr("No fresh image. Focus guidance will resume when this camera responds.");
         lastResult = null;
         $('camera-baseline-save').disabled = true;
         history.push(null);
@@ -376,7 +376,7 @@
       item.classList.toggle('selected', item === button);
       item.setAttribute('aria-pressed', String(item === button));
     });
-    $('camera-focus-title').textContent = `Focus Camera ${selected + 1}`;
+    $('camera-focus-title').textContent = tr("Focus Camera {0}", {"0": (selected + 1)});
     context.clearRect(0, 0, canvas.width, canvas.height);
     zoomContext.clearRect(0, 0, zoom.width, zoom.height);
     $('camera-focus-empty').hidden = Boolean(slots[selected].bitmap);
@@ -446,7 +446,7 @@
     baseline.getContext('2d').drawImage(bitmap, 0, 0);
     baselineScore = Math.max(Number.EPSILON, lastResult.current);
     $('camera-baseline-show').disabled = false;
-    $('camera-baseline-status').textContent = 'Before captured. Adjust the lens, then toggle Show before to compare.';
+    $('camera-baseline-status').textContent = tr("Before captured. Adjust the lens, then toggle Show before to compare.");
     drawFocus();
   });
   $('camera-focus-reset').addEventListener('click', () => { resetFocus(); drawFocus(); });
@@ -457,12 +457,12 @@
     drawFocus();
     paused = !paused;
     $('camera-baseline-save').disabled = paused || !lastResult?.usable;
-    $('camera-preview-toggle').textContent = paused ? 'Resume preview' : 'Pause preview';
+    $('camera-preview-toggle').textContent = paused ? tr("Resume preview") : tr("Pause preview");
     $('camera-preview-toggle').setAttribute('aria-pressed', String(paused));
     generation++;
     for (const slot of slots) { slot.controller?.abort(); slot.lastAttempt = 0; }
     mute();
-    if (data && running) $('camera-status').textContent = paused ? 'Preview paused. Autodarts continues running.' : 'Live camera views from Autodarts. Select a camera below to focus it.';
+    if (data && running) $('camera-status').textContent = paused ? tr("Preview paused. Autodarts continues running.") : tr("Live camera views from Autodarts. Select a camera below to focus it.");
   });
   $('camera-audio').addEventListener('change', async () => {
     if (!$('camera-audio').checked) { mute(); return; }
@@ -479,12 +479,12 @@
       updateAudio();
     } catch (_) {
       $('camera-audio').checked = false;
-      $('camera-focus-trend').textContent = 'Audio is unavailable on this device. The visual focus meter still works.';
+      $('camera-focus-trend').textContent = tr("Audio is unavailable on this device. The visual focus meter still works.");
     }
   });
   for (let index = 0; index < 3; index++) $('camera-device-' + index).addEventListener('change', event => {
     draft.devices[index] = event.target.value;
-    $('camera-settings-status').textContent = 'Changes are ready to review. Apply them when you are ready.';
+    $('camera-settings-status').textContent = tr("Changes are ready to review. Apply them when you are ready.");
     updateModes();
   });
   $('camera-resolution').addEventListener('change', event => {
@@ -509,13 +509,13 @@
     mute();
     $('camera-refresh').disabled = true;
     $('camera-settings-fields').disabled = true;
-    $('camera-settings-status').textContent = 'Applying camera settings…';
+    $('camera-settings-status').textContent = tr("Applying camera settings…");
     try {
       const next = await request('/settings', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ revision: draftRevision, ...draft }), signal: AbortSignal.timeout(15000) });
       showData(next, true);
-      $('camera-settings-status').textContent = 'Camera settings applied.';
+      $('camera-settings-status').textContent = tr("Camera settings applied.");
     } catch (error) {
-      $('camera-settings-status').textContent = error.message || 'Could not apply settings. Refresh and review the values before trying again.';
+      $('camera-settings-status').textContent = tr(error.message) || tr("Could not apply settings. Refresh and review the values before trying again.");
     } finally {
       saving = false;
       $('camera-refresh').disabled = loadingData;

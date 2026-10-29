@@ -14,7 +14,7 @@
       ...(body === undefined ? {} : {headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)}),
     });
     const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(typeof data.detail === 'string' ? data.detail : 'The camera request failed. Refresh and try again.');
+    if (!response.ok) throw new Error(typeof data.detail === 'string' ? data.detail : tr("The camera request failed. Refresh and try again."));
     return data;
   }
 
@@ -25,7 +25,7 @@
     $('camera-profile-apply').disabled = locked || !$('camera-profile-select').value;
     $('camera-profile-delete').disabled = busy || !$('camera-profile-select').value;
     $('camera-calibration-start').disabled = locked || !s.ready || !controls?.controls.length || controls.device !== s.device;
-    $('camera-calibration-start').textContent = `Start sweep for Camera ${s.index + 1}`;
+    $('camera-calibration-start').textContent = tr("Start sweep for Camera {0}", {"0": (s.index + 1)});
     $('camera-calibration-cancel').disabled = busy || !activeJob();
     $('camera-calibration-apply').disabled = busy || job.state !== 'review' || !Object.keys(job.proposal || {}).length;
     $('camera-controls-recover').disabled = busy || activeJob();
@@ -35,7 +35,7 @@
 
   function renderProfiles() {
     const select = $('camera-profile-select'), previous = select.value;
-    select.replaceChildren(new Option('Choose a profile', ''));
+    select.replaceChildren(new Option(tr("Choose a profile"), ''));
     for (const [name, profile] of Object.entries(savedProfiles)) {
       if (profile.device === selection().device) select.add(new Option(name, name));
     }
@@ -52,7 +52,7 @@
       const input = document.createElement(control.kind.includes('menu') || control.kind === 'bool' ? 'select' : 'input');
       input.dataset.control = control.name;
       if (input.tagName === 'SELECT') {
-        const menu = control.kind === 'bool' ? {'0': 'Off', '1': 'On'} : control.menu;
+        const menu = control.kind === 'bool' ? {'0': tr("Off"), '1': tr("On")} : control.menu;
         for (const [value, title] of Object.entries(menu)) input.add(new Option(title, value));
       } else {
         input.type = 'number';
@@ -65,15 +65,15 @@
       label.append(input);
       if (control.inactive || !control.writable) {
         const hint = document.createElement('small');
-        hint.textContent = control.inactive ? 'Controlled by an automatic mode' : 'Unavailable for writing';
+        hint.textContent = control.inactive ? tr("Controlled by an automatic mode") : tr("Unavailable for writing");
         label.append(hint);
       }
       list.append(label);
     }
-    $('camera-controls-legend').textContent = `Camera ${selection().index + 1}`;
+    $('camera-controls-legend').textContent = tr("Camera {0}", {"0": (selection().index + 1)});
     $('camera-controls-status').textContent = controls.recovery_required
-      ? 'Interrupted changes need restoration before editing controls.'
-      : controls.controls.length ? 'Controls read from the camera.' : 'This camera exposes no supported controls.';
+      ? tr("Interrupted changes need restoration before editing controls.")
+      : controls.controls.length ? tr("Controls read from the camera.") : tr("This camera exposes no supported controls.");
     renderButtons();
   }
 
@@ -92,7 +92,7 @@
       if (requestedKey === key(selection())) {
         controls = null;
         $('camera-controls-list').replaceChildren();
-        $('camera-controls-status').textContent = error.message;
+        $('camera-controls-status').textContent = tr(error.message);
       }
     } finally {
       loading = false; renderButtons();
@@ -105,7 +105,7 @@
     busy = true;
     renderButtons();
     try { await work(); }
-    catch (error) { $(status).textContent = error.message; }
+    catch (error) { $(status).textContent = tr(error.message); }
     finally { busy = false; renderButtons(); }
   }
 
@@ -118,10 +118,10 @@
     jobVersion++;
     job = next;
     $('camera-calibration-progress').value = next.progress || 0;
-    $('camera-calibration-status').textContent = (next.index === undefined ? '' : `Camera ${next.index + 1}: `) +
-      (next.message || 'Ready. Each sweep is limited to three minutes.');
+    $('camera-calibration-status').textContent = (next.index === undefined ? '' : tr("Camera {0}:", {"0": (next.index + 1)})) +
+      (next.message || tr("Ready. Each sweep is limited to three minutes."));
     $('camera-calibration-proposal').textContent = Object.keys(next.proposal || {}).length
-      ? 'Proposed controls: ' + Object.entries(next.proposal).map(([name, value]) => `${name}: ${value}`).join(', ') +
+      ? (tr("Proposed controls:") + " ") + Object.entries(next.proposal).map(([name, value]) => `${name}: ${value}`).join(', ') +
         ` ? Before score ${next.baseline_score.toFixed(1)}, proposed ${next.proposed_score.toFixed(1)}.` : '';
     const signature = JSON.stringify([next.id, next.state, next.samples?.length]);
     if (signature !== resultKey) {
@@ -131,14 +131,14 @@
       if (next.samples?.length) {
         const table = document.createElement('table');
         const header = table.createTHead().insertRow();
-        for (const title of ['Sample', 'Controls', 'Detail score', 'Brightness', 'Clipped dark / bright']) {
+        for (const title of [tr("Sample"), tr("Controls"), tr("Detail score"), tr("Brightness"), tr("Clipped dark / bright")]) {
           const th = document.createElement('th'); th.scope = 'col'; th.textContent = title; header.append(th);
         }
         const body = table.createTBody();
         next.samples.forEach((sample, index) => {
           const row = body.insertRow();
-          for (const value of [index ? String(index) : 'Before',
-            Object.entries(sample.values).map(([name, value]) => `${name}: ${value}`).join(', ') || 'Original controls',
+          for (const value of [index ? String(index) : tr("Before"),
+            Object.entries(sample.values).map(([name, value]) => `${name}: ${value}`).join(', ') || tr("Original controls"),
             sample.score.toFixed(1), sample.brightness.toFixed(0),
             `${(sample.clipped_dark * 100).toFixed(0)}% / ${(sample.clipped_bright * 100).toFixed(0)}%`]) row.insertCell().textContent = value;
         });
@@ -166,17 +166,17 @@
       if (version !== jobVersion) return;
       renderJob(next);
       if (wasRunning && !activeJob()) { workspace.resetFocus(); refresh(); }
-    } catch (error) { $('camera-calibration-status').textContent = 'Could not read calibration status. ' + error.message; }
+    } catch (error) { $('camera-calibration-status').textContent = (tr("Could not read calibration status.") + " ") + error.message; }
     finally { polling = false; }
   }
 
   async function findTarget(mode) {
     const before = selection();
-    $('camera-target-status').textContent = 'Finding focus target…';
+    $('camera-target-status').textContent = tr("Finding focus target…");
     const target = await request(`/target/${before.index}?mode=${mode}`);
     const after = selection();
     if (key(before) !== key(after) || (target.revision && target.revision !== after.revision) || target.width !== after.width || target.height !== after.height) {
-      throw new Error('The camera view changed. Find the target again.');
+      throw new Error(tr("The camera view changed. Find the target again."));
     }
     workspace.setROI(target.roi);
     $('camera-target-status').textContent = `${mode === 't20' ? 'T20' : 'Furthest double'}: ${target.method}. The selection stays fixed until you move it.`;
@@ -188,7 +188,7 @@
   $('camera-controls-form').addEventListener('submit', event => {
     event.preventDefault();
     action(async () => {
-      if (!controls || controls.device !== selection().device) throw new Error('Reload camera controls first.');
+      if (!controls || controls.device !== selection().device) throw new Error(tr("Reload camera controls first."));
       const values = {};
       for (const input of document.querySelectorAll('[data-control]')) {
         const current = controls.controls.find(c => c.name === input.dataset.control);
@@ -210,10 +210,10 @@
   }));
   $('camera-profile-save').addEventListener('click', () => action(async () => {
     const s = selection(), name = $('camera-profile-name').value.trim();
-    if (!name || !/^[\p{L}\p{N}_ .-]{1,64}$/u.test(name)) throw new Error('Enter a profile name using letters, numbers, spaces, dots, dashes or underscores.');
+    if (!name || !/^[\p{L}\p{N}_ .-]{1,64}$/u.test(name)) throw new Error(tr("Enter a profile name using letters, numbers, spaces, dots, dashes or underscores."));
     await request(`/profiles/${s.index}`, 'POST', {device: s.device, name});
     await reloadProfiles(); $('camera-profile-select').value = name;
-    $('camera-controls-status').textContent = 'Current camera controls saved as a profile.';
+    $('camera-controls-status').textContent = tr("Current camera controls saved as a profile.");
   }));
   $('camera-profile-apply').addEventListener('click', () => action(async () => {
     const s = selection();
@@ -237,7 +237,7 @@
   $('camera-calibration-apply').addEventListener('click', () => action(async () => {
     await request(`/calibration/apply/${job.id}`, 'POST'); workspace.resetFocus(); await refresh(); await poll();
   }, 'camera-calibration-status'));
-  reloadProfiles().catch(error => { $('camera-controls-status').textContent = error.message; });
+  reloadProfiles().catch(error => { $('camera-controls-status').textContent = tr(error.message); });
   setInterval(poll, 2000);
   poll();
 })();

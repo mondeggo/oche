@@ -1,0 +1,48 @@
+[
+  {
+    "type": "state",
+    "data": {
+      "running": true,
+      "connected": true,
+      "status": "Throw",
+      "event": "Started",
+      "numThrows": 0
+    }
+  },
+  {
+    "type": "state",
+    "data": {
+      "running": true,
+      "connected": true,
+      "status": "Throw",
+      "event": "Throw detected",
+      "numThrows": 1,
+      "throws": [
+        {
+          "bouncer": false,
+          "segment": {"bed": "Triple", "multiplier": 3, "name": "T20", "number": 20}
+        }
+      ]
+    }
+  },
+  {
+    "type": "state",
+    "data": {
+      "running": true,
+      "connected": true,
+      "status": "Takeout in progress",
+      "event": "Takeout started",
+      "numThrows": 2,
+      "throws": [
+        {
+          "bouncer": false,
+          "segment": {"bed": "Triple", "multiplier": 3, "name": "T20", "number": 20}
+        },
+        {
+          "bouncer": false,
+          "segment": {"bed": "SingleOuter", "multiplier": 1, "name": "S19", "number": 19}
+        }
+      ]
+    }
+  }
+]

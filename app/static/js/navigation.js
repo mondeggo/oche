@@ -1,23 +1,11 @@
+import { canonicalUrl as resolveUrl, isHome, persistent, viewKey } from "./routes.mjs";
 // Keep Home's Caller audio and Supervisor previews attached in this tab.
 // Moving an iframe between DOM parents also reloads it, so each view stays put.
 (() => {
-  const canonicalUrl = href => {
-    const url = new URL(href, location.href);
-    if (url.pathname === '/ochecore') url.pathname = '/';
-    if (url.pathname === '/config/system') {
-      url.pathname = '/supervisor';
-      url.searchParams.set('service', 'system');
-    }
-    return url;
-  };
-  const persistent = path => path === '/supervisor' || path === '/';
-  const supervisorService = url => ['autoglow', 'ochecore', 'system', 'updates'].includes(url.searchParams.get('service'))
-    ? url.searchParams.get('service') : 'autodarts';
-  const viewKey = url => url.pathname === '/supervisor'
-    ? '/supervisor?service=' + supervisorService(url)
-    : url.pathname === '/' ? '/' : url.pathname + url.search;
+  const canonicalUrl = href => resolveUrl(href, location.href);
   const internal = url => url.origin === location.origin &&
-    (/^\/(?:board|autodarts|supervisor|play|autoglow|ochecore|config(?:\/(?:https|system))?)?$/.test(url.pathname) ||
+    (isHome(url.pathname) || url.pathname === '/integrations/cameras' ||
+     /^\/(?:supervisor|play|local|config(?:\/https)?)?$/.test(url.pathname) ||
      /^\/panels\/[^/]+$/.test(url.pathname));
   let shell = window;
   try {
@@ -27,9 +15,19 @@
   if (shell === window) {
     const original = document.getElementById('oche-page');
     const initialUrl = canonicalUrl(location.href);
+    if (initialUrl.href !== location.href) history.replaceState(null, '', initialUrl.href);
     const views = new Map();
     let active = { element: original, url: initialUrl, original: true, title: document.title };
     if (persistent(initialUrl.pathname)) views.set(viewKey(initialUrl), active);
+
+    function syncWorkspace(view) {
+      if (!isHome(view.url.pathname)) return;
+      const doc = view.original ? document : view.element.contentDocument;
+      const home = doc?.defaultView;
+      if (!home || (home !== window && !isHome(home.location.pathname))) return;
+      if (home !== window) home.history.replaceState(null, '', view.url.pathname + view.url.search + view.url.hash);
+      home.dispatchEvent(new home.Event('oche:route'));
+    }
 
     function navigate(href, push = true) {
       const url = canonicalUrl(href);
@@ -47,7 +45,10 @@
         frame.src = url.href;
         next = { element: frame, url };
         frame.addEventListener('load', () => {
-          if (active === next) document.title = frame.contentDocument.title;
+          if (active === next) {
+            syncWorkspace(next);
+            document.title = frame.contentDocument.title;
+          }
         });
         document.body.appendChild(frame);
         if (persistent(url.pathname)) views.set(viewKey(url), next);
@@ -57,25 +58,37 @@
         active.element.remove();
       }
       active = next;
+      active.url = url;
       active.element.hidden = false;
       if (push) history.pushState(null, '', url.href);
       else if (url.href !== location.href) history.replaceState(null, '', url.href);
       const doc = active.original ? document : active.element.contentDocument;
       if (active.original) document.title = active.title;
       else if (doc && doc.title) document.title = doc.title;
-      // Settings and pinned panels may have changed while this view was hidden.
-      // Refresh only navigation markup; never replace its camera-bearing body.
+      syncWorkspace(active);
+      // Settings, panels and integrations may have changed while this view was hidden.
+      // Refresh only sidebar markup; never replace its camera-bearing body.
       if (retained && doc) {
         fetch(url.href).then(response => {
-          if (!response.ok) throw new Error('Navigation refresh failed');
+          if (!response.ok) throw new Error(tr("Navigation refresh failed"));
           return response.text();
         }).then(html => {
           const updated = new DOMParser().parseFromString(html, 'text/html');
-          const header = updated.getElementById('topbar');
-          if (header) {
-            doc.getElementById('topbar').innerHTML = header.innerHTML;
-            doc.defaultView.ocheTheme?.refresh();
+          // Sync visibility and the panel list; Home keeps its own live sidebar state.
+          for (const source of updated.querySelectorAll('[data-nav-sync][id]')) {
+            const target = doc.getElementById(source.id);
+            if (target) target.hidden = source.hidden;
           }
+          const panels = updated.getElementById('sidebar-panel-list');
+          if (panels && doc.getElementById('sidebar-panel-list')) {
+            doc.getElementById('sidebar-panel-list').innerHTML = panels.innerHTML;
+          }
+          const profiles = updated.getElementById('app-profile');
+          if (profiles && doc.getElementById('app-profile') && !doc.getElementById('core-main')) {
+            doc.getElementById('app-profile').innerHTML = profiles.innerHTML;
+          }
+          doc.defaultView.ocheTheme?.refresh();
+          doc.defaultView.ocheSidebar?.refresh();
         }).catch(() => { /* Keep usable navigation when temporarily offline. */ });
       }
       return true;
@@ -83,6 +96,8 @@
     window.ocheNavigation = { navigate };
     window.addEventListener('popstate', () => navigate(location.href, false));
   }
+
+  window.ocheNavigate = href => shell.ocheNavigation.navigate(href);
 
   document.addEventListener('click', event => {
     if (event.defaultPrevented || event.button !== 0 || event.ctrlKey ||

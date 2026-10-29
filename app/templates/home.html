@@ -1,0 +1,1042 @@
+{% extends "base.html" %}
+{% macro source_options(name, label) -%}
+<div class="play-sources" data-play-sources="{{ name }}" role="group" aria-label="{{ _('Play sources for {name}', name=_(label)) }}">
+  <span class="hint">{{ _("Game sources") }}</span>
+  {% for key, title in [('run_on_cloud', 'Autodarts Play'), ('run_on_local', 'Local play')] %}
+  <button class="switch" type="button" role="switch" data-play-source="{{ key }}" aria-checked="false" disabled>
+    <span>{{ _(title) }}</span><span data-play-source-state>{{ _("Loading…") }}</span>
+    <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
+  </button>
+  {% endfor %}
+</div>
+{%- endmacro %}
+{% block title %}{{ _("Oche - Home") }}{% endblock %}
+{% block content %}
+<div class="core-workspace">
+    <div class="core-main" id="core-main" tabindex="-1">
+      <header class="page-header">
+        <div>
+          <p class="eyebrow">{{ _("Your darts setup") }}</p>
+          <h1 id="page-title" tabindex="-1">{{ _("Overview") }}</h1>
+          <p id="page-description" class="muted">
+            {{ _("Your board and connection at a glance.") }}
+          </p>
+        </div>
+      </header>
+      <div id="notice" class="notice" role="status" hidden>
+        <span id="notice-text"></span>
+        <button
+          id="dismiss-notice"
+          class="quiet"
+          type="button"
+          aria-label="{{ _('Dismiss notification') }}"
+        >
+          ×
+        </button>
+      </div>
+      <div id="connection-warning" class="warning" role="status" hidden>
+        <span id="warning-text"></span>
+        <a href="/integrations/autodarts">{{ _("Connection details") }}</a>
+      </div>
+
+      <dialog id="profile-confirm" aria-labelledby="profile-confirm-title">
+        <h2 id="profile-confirm-title">{{ _("Remove profile?") }}</h2>
+        <p id="profile-confirm-description"></p>
+        <p class="hint">
+          {{ _("This removes its lighting, Caller, theme and language settings. Your devices and zones are kept.") }}
+        </p>
+        <div class="actions">
+          <button id="profile-cancel" type="button" autofocus>{{ _("Cancel") }}</button>
+          <button id="profile-confirm-remove" class="danger" type="button">
+            {{ _("Remove profile") }}
+          </button>
+        </div>
+      </dialog>
+
+      <section data-view="overview" aria-label="{{ _('Overview') }}">
+        <div class="panel board-panel">
+          <div class="panel-heading">
+            <h2>{{ _("Board") }}</h2>
+            <span id="board-state" class="badge">{{ _("Not selected") }}</span>
+          </div>
+          <p id="board-name" class="board-name">{{ _("Choose your board") }}</p>
+          <p id="match" class="muted">{{ _("Connect Autodarts to get started.") }}</p>
+          <div class="board-controls">
+            <div>
+              <strong id="overview-phase" class="board-phase"
+                >{{ _("Waiting for board") }}</strong
+              >
+              <p id="overview-phase-reason" class="hint"></p>
+            </div>
+            <a class="button" href="/integrations">{{ _("Manage connection") }}</a>
+          </div>
+        </div>
+        <dl class="metrics">
+          <div class="panel">
+            <dt>{{ _("Autodarts cloud") }}</dt>
+            <dd id="cloud-state">—</dd>
+            <p class="hint">{{ _("Account:") }} <span id="auth-state">—</span></p>
+            <a href="/events"><span id="count">0</span> game events →</a>
+          </div>
+          <div class="panel">
+            <dt>WLED</dt>
+            <dd id="overview-wled">{{ _("Loading…") }}</dd>
+            <a href="/integrations/wled">{{ _("Lighting settings →") }}</a>
+          </div>
+          <div class="panel">
+            <dt>{{ _("Caller") }}</dt>
+            <dd id="overview-caller">{{ _("Loading…") }}</dd>
+            <a href="/integrations/caller">{{ _("Voice settings →") }}</a>
+          </div>
+          <div class="panel">
+            <dt>{{ _("Scoreboard") }}</dt>
+            <dd id="overview-scoreboard">{{ _("Loading…") }}</dd>
+            <a href="/integrations/scoreboard">{{ _("Display settings →") }}</a>
+          </div>
+        </dl>
+        <div id="setup-integrations" class="panel compact-panel">
+          <div>
+            <h2>{{ _("Make it your setup") }}</h2>
+            <p class="muted">
+              {{ _("Choose the lights and audio to use with your board.") }}
+            </p>
+          </div>
+          <a class="button" href="/integrations">{{ _("Integrations") }}</a>
+        </div>
+      </section>
+
+      <section data-view="integrations" aria-label="{{ _('Integrations') }}" hidden>
+        <div class="panel connection-card">
+          <div class="panel-heading">
+            <div class="connection-title">
+              <span class="connection-logo"><img src="/static/img/autodarts_logo.svg" alt=""></span>
+              <div><h2>{{ _("Autodarts account") }}</h2><p class="hint">{{ _("Cloud sign-in and board for game events") }}</p></div>
+            </div>
+            <span id="account-state" class="badge">—</span>
+          </div>
+          <p id="account-hint" class="muted">
+            {{ _("Sign in on Autodarts to connect your board.") }}
+          </p>
+          <div class="actions">
+            <button id="login" class="primary" type="button" disabled>
+              {{ _("Connect account") }}
+            </button>
+            <button id="logout" type="button" disabled>{{ _("Disconnect") }}</button>
+          </div>
+          <div id="device" class="device" hidden>
+            <p>{{ _("Enter this code on Autodarts to approve the connection.") }}</p>
+            <strong id="user-code"></strong>
+            <a
+              id="verification"
+              class="button primary"
+              target="_blank"
+              rel="noreferrer"
+            >
+              {{ _("Open Autodarts ↗") }}
+            </a>
+            <p id="expires" class="hint"></p>
+          </div>
+          <p class="connection-board"><a href="/integrations/autodarts">{{ _("Board and connection details →") }}</a></p>
+        </div>
+        <a class="panel events-card" href="/events">
+          <div>
+            <h3>{{ _("Game events") }}</h3>
+            <p id="events-summary" class="muted">{{ _("Loading…") }}</p>
+          </div>
+          <span class="integration-card-link">{{ _("View events →") }}</span>
+        </a>
+        <h2 class="section-heading">{{ _("Tools and integrations") }}</h2>
+        <div class="integration-grid">
+          <article class="panel integration-card">
+            <div class="integration-card-head">
+              <h3>Visual WLED</h3>
+              <button id="w2-toggle" class="switch" type="button" role="switch" aria-checked="false" aria-label="{{ _('Enable Visual WLED') }}" disabled>
+                <span id="w2-toggle-label">{{ _("Loading…") }}</span>
+                <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
+              </button>
+            </div>
+            <p class="muted">{{ _("Draw your lights around the board, connect controllers and assign game rules.") }}</p>
+            {{ source_options('wled2', 'Visual WLED') }}
+            <p id="w2-integration-error" class="error" role="status" hidden></p>
+            <a class="integration-card-link" href="/integrations/visual-wled">{{ _("Open layout →") }}</a>
+          </article>
+          <article class="panel integration-card">
+            <div class="integration-card-head">
+              <h3>WLED</h3>
+              <button id="wled-toggle" class="switch" type="button" role="switch" aria-checked="false" aria-label="{{ _('Enable WLED') }}" disabled>
+                <span id="wled-toggle-label">{{ _("Loading…") }}</span>
+                <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
+              </button>
+            </div>
+            <p class="muted">{{ _("Rule-based phase colours, game effects and matrix scores per zone.") }}</p>
+            {{ source_options('wled', 'WLED') }}
+            <p id="wled-integration-error" class="error" role="status" hidden></p>
+            <a class="integration-card-link" id="wled-settings" href="/integrations/wled" hidden>{{ _("Settings →") }}</a>
+          </article>
+          <article class="panel integration-card">
+            <div class="integration-card-head">
+              <h3>{{ _("Caller") }}</h3>
+              <button id="caller-toggle" class="switch" type="button" role="switch" aria-checked="false" aria-label="{{ _('Enable Caller') }}" disabled>
+                <span id="caller-toggle-label">{{ _("Loading…") }}</span>
+                <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
+              </button>
+            </div>
+            <p class="muted">{{ _("Voice announcements for scores and game events.") }}</p>
+            {{ source_options('caller', 'Caller') }}
+            <p id="caller-integration-error" class="error" role="status" hidden></p>
+            <a class="integration-card-link" id="caller-settings" href="/integrations/caller" hidden>{{ _("Settings →") }}</a>
+          </article>
+          <article class="panel integration-card">
+            <div class="integration-card-head">
+              <h3>{{ _("Scoreboard") }}</h3>
+              <button id="scoreboard-toggle" class="switch" type="button" role="switch" aria-checked="false" aria-label="{{ _('Enable Scoreboard') }}" disabled>
+                <span id="scoreboard-toggle-label">{{ _("Loading…") }}</span>
+                <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
+              </button>
+            </div>
+            <p class="muted">{{ _("A personalized, full-screen live score display for a second screen or kiosk browser.") }}</p>
+            {{ source_options('scoreboard', 'Scoreboard') }}
+            <p id="scoreboard-integration-error" class="error" role="status" hidden></p>
+            <a class="integration-card-link" id="scoreboard-settings" href="/integrations/scoreboard" hidden>{{ _("Settings →") }}</a>
+          </article>
+          <article class="panel integration-card">
+            <div class="integration-card-head">
+              <h3>{{ _("Camera Enhancer") }}</h3>
+              <button id="cameras-toggle" class="switch" type="button" role="switch" aria-checked="{{ 'true' if nav_visibility.pages.cameras else 'false' }}" aria-label="{{ _('Show {name} in the sidebar', name=_('Camera Enhancer')) }}" disabled>
+                <span id="cameras-toggle-label">{{ _("On") if nav_visibility.pages.cameras else _("Off") }}</span>
+                <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
+              </button>
+            </div>
+            <p class="muted">{{ _("Optional tools to preview cameras and adjust focus and exposure.") }}</p>
+            <p class="hint">{{ _("Show camera tools in the sidebar. Autodarts detection runs independently.") }}</p>
+            <p id="cameras-integration-error" class="error" role="status" hidden></p>
+            <a id="cameras-settings" class="integration-card-link" href="/integrations/cameras" {{ 'hidden' if not nav_visibility.pages.cameras }}>{{ _("Open Camera Enhancer →") }}</a>
+          </article>
+        </div>
+        <p class="hint">
+          {{ _("Changes apply immediately. Turning an integration off keeps its saved settings.") }}
+        </p>
+      </section>
+
+      <section data-view="profiles" aria-label="{{ _('App profiles') }}" hidden>
+        <div class="panel">
+          <div class="panel-heading">
+            <h2>{{ _("Profiles") }}</h2>
+          </div>
+          <p class="hint">
+            {{ _("Each profile remembers lighting colours, effects, Caller settings, theme and language. Devices and lighting zones are shared across all profiles.") }}
+          </p>
+          <p id="profiles-error" class="error" role="status" hidden></p>
+          <div id="profile-list" class="integration-list"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-heading">
+            <h2>{{ _("New profile") }}</h2>
+          </div>
+          <label for="profile-name">{{ _("Name") }}</label>
+          <input
+            id="profile-name"
+            maxlength="60"
+            placeholder="{{ _('Practice or match night') }}"
+          />
+          <div class="actions">
+            <button id="profile-create" class="primary" type="button">
+              {{ _("Copy current settings") }}
+            </button>
+            <button id="profile-blank" type="button">
+              {{ _("Create from scratch") }}
+            </button>
+          </div>
+          <p class="hint">
+            "Copy current settings" starts from what's active now. "Create
+            from scratch" starts with default lighting colours and event
+            effects, and Caller off.
+          </p>
+        </div>
+        <div class="panel">
+          <div class="panel-heading">
+            <h2>{{ _("Import a profile file") }}</h2>
+          </div>
+          <p class="hint">
+            {{ _("Import a profile JSON file exported from Oche as a new profile. Device addresses and account settings stay on this installation.") }}
+          </p>
+          <div class="actions">
+            <button id="profile-choose-file" type="button">
+              {{ _("Import from file…") }}
+            </button>
+            <input
+              id="profile-file"
+              type="file"
+              accept=".json,application/json"
+              hidden
+            />
+          </div>
+          <div id="profile-import-preview" hidden>
+            <p id="profile-file-summary" class="hint" role="status"></p>
+            <label for="profile-import-name">{{ _("Imported profile name") }}</label>
+            <input id="profile-import-name" maxlength="60" />
+            <p class="hint">
+              {{ _("Zones match by ID or name and must use the same mode. Duplicate names receive a number.") }}
+            </p>
+            <div class="actions">
+              <button id="profile-import" class="primary" type="button">
+                {{ _("Import and select") }}
+              </button>
+              <button id="profile-import-cancel" type="button">
+                {{ _("Cancel import") }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section data-view="autodarts" aria-label="{{ _('Autodarts settings') }}" hidden>
+        <form id="configuration" class="panel">
+          <h2>{{ _("Board") }}</h2>
+          <label for="board_id">{{ _("Selected board") }}</label>
+          <div class="field-row">
+            <select
+              id="board_id"
+              name="board_id"
+              aria-describedby="boards-status"
+            >
+              <option value="">{{ _("No board selected") }}</option>
+            </select>
+            <button type="button" id="refresh-boards" disabled>{{ _("Refresh") }}</button>
+          </div>
+          <p class="hint" id="boards-status" role="status">
+            {{ _("Connect your account to load boards.") }}
+          </p>
+          <details class="advanced">
+            <summary>{{ _("Advanced settings") }}</summary>
+            <label for="client_id">OAuth Client ID</label>
+            <input
+              id="client_id"
+              name="client_id"
+              autocomplete="off"
+              maxlength="200"
+              aria-describedby="managed"
+            />
+            <p class="hint" id="managed"></p>
+          </details>
+          <div class="actions">
+            <button type="submit" id="save" class="primary" disabled>
+              {{ _("Save settings") }}
+            </button>
+            <span id="unsaved" class="save-state" data-state="dirty" hidden>{{ _("Unsaved changes") }}</span>
+          </div>
+        </form>
+        <details class="panel diagnostics">
+          <summary>{{ _("Connection details") }}</summary>
+          <dl class="detail-list">
+            <div>
+              <dt>{{ _("Board ID") }}</dt>
+              <dd id="detail-board">—</dd>
+            </div>
+            <div>
+              <dt>{{ _("Match ID") }}</dt>
+              <dd id="detail-match">—</dd>
+            </div>
+          </dl>
+          <p id="connection-error" class="hint">
+            {{ _("No connection errors reported.") }}
+          </p>
+        </details>
+      </section>
+
+      <section data-view="wled2" aria-label="{{ _('Visual WLED lighting editor') }}" hidden>
+        <div class="w2-topbar panel">
+          <div class="w2-topbar-status">
+            <span class="eyebrow">{{ _("Your physical setup") }}</span>
+            <p id="w2-live" role="status">{{ _("Loading layout…") }}</p>
+            {{ source_options('wled2', 'Visual WLED') }}
+            <label class="check-label" title="{{ _('When on, these lights react to your Autodarts games: ready, takeout, hits and wins. Turning it on switches the WLED integration off.') }}">
+              <input id="w2-enabled" type="checkbox" /> {{ _("Follow game events") }}
+            </label>
+          </div>
+          <div class="actions w2-save-actions">
+            <label class="check-label"><input id="w2-autosave" type="checkbox" checked /> {{ _("Save automatically") }}</label>
+            <span id="w2-save-state" class="save-state" role="status" data-state="loading">{{ _("Loading…") }}</span>
+            <button id="w2-reload" type="button">{{ _("Reload") }}</button>
+            <button id="w2-save" class="primary" type="button" disabled>{{ _("Save layout") }}</button>
+          </div>
+        </div>
+        <p id="w2-error" class="error" role="alert" hidden></p>
+        <div class="w2-workspace">
+          <div class="w2-stage panel">
+            <div class="w2-toolbar" role="toolbar" aria-label="{{ _('Add and connect lights') }}">
+              <button type="button" data-w2-add="controller">+ Controller</button>
+              <button type="button" data-w2-add="strip">+ Strip</button>
+              <button type="button" data-w2-add="ring">+ Ring</button>
+              <button type="button" data-w2-add="matrix">+ Matrix</button>
+              <button id="w2-connect" type="button" aria-pressed="false">{{ _("Connect wire") }}</button>
+              <button id="w2-rename" type="button" disabled>{{ _("Rename selected") }}</button>
+              <button id="w2-discover" type="button">{{ _("Find controllers") }}</button>
+            </div>
+            <p id="w2-guide" class="hint">{{ _("Add a controller and a light. Connect them, then test the light.") }}</p>
+            <div id="w2-found" class="w2-found" hidden></div>
+            <svg id="w2-canvas" viewBox="0 0 1000 700" role="group" aria-label="{{ _('Lighting layout. Select objects to edit; drag or use arrow keys to move them.') }}" tabindex="0"></svg>
+            <div class="w2-canvas-footer"><span>{{ _("Drag to arrange · Arrow keys to move · Escape to cancel wiring") }}</span><span>{{ _("Layout view · wiring is configured in WLED") }}</span></div>
+            <div id="w2-objects" class="w2-objects" role="group" aria-label="{{ _('Select a layout object') }}"></div>
+          </div>
+          <aside class="w2-inspector panel" aria-label="{{ _('Selected object settings') }}">
+            <div class="panel-heading"><div><span id="w2-object-kind" class="eyebrow">{{ _("Setup") }}</span><h2 id="w2-object-title">{{ _("Your board") }}</h2></div></div>
+            <form id="w2-inspector-form"><div id="w2-properties"></div></form>
+          </aside>
+        </div>
+        <div class="w2-testbar panel">
+          <div><strong>{{ _("Try it on your lights") }}</strong><p class="hint">{{ _("Simulate a game on the canvas or fire an event. Canvas effects approximate WLED animations using your draft rules. Physical tests restore settings after three seconds.") }}</p></div>
+          <div class="actions">
+            <select id="w2-test-phase" aria-label="{{ _('Phase to preview') }}"><option value="ready">{{ _("Ready to throw") }}</option><option value="takeout">{{ _("Remove darts") }}</option><option value="waiting">{{ _("Waiting") }}</option><option value="idle">{{ _("Idle") }}</option></select>
+            <select id="w2-event" aria-label="{{ _('Event to simulate') }}"><option value="">{{ _("Phase only") }}</option></select>
+            <button id="w2-fire" type="button">{{ _("Fire event on canvas") }}</button>
+            <label><input id="w2-show-live" type="checkbox"> {{ _("Also show on live lights") }}</label>
+            <div class="w2-playback-controls" role="group" aria-label="{{ _('Game simulation') }}">
+              <button id="w2-simulate" type="button" aria-pressed="false">{{ _("Simulate game") }}</button>
+              <button id="w2-stop" type="button" disabled>{{ _("Stop simulation") }}</button>
+            </div>
+            <button id="w2-test" type="button" disabled>{{ _("Test selected light") }}</button>
+            <output id="w2-simulation-status" aria-live="polite">{{ _("Canvas simulation stopped") }}</output>
+          </div>
+        </div>
+      </section>
+
+      <section data-view="wled" aria-label="{{ _('WLED settings') }}" hidden>
+        <div class="panel wled-overview">
+          <div class="wled-live">
+            <span class="eyebrow">{{ _("Live board state") }}</span>
+            <strong id="wled-phase">{{ _("Waiting") }}</strong>
+            <p id="wled-reason" class="hint">{{ _("Loading service state…") }}</p>
+          </div>
+        </div>
+        <p id="wled-error" class="error" role="status" hidden></p>
+        <form id="wled-form" class="panel wled-workspace">
+          {{ source_options('wled', 'WLED') }}
+          <div class="wled-device-picker">
+            <label for="wled-device"
+              >{{ _("Controller") }}
+              <select id="wled-device">
+                <option value="">{{ _("No devices configured") }}</option>
+              </select>
+            </label>
+            <button id="wled-discover" type="button" disabled>
+              {{ _("Find devices") }}
+            </button>
+            <button id="wled-add-device" type="button">{{ _("Add manually") }}</button>
+            <button id="wled-add-demo" type="button">{{ _("Try a demo controller") }}</button>
+          </div>
+          <p id="wled-discovery-status" class="hint" role="status" hidden></p>
+          <div
+            id="wled-discovered"
+            aria-label="{{ _('Discovered WLED controllers') }}"
+            hidden
+          ></div>
+          <div id="wled-no-device" class="wled-empty" hidden>
+            <span class="wled-light-icon" aria-hidden="true">✧</span>
+            <h2>{{ _("Bring your board to life") }}</h2>
+            <p>
+              {{ _("Find a WLED controller on your network, add its address, or try a demo controller with no hardware required.") }}
+            </p>
+          </div>
+          <div id="wled-device-editor" hidden>
+            <details id="wled-connection" class="wled-connection">
+              <summary>{{ _("Controller settings") }}</summary>
+              <div class="wled-grid">
+                <label>
+                  {{ _("Name") }}
+                  <input id="wled-name" maxlength="80" required />
+                </label>
+                <label>
+                  {{ _("WLED address") }}
+                  <input
+                    id="wled-url"
+                    type="url"
+                    placeholder="http://wled.local"
+                    required
+                  />
+                </label>
+                <label>
+                  {{ _("Turn off after idle (minutes, 0 = never)") }}
+                  <input
+                    id="wled-idle-timeout"
+                    type="number"
+                    min="0"
+                    max="1440"
+                    value="0"
+                  />
+                </label>
+              </div>
+              <div class="actions">
+                <button
+                  id="wled-remove-device"
+                  class="wled-remove"
+                  type="button"
+                >
+                  {{ _("Remove device") }}
+                </button>
+              </div>
+              <p id="wled-capabilities" class="hint"></p>
+              <p class="hint">
+                {{ _("Automatic lighting follows game events. Lights off pauses the controller without changing your saved rules.") }}
+              </p>
+            </details>
+            <div class="wled-controller-bar">
+              <div id="wled-device-status" class="hint" role="status"></div>
+              <label class="check-label"
+                ><input id="wled-device-enabled" type="checkbox" /> {{ _("Automatic lighting") }}</label
+              >
+              <div class="wled-bar-live" role="group" aria-label="{{ _('Immediate actions, not saved to your profile') }}">
+                <div
+                  class="wled-power"
+                  role="group"
+                  aria-label="{{ _('Controller power') }}"
+                >
+                  <button id="wled-power-on" type="button">{{ _("Device on") }}</button>
+                  <button id="wled-power-off" type="button">{{ _("Device off") }}</button>
+                </div>
+                <button id="wled-probe" type="button">{{ _("Check connection") }}</button>
+                <a id="wled-open" target="_blank" rel="noopener noreferrer" hidden>{{ _("Open WLED ↗") }}</a>
+              </div>
+            </div>
+
+            <div id="wled-outputs-section" hidden>
+              <div class="panel-heading">
+                <h2>{{ _("Filter zones by output") }}</h2>
+                <span class="hint">{{ _("Reported by WLED") }}</span>
+              </div>
+              <p class="hint">
+                {{ _("These cards filter the zones below. Each zone's WLED segment determines which LEDs it controls, including LEDs on other outputs.") }}
+              </p>
+              <div
+                id="wled-outputs"
+                class="wled-outputs"
+                role="group"
+                aria-label="{{ _('Filter lighting zones by output') }}"
+              ></div>
+              <div id="wled-output-power" class="wled-controller-bar" hidden>
+                <span id="wled-output-power-label" class="hint" role="status"></span>
+                <div class="wled-power" role="group" aria-label="{{ _('Selected output power') }}">
+                  <button id="wled-output-on" type="button">{{ _("On") }}</button>
+                  <button id="wled-output-off" type="button">{{ _("Off") }}</button>
+                </div>
+                <span id="wled-output-power-hint" class="hint" role="status"></span>
+              </div>
+            </div>
+            <div class="panel-heading wled-target-heading">
+              <div>
+                <h2 id="wled-target-heading">{{ _("Lighting rules") }}</h2>
+                <p class="hint">{{ _("Changes save automatically to your profile.") }}</p>
+                <p id="wled-hidden-zones-hint" class="hint" role="status" hidden></p>
+              </div>
+              <button id="wled-add-target" type="button">{{ _("Add zone") }}</button>
+            </div>
+            <div id="wled-output-empty" class="wled-empty" role="status" hidden>
+              <span class="wled-light-icon" aria-hidden="true">✧</span>
+              <h3 id="wled-output-empty-heading">{{ _("No lighting rules yet") }}</h3>
+              <p id="wled-output-empty-text"></p>
+            </div>
+            <div id="wled-targets"></div>
+          </div>
+          <div class="actions wled-save-bar">
+            <span id="wled-save-state" class="hint" role="status"
+              >{{ _("All changes saved") }}</span
+            >
+            <button id="wled-retry" type="button" hidden>{{ _("Retry") }}</button>
+            <button id="wled-reload" type="button" hidden>
+              {{ _("Discard changes") }}
+            </button>
+          </div>
+        </form>
+        <template id="wled-target-template">
+          <details class="wled-target" open>
+            <summary data-title>{{ _("Lighting zone") }}</summary>
+            <div class="wled-target-toolbar">
+              <p data-output-note class="hint"></p>
+              <button data-remove type="button" class="wled-remove">
+                {{ _("Remove zone") }}
+              </button>
+              <label class="check-label"
+                ><input data-field="enabled" type="checkbox" /> {{ _("Respond to game") }}</label
+              >
+            </div>
+            <div class="wled-target-setup">
+              <div class="wled-grid">
+                <label>
+                  {{ _("Name") }}
+                  <input data-field="name" maxlength="80" required />
+                </label>
+                <label>
+                  {{ _("Mode") }}
+                  <select data-field="mode">
+                    <option value="segment">{{ _("Whole segment") }}</option>
+                    <option value="pixels">{{ _("LED range / individual LED") }}</option>
+                    <option value="matrix">{{ _("Matrix score") }}</option>
+                  </select>
+                </label>
+                <label>
+                  {{ _("WLED segment to control") }}
+                  <select data-field="segment" required></select>
+                </label>
+              </div>
+              <div data-pixels class="wled-grid" hidden>
+                <label>
+                  {{ _("First LED") }}
+                  <input
+                    data-field="start"
+                    type="number"
+                    min="0"
+                    max="65535"
+                    required
+                  />
+                </label>
+                <label data-count>
+                  {{ _("LED count") }}
+                  <input
+                    data-field="count"
+                    type="number"
+                    min="1"
+                    max="1024"
+                    required
+                  />
+                </label>
+              </div>
+              <p class="hint">
+                {{ _("Choose the LEDs this zone controls using a segment configured in WLED. The output filter above does not change this assignment. LED ranges start at zero within the segment.") }}
+              </p>
+            </div>
+            <p data-geometry-warning class="error" role="status" hidden></p>
+            <div
+              class="wled-editor-tabs"
+              role="tablist"
+              aria-label="{{ _('Lighting settings') }}"
+            >
+              <button
+                type="button"
+                role="tab"
+                data-editor-tab="phases"
+                aria-selected="true"
+              >
+                {{ _("Phases") }}
+              </button>
+              <button
+                type="button"
+                role="tab"
+                data-editor-tab="events"
+                aria-selected="false"
+                tabindex="-1"
+              >
+                {{ _("Events") }}
+              </button>
+              <button
+                type="button"
+                role="tab"
+                data-editor-tab="players"
+                aria-selected="false"
+                tabindex="-1"
+              >
+                {{ _("Players") }}
+              </button>
+              <button
+                type="button"
+                role="tab"
+                data-editor-tab="display"
+                aria-selected="false"
+                tabindex="-1"
+                hidden
+              >
+                {{ _("Score display") }}
+              </button>
+            </div>
+            <div data-matrix data-editor-panel="display" role="tabpanel" hidden>
+              <p data-matrix-layout class="hint" hidden></p>
+              <div class="wled-grid">
+                <label>
+                  {{ _("Display") }}
+                  <select data-matrix-field="source">
+                    <option value="remaining">{{ _("Active player remaining score") }}</option>
+                    <option value="local_remaining">{{ _("My remaining score (local player)") }}</option>
+                    <option value="opponent_remaining">{{ _("Opponent remaining score") }}</option>
+                    <option value="player_remaining">{{ _("Specific player remaining score") }}</option>
+                    <option value="turn_score">{{ _("Visit total") }}</option>
+                    <option value="last_dart">{{ _("Last dart") }}</option>
+                  </select>
+                </label>
+                <label>
+                  {{ _("Player slot (match order)") }}
+                  <input data-matrix-field="player_slot" type="number" min="1" max="10" value="1" required />
+                </label>
+                <label>
+                  {{ _("Rotation") }}
+                  <select data-matrix-field="rotation">
+                    <option value="0">0°</option>
+                    <option value="90">90°</option>
+                    <option value="180">180°</option>
+                    <option value="270">270°</option>
+                  </select>
+                </label>
+                <label>
+                  {{ _("Panel width") }}
+                  <input
+                    data-matrix-field="width"
+                    type="number"
+                    min="5"
+                    max="64"
+                    required
+                  />
+                </label>
+                <label>
+                  {{ _("Panel height") }}
+                  <input
+                    data-matrix-field="height"
+                    type="number"
+                    min="5"
+                    max="64"
+                    required
+                  />
+                </label>
+                <label>
+                  {{ _("Panel X (from left, starts at 0)") }}
+                  <input data-matrix-field="x" type="number" min="0" max="65535" value="0" required />
+                </label>
+                <label>
+                  {{ _("Panel Y (from top, starts at 0)") }}
+                  <input data-matrix-field="y" type="number" min="0" max="65535" value="0" required />
+                </label>
+                <label>
+                  {{ _("Text colour") }}
+                  <input data-matrix-field="color" type="color" />
+                </label>
+                <label>
+                  {{ _("Brightness") }}
+                  <input
+                    data-matrix-field="brightness"
+                    type="number"
+                    min="0"
+                    max="255"
+                    required
+                  />
+                </label>
+                <label class="check-label">
+                  <input data-matrix-field="serpentine" type="checkbox" />
+                  {{ _("Serpentine rows") }}
+                </label>
+              </div>
+              <p class="hint">
+                {{ _("Numeric display, up to 512 pixels. Unknown or oversized scores show dashes. My score and opponent score require one local player and one opponent; use specific player slots for shared-board or multiplayer games.") }}
+              </p>
+              <button type="button" data-split-matrix hidden>{{ _("Split into two score panels") }}</button>
+              <div class="actions" data-test-score>
+                <label>
+                  {{ _("Preview score") }}
+                  <input
+                    data-test-value
+                    type="number"
+                    min="0"
+                    max="9999"
+                    value="180"
+                  />
+                </label>
+                <button data-test type="button">{{ _("Preview score") }}</button>
+              </div>
+            </div>
+            <div data-phases data-editor-panel="phases" role="tabpanel">
+              <p class="wled-section-intro">
+                {{ _("Set the lighting for each stage of your game. Preview lasts 3 seconds.") }}
+              </p>
+              <div data-phase-rows class="wled-phase-grid"></div>
+            </div>
+            <div data-editor-panel="events" role="tabpanel" hidden>
+              <p class="wled-section-intro">
+                {{ _("Celebrate a hit or a win, then return to the current phase. Enable just the events you want.") }}
+              </p>
+              <div data-effect-rows></div>
+            </div>
+            <div
+              data-player-rules
+              data-editor-panel="players"
+              role="tabpanel"
+              hidden
+            >
+              <p class="wled-section-intro">
+                {{ _("Give each local player their own ready-to-throw lighting. Match by position or name.") }}
+              </p>
+              <div data-player-rows></div>
+            </div>
+          </details>
+        </template>
+      </section>
+
+      <section data-view="caller" aria-label="{{ _('Caller settings') }}" hidden>
+        <form id="caller-form" class="panel" inert>
+          <div class="panel-heading">
+            <h2>{{ _("Voice") }}</h2>
+            <span id="caller-state" class="badge">{{ _("Choose a voice") }}</span>
+          </div>
+          <p id="caller-error" class="error" role="status" hidden></p>
+          {{ source_options('caller', 'Caller') }}
+          <div class="form-grid">
+            <label>{{ _("Language") }}<select id="caller-language"></select></label>
+            <label>{{ _("Voice") }}<select id="caller-voice"></select></label>
+          </div>
+          <div class="actions">
+            <a
+              id="caller-preview"
+              class="text-link"
+              target="_blank"
+              rel="noreferrer"
+              >{{ _("Listen on Peschi ↗") }}</a
+            >
+            <button id="caller-retry" type="button" hidden>
+              {{ _("Repair voice download") }}
+            </button>
+            <button id="caller-save" class="primary" type="submit" disabled>
+              {{ _("Download and use voice") }}
+            </button>
+            <span id="caller-unsaved" class="hint" hidden
+              >{{ _("Voice selection not applied") }}</span
+            >
+          </div>
+          <p id="caller-download" class="hint" role="status">
+            {{ _("Download only the voice you choose. The previous pack stays until the new one is ready.") }}
+          </p>
+          <div class="form-grid">
+            <label
+              >{{ _("Play sound on") }}
+              <select id="caller-output">
+                <option value="host">{{ _("Oche host speakers") }}</option>
+                <option value="browser">{{ _("Browser") }}</option>
+                <option value="both">{{ _("Host and browser") }}</option>
+              </select>
+            </label>
+            <label
+              >{{ _("Volume (%)") }}<input
+                id="caller-volume"
+                type="number"
+                min="0"
+                max="100"
+                value="60"
+                required
+            /></label>
+          </div>
+          <p class="hint">
+            {{ _("Browser playback needs this page open and sound enabled below. Host playback works without a browser.") }}
+          </p>
+          <details class="advanced">
+            <summary>{{ _("Announcements") }}</summary>
+            <label
+              >{{ _("Individual darts") }}
+              <select id="caller-darts">
+                <option value="auto">{{ _("Automatic for the game mode") }}</option>
+                <option value="segment">{{ _("Segment (e.g. triple twenty)") }}</option>
+                <option value="score">{{ _("Dart score (e.g. sixty)") }}</option>
+                <option value="off">{{ _("Off") }}</option>
+              </select>
+            </label>
+            <label class="checkbox"
+              ><input id="caller-turn_totals" type="checkbox" checked /> {{ _("Visit totals") }}</label
+            >
+            <label class="checkbox"
+              ><input id="caller-checkouts" type="checkbox" checked /> {{ _("Checkout reminders") }}</label
+            >
+            <label class="checkbox"
+              ><input id="caller-players" type="checkbox" checked /> {{ _("Player names") }}</label
+            >
+            <label class="checkbox"
+              ><input id="caller-include_bots" type="checkbox" checked />
+              {{ _("Include bots") }}</label
+            >
+            <label class="checkbox"
+              ><input id="caller-local_only" type="checkbox" /> {{ _("Only players at this board") }}</label
+            >
+            <p class="hint">
+              {{ _("All Autodarts game modes are supported. Automatic mode calls segments in target games and visit totals in scoring games. Clips depend on the selected pack.") }}
+            </p>
+          </details>
+          <div class="actions">
+            <span id="caller-autosave" class="hint" role="status"
+              >{{ _("Volume, output and announcements save automatically.") }}</span
+            >
+            <button id="caller-settings-retry" type="button" hidden>
+              {{ _("Retry saving") }}
+            </button>
+          </div>
+        </form>
+        <div class="panel">
+          <div class="panel-heading">
+            <h2>{{ _("Test sound") }}</h2>
+            <span id="caller-browser-state" class="hint"></span>
+          </div>
+          <p class="hint">
+            {{ _("Tests use your saved voice and output settings. Stop sound cancels current audio; future game calls remain enabled.") }}
+          </p>
+          <div class="actions caller-test-controls">
+            <button id="caller-browser" type="button">{{ _("Enable sound here") }}</button>
+            <label
+              >{{ _("Call") }}<select id="caller-test-call">
+                <option value="score">180</option>
+                <option value="bust">{{ _("Bust") }}</option>
+                <option value="win">{{ _("Match won") }}</option>
+                <option value="checkout">{{ _("Require 40") }}</option>
+                <option value="bull">{{ _("Bullseye") }}</option>
+              </select></label
+            >
+            <button id="caller-test" type="button" disabled>{{ _("Play test") }}</button>
+            <button id="caller-stop" type="button">{{ _("Stop sound") }}</button>
+          </div>
+          <p
+            id="caller-test-status"
+            class="hint"
+            role="status"
+            aria-live="polite"
+          ></p>
+          <p id="caller-recent" class="hint" role="status">{{ _("No calls yet.") }}</p>
+        </div>
+      </section>
+
+      <section data-view="scoreboard" aria-label="{{ _('Scoreboard settings') }}" hidden>
+        <form id="scoreboard-form" class="panel" inert>
+          <div class="panel-heading">
+            <h2>{{ _("Scoreboard display") }}</h2>
+            <a id="scoreboard-open" target="_blank" rel="noopener noreferrer"
+              >{{ _("Open scoreboard display ↗") }}</a
+            >
+          </div>
+          <p id="scoreboard-error" class="error" role="status" hidden></p>
+          {{ source_options('scoreboard', 'Scoreboard') }}
+          <div class="form-grid">
+            <label
+              >{{ _("Title") }}<input
+                id="scoreboard-title"
+                maxlength="60"
+                placeholder="{{ _('Optional, e.g. Pub Night') }}"
+            /></label>
+            <label
+              >{{ _("Theme") }}<select id="scoreboard-theme">
+                <option value="auto">{{ _("Match site theme") }}</option>
+                <option value="dark">{{ _("Always dark") }}</option>
+                <option value="light">{{ _("Always light") }}</option>
+              </select></label
+            >
+          </div>
+          <label class="checkbox"
+            ><input id="scoreboard-show_last_dart" type="checkbox" checked />
+            {{ _("Show last dart") }}</label
+          >
+          <label class="checkbox"
+            ><input id="scoreboard-show_checkout" type="checkbox" checked />
+            {{ _("Show checkout available") }}</label
+          >
+          <label class="checkbox"
+            ><input id="scoreboard-show_sets_legs" type="checkbox" checked />
+            {{ _("Show set and leg") }}</label
+          >
+          <label class="checkbox"
+            ><input id="scoreboard-show_bots" type="checkbox" checked /> {{ _("Show bot players") }}</label
+          >
+          <p class="hint">
+            {{ _("Open the display on a second screen or kiosk browser near the board. It updates on its own — no admin sidebar.") }}
+          </p>
+          <div class="actions">
+            <span id="scoreboard-autosave" class="hint" role="status"
+              >{{ _("Settings save automatically.") }}</span
+            >
+            <button id="scoreboard-settings-retry" type="button" hidden>
+              {{ _("Retry saving") }}
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <section data-view="events" aria-label="{{ _('Events') }}" hidden>
+        <div class="panel">
+          <div class="panel-heading">
+            <h2>{{ _("Debug recording") }}</h2>
+            <button
+              id="debug-toggle"
+              class="switch"
+              type="button"
+              role="switch"
+              aria-checked="false"
+              aria-label="{{ _('Record raw events') }}"
+              disabled
+            >
+              <span id="debug-toggle-label">{{ _("Off") }}</span>
+              <span class="switch-track" aria-hidden="true"
+                ><span class="switch-thumb"></span
+              ></span>
+            </button>
+          </div>
+          <p class="hint">
+            {{ _("Save incoming raw events to a file for troubleshooting. The lists below keep only the latest 100 entries. Known credential fields are redacted.") }}
+          </p>
+          <p id="debug-status" class="hint" role="status">{{ _("No recording yet.") }}</p>
+          <p id="local-feed-status" class="hint" role="status">{{ _("Open Events or enable recording to inspect the local detector feed.") }}</p>
+          <p id="debug-error" class="error" role="status" hidden></p>
+          <a
+            id="debug-download"
+            class="text-link"
+            href="/api/events/debug/file"
+            download
+            hidden
+            >{{ _("Download debug file") }}</a
+          >
+        </div>
+        <div class="panel">
+          <div class="panel-heading event-toolbar">
+            <div class="stream-picker" role="group" aria-label="{{ _('Event stream') }}">
+              <button
+                type="button"
+                data-stream="normalized"
+                aria-pressed="true"
+              >
+                {{ _("Game events") }}
+              </button>
+              <button type="button" data-stream="raw" aria-pressed="false">
+                {{ _("Raw events") }}
+              </button>
+            </div>
+            <span id="event-count" class="hint">0 events</span>
+          </div>
+          <p id="stream-description" class="hint">
+            {{ _("Normalized game events, newest first. Open an event to see its payload.") }}
+          </p>
+          <div class="event-filters">
+            <label>{{ _("Event source") }}<select id="event-source"><option value="all">{{ _("All sources") }}</option><option value="cloud">{{ _("Cloud") }}</option><option value="local">{{ _("Local") }}</option></select></label>
+            <label
+              >{{ _("Filter type or channel") }}<input
+                id="event-filter"
+                type="search"
+                placeholder="{{ _('For example: throw or board.state') }}"
+            /></label>
+            <button id="events-pause" type="button" aria-pressed="false">
+              {{ _("Pause display") }}
+            </button>
+          </div>
+          <p id="event-error" class="error" role="status" hidden></p>
+          <p id="event-no-match" class="hint" hidden>
+            {{ _("No entries match this filter.") }}
+          </p>
+          <div id="empty" class="empty-state">
+            <h2>{{ _("No game events yet") }}</h2>
+            <p class="muted">
+              {{ _("Start a cloud or local game. Use Raw events to inspect the detector without a game.") }}
+            </p>
+          </div>
+          <div id="event-list"></div>
+          <p id="events-display-state" class="hint event-footer" role="status">
+            {{ _("Latest 100 entries from this service session. Updates automatically.") }}
+          </p>
+        </div>
+      </section>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script type="module" src="/static/core/app.js"></script>
+<script src="/static/core/select.js" defer></script>
+<script type="module" src="/static/core/wled.js"></script>
+<script type="module" src="/static/core/wled2.js"></script>
+<script type="module" src="/static/core/caller.js"></script>
+<script type="module" src="/static/core/scoreboard.js"></script>
+<script type="module" src="/static/core/cameras.js"></script>
+{% endblock %}

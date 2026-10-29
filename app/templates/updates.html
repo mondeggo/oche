@@ -1,25 +1,26 @@
 {% extends "base.html" %}
-{% block title %}Oche - Supervisor - Updates{% endblock %}
+{% block title %}{{ _("Oche - Updates") }}{% endblock %}
 {% block content %}
 <link rel="stylesheet" href="/static/css/updates.css">
 <section class="supervisor-page updates-page">
-  {% include "supervisor_nav.html" %}
-  <div class="updates-heading">
-    <div><h1>Software updates</h1>
-    <p class="subtitle">Manage each application independently. Your settings stay in place.</p></div>
-    <div class="updates-toolbar">
-      <button id="check-updates" type="button">Check for updates</button>
-      <button id="update-all" type="button" disabled>Update all</button>
+  <header class="page-head">
+    <div>
+      <p class="eyebrow">{{ _("System") }}</p>
+      <h1>{{ _("Updates") }}</h1>
+      <p class="subtitle">{{ _("Update Oche and board detection. Your settings stay in place.") }}</p>
     </div>
-  </div>
-  <p id="update-status" class="updates-status" role="status" aria-live="polite">Loading versions…</p>
-  <p id="update-installation-notice" hidden>You can check for releases here. Installing updates and rolling back require Oche to run through the stable launcher. The development live-reload server does not use that launcher.</p>
+    <div class="page-actions">
+      <button id="check-updates" class="btn-neutral" type="button">{{ _("Check for updates") }}</button>
+      <button id="update-all" type="button" disabled>{{ _("Update all") }}</button>
+    </div>
+  </header>
+  <p id="update-status" class="updates-status" role="status" aria-live="polite">{{ _("Loading versions…") }}</p>
+  <p id="update-installation-notice" hidden>{{ _("You can check for releases here. Installing updates and rolling back require Oche to run through the stable launcher. The development live-reload server does not use that launcher.") }}</p>
   <div class="updates-list">
-    <div class="updates-columns" aria-hidden="true"><span>Application</span><span>Installed</span><span>Available</span><span>Actions</span></div>
+    <div class="updates-columns" aria-hidden="true"><span>{{ _("Application") }}</span><span>{{ _("Installed") }}</span><span>{{ _("Available") }}</span><span>{{ _("Actions") }}</span></div>
     <div id="update-modules"></div>
   </div>
-  <p class="updates-footnote">Updating Oche briefly disconnects this page; it reconnects automatically.
-     Some releases require a Docker image upgrade. Rollback restores code, not changes to saved data.</p>
+  <p class="updates-footnote">{{ _("Updating Oche briefly disconnects this page; it reconnects automatically. Some releases require a Docker image upgrade. Rollback restores code, not changes to saved data.") }}</p>
 </section>
 <script src="/static/js/updates.js" defer></script>
 {% endblock %}

@@ -11,7 +11,7 @@ cd "$SCRIPT_DIR"
 
 usage() {
     cat <<EOF
-Usage: $0 {start|stop|restart|update|pull|cameras}
+Usage: $0 {start|stop|restart|update|pull|status|logs|cameras}
        $0 -h | --help
 
 Manage Oche using the Compose files and .env in the project directory.
@@ -21,6 +21,8 @@ Manage Oche using the Compose files and .env in the project directory.
   restart  Pull the configured image and recreate Oche.
   update   Download and apply an update (same as restart).
   pull     Download the image without restarting Oche.
+  status   Show the container state.
+  logs     Follow the Oche logs (Ctrl+C to stop).
   cameras  Select individual cameras, all /dev devices, or none; recreate Oche.
   -h, --help  Show this help without requiring Docker.
 
@@ -30,7 +32,7 @@ EOF
 }
 [[ $# -eq 1 ]] || { usage >&2; exit 1; }
 case "$1" in
-    start|restart|update|pull|stop|cameras) ;;
+    start|restart|update|pull|stop|status|logs|cameras) ;;
     -h|--help) usage; exit 0 ;;
     *) usage >&2; exit 1 ;;
 esac
@@ -40,7 +42,7 @@ docker info >/dev/null
 docker compose version >/dev/null || { echo "Docker Compose v2 is required." >&2; exit 1; }
 if [[ "$1" == cameras ]]; then
     if [[ ! -f "$SCRIPT_DIR/scripts/install.sh" ]]; then
-        echo "Camera setup is missing. Rerun the updated installer to install it." >&2
+        echo "Camera setup is missing. Rerun the installer to restore it." >&2
         exit 1
     fi
     source "$SCRIPT_DIR/scripts/install.sh"
@@ -73,6 +75,8 @@ case "$1" in
     restart|update) ensure_image; compose up -d --no-build --pull never --force-recreate oche ;;
     pull) ensure_image ;;
     stop) compose down ;;
+    status) compose ps oche ;;
+    logs) compose logs -f --tail 200 oche ;;
     cameras)
         compose config --quiet
         compose up -d --no-build --pull never --force-recreate oche

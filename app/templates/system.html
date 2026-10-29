@@ -1,130 +1,72 @@
-{% extends "base.html" %} {% block title %}Oche - Supervisor - System{% endblock %} {%
-block content %}
+{% extends "base.html" %}
+{% block title %}{{ _("Oche - System status") }}{% endblock %}
+{% block content %}
+{% macro bar_level(percent) %}{{ 'metric-danger' if percent >= 90 else ('metric-warn' if percent >= 75 else '') }}{% endmacro %}
 <section class="supervisor-page">
-{% include "supervisor_nav.html" %}
-<h1>System status</h1>
-<p class="subtitle">
-  Monitor CPU, memory, storage, temperature and network activity.
-</p>
+  <header class="page-head">
+    <div>
+      <p class="eyebrow">{{ _("System") }}</p>
+      <h1>{{ _("System status") }}</h1>
+      <p class="subtitle">CPU, memory, storage, temperature and network activity on this device.</p>
+    </div>
+  </header>
 
-<div class="metrics-grid">
-  {% macro bar_level(percent) %}{{ 'metric-danger' if percent >= 90 else
-  ('metric-warn' if percent >= 75 else '') }}{% endmacro %}
-  <div class="metric-card">
-    <div class="metric-label">CPU</div>
-    <div class="metric-value" id="m-cpu">{{ system.cpu_percent }}%</div>
-    <div class="metric-bar">
-      <div
-        class="metric-bar-fill {{ bar_level(system.cpu_percent) }}"
-        id="m-cpu-bar"
-        style="width: {{ system.cpu_percent }}%"
-      ></div>
+  <section class="card metrics-history" aria-labelledby="history-title">
+    <form id="history-form" class="metrics-history-controls">
+      <h2 id="history-title" title="{{ _('Keep up to 5,000 samples. Turning history off clears the buffer.') }}">{{ _("History") }}</h2>
+      <label class="toggle"><input id="history-enabled" type="checkbox" checked aria-label="{{ _('Record metrics history') }}"><span class="toggle-track"><span class="toggle-thumb"></span></span></label>
+      <label class="metrics-history-field"><span>{{ _("Keep") }}</span><input id="history-minutes" type="number" min="5" max="1440" step="1" value="60" required aria-label="{{ _('Retention (minutes)') }}"><span class="history-unit">min</span></label>
+      <label class="metrics-history-field"><span>{{ _("Every") }}</span><input id="history-seconds" type="number" min="5" max="300" step="1" value="30" required aria-label="{{ _('Sampling interval (seconds)') }}"><span class="history-unit">s</span></label>
+      <button id="history-save" type="submit" disabled>{{ _("Save") }}</button>
+      <span id="history-summary" class="hint" role="status">{{ _("Loading…") }}</span>
+    </form>
+    <p id="history-error" class="hint" role="alert"></p>
+  </section>
+  <div class="metrics-grid">
+    <div class="metric-card">
+      <div class="metric-head"><span class="metric-label">CPU</span><span class="metric-sub">{{ system.cpu_count }} cores</span></div>
+      <div class="metric-value" id="m-cpu">{{ system.cpu_percent }}<span class="metric-unit">%</span></div>
+      <div class="metric-bar"><div class="metric-bar-fill {{ bar_level(system.cpu_percent) }}" id="m-cpu-bar" style="width: {{ system.cpu_percent }}%"></div></div>
+      <div class="sparkline" id="spark-cpu" role="img" aria-label="{{ _('CPU history') }}"></div>
     </div>
-    <div class="metric-sub">{{ system.cpu_count }} cores</div>
+    <div class="metric-card">
+      <div class="metric-head"><span class="metric-label">{{ _("Memory") }}</span><span class="metric-sub" id="m-mem-sub">{{ system.mem_used_gb }} / {{ system.mem_total_gb }} GB</span></div>
+      <div class="metric-value" id="m-mem">{{ system.mem_percent }}<span class="metric-unit">%</span></div>
+      <div class="metric-bar"><div class="metric-bar-fill {{ bar_level(system.mem_percent) }}" id="m-mem-bar" style="width: {{ system.mem_percent }}%"></div></div>
+      <div class="sparkline" id="spark-mem" role="img" aria-label="{{ _('Memory history') }}"></div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-head"><span class="metric-label">{{ _("Storage") }}</span><span class="metric-sub" id="m-disk-sub">{{ system.disk_used_gb }} / {{ system.disk_total_gb }} GB</span></div>
+      <div class="metric-value" id="m-disk">{{ system.disk_percent }}<span class="metric-unit">%</span></div>
+      <div class="metric-bar"><div class="metric-bar-fill {{ bar_level(system.disk_percent) }}" id="m-disk-bar" style="width: {{ system.disk_percent }}%"></div></div>
+      <div class="metric-sub">{{ _("Data directory") }}</div><div class="sparkline" id="spark-disk" role="img" aria-label="{{ _('Storage history') }}"></div>
+    </div>
+    <div class="metric-card">
+      <span class="metric-label">{{ _("Temperature") }}</span>
+      <div class="metric-value" id="m-temp">{{ (system.cpu_temp_c ~ '°C') if system.cpu_temp_c is not none else '—' }}</div>
+      <div class="metric-sub" id="m-temp-sub">{{ '' if system.cpu_temp_c is not none else 'Not reported by this device' }}</div>
+      <div class="sparkline" id="spark-temp" role="img" aria-label="{{ _('Temperature history') }}"></div>
+      <div class="metric-sub" id="m-uptime">Up {{ system.uptime_s // 3600 }}h {{ (system.uptime_s % 3600) // 60 }}m</div>
+    </div>
+    <div class="metric-card">
+      <span class="metric-label">{{ _("Disk activity") }}</span>
+      <div class="metric-split">
+        <div><div class="metric-value" id="m-disk-read">{{ system.disk_read_mb_s }}</div><div class="metric-sub">{{ _("Read MB/s") }}</div></div>
+        <div><div class="metric-value" id="m-disk-write">{{ system.disk_write_mb_s }}</div><div class="metric-sub">{{ _("Write MB/s") }}</div></div>
+      </div>
+      <div class="sparkline" id="spark-io" role="img" aria-label="{{ _('Disk activity history') }}"></div>
+    </div>
+    <div class="metric-card">
+      <span class="metric-label">{{ _("Network") }}</span>
+      <div class="metric-split">
+        <div><div class="metric-value" id="m-net-down">{{ system.net_recv_mb_s }}</div><div class="metric-sub">{{ _("Down MB/s") }}</div></div>
+        <div><div class="metric-value" id="m-net-up">{{ system.net_sent_mb_s }}</div><div class="metric-sub">{{ _("Up MB/s") }}</div></div>
+      </div>
+      <div class="sparkline" id="spark-net" role="img" aria-label="{{ _('Network history') }}"></div>
+    </div>
   </div>
-  <div class="metric-card">
-    <div class="metric-label">Memory</div>
-    <div class="metric-value" id="m-mem">{{ system.mem_percent }}%</div>
-    <div class="metric-bar">
-      <div
-        class="metric-bar-fill {{ bar_level(system.mem_percent) }}"
-        id="m-mem-bar"
-        style="width: {{ system.mem_percent }}%"
-      ></div>
-    </div>
-    <div class="metric-sub" id="m-mem-sub">
-      {{ system.mem_used_gb }} / {{ system.mem_total_gb }} GB
-    </div>
-  </div>
-  <div class="metric-card">
-    <div class="metric-label">Disk (data)</div>
-    <div class="metric-value" id="m-disk">{{ system.disk_percent }}%</div>
-    <div class="metric-bar">
-      <div
-        class="metric-bar-fill {{ bar_level(system.disk_percent) }}"
-        id="m-disk-bar"
-        style="width: {{ system.disk_percent }}%"
-      ></div>
-    </div>
-    <div class="metric-sub" id="m-disk-sub">
-      {{ system.disk_used_gb }} / {{ system.disk_total_gb }} GB
-    </div>
-  </div>
-  <div class="metric-card">
-    <div class="metric-label">Temperature</div>
-    <div class="metric-value" id="m-temp">
-      {{ (system.cpu_temp_c ~ '°C') if system.cpu_temp_c is not none else '—' }}
-    </div>
-    <div class="metric-sub" id="m-uptime">
-      Up {{ system.uptime_s // 3600 }}h {{ (system.uptime_s % 3600) // 60 }}m
-    </div>
-  </div>
-  <div class="metric-card">
-    <div class="metric-label">Disk I/O</div>
-    <div class="metric-value metric-value-sm" id="m-diskio">
-      {{ system.disk_read_mb_s }} / {{ system.disk_write_mb_s }} MB/s
-    </div>
-    <div class="metric-sub">read / write</div>
-  </div>
-  <div class="metric-card">
-    <div class="metric-label">Network</div>
-    <div class="metric-value metric-value-sm" id="m-netio">
-      {{ system.net_recv_mb_s }} / {{ system.net_sent_mb_s }} MB/s
-    </div>
-    <div class="metric-sub">down / up</div>
-  </div>
-</div>
-
+  <p class="hint">{{ _("Live values update every 5 seconds. History is sampled on the device and resets when Oche restarts.") }}</p>
 </section>
 
-<script>
-  function setBarLevel(el, percent) {
-    el.classList.remove("metric-warn", "metric-danger");
-    if (percent >= 90) el.classList.add("metric-danger");
-    else if (percent >= 75) el.classList.add("metric-warn");
-  }
-
-  async function refreshDashboard() {
-    try {
-      const response = await fetch("/system/status");
-      if (!response.ok) return;
-      const sys = await response.json();
-
-      document.getElementById("m-cpu").textContent = sys.cpu_percent + "%";
-      const cpuBar = document.getElementById("m-cpu-bar");
-      cpuBar.style.width = sys.cpu_percent + "%";
-      setBarLevel(cpuBar, sys.cpu_percent);
-
-      document.getElementById("m-mem").textContent = sys.mem_percent + "%";
-      const memBar = document.getElementById("m-mem-bar");
-      memBar.style.width = sys.mem_percent + "%";
-      setBarLevel(memBar, sys.mem_percent);
-      document.getElementById("m-mem-sub").textContent =
-        `${sys.mem_used_gb} / ${sys.mem_total_gb} GB`;
-
-      document.getElementById("m-disk").textContent = sys.disk_percent + "%";
-      const diskBar = document.getElementById("m-disk-bar");
-      diskBar.style.width = sys.disk_percent + "%";
-      setBarLevel(diskBar, sys.disk_percent);
-      document.getElementById("m-disk-sub").textContent =
-        `${sys.disk_used_gb} / ${sys.disk_total_gb} GB`;
-
-      document.getElementById("m-temp").textContent =
-        sys.cpu_temp_c != null ? `${sys.cpu_temp_c}°C` : "—";
-      const h = Math.floor(sys.uptime_s / 3600);
-      const m = Math.floor((sys.uptime_s % 3600) / 60);
-      document.getElementById("m-uptime").textContent = `Up ${h}h ${m}m`;
-
-      document.getElementById("m-diskio").textContent =
-        `${sys.disk_read_mb_s} / ${sys.disk_write_mb_s} MB/s`;
-      document.getElementById("m-netio").textContent =
-        `${sys.net_recv_mb_s} / ${sys.net_sent_mb_s} MB/s`;
-
-    } catch (e) {
-      // Ignore transient poll failures - values just stay stale until the next tick.
-    }
-  }
-
-  setInterval(refreshDashboard, 5000);
-</script>
 {% endblock %}
+{% block scripts %}<script type="module" src="/static/js/system.js"></script>{% endblock %}

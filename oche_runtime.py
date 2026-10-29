@@ -2,19 +2,22 @@
 
 Changes to this file require a runtime image upgrade.
 """
+
 import json
 import os
-from pathlib import Path
 import re
 import shutil
 import uuid
+from pathlib import Path
 
-MODULES = ("autodarts", "autoglow", "ochecore", "oche")
-DATA = Path(os.environ.get("OCHE_DATA_DIR", "/app/data"))
+MODULES = ("autodarts", "oche")
+DATA = Path(os.environ.get("OCHE_DATA_DIR", str(Path(__file__).resolve().parent / "data"))).resolve()
 ROOT = DATA / "modules"
 BUNDLES = Path(os.environ.get("OCHE_BUNDLES_DIR", "/opt/oche-bundles"))
 RUNTIME_FILE = Path("/opt/oche-runtime-id")
-RUNTIME = os.environ.get("OCHE_RUNTIME_ID", RUNTIME_FILE.read_text().strip() if RUNTIME_FILE.exists() else "oche-runtime-1")
+RUNTIME = os.environ.get(
+    "OCHE_RUNTIME_ID", RUNTIME_FILE.read_text().strip() if RUNTIME_FILE.exists() else "oche-runtime-1"
+)
 
 
 def valid_version(value):

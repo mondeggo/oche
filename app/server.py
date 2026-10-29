@@ -1,4 +1,4 @@
-"""Container entry point; retain port 8180 for existing Compose installations."""
+"""Container entry point without the launcher."""
 
 import os
 

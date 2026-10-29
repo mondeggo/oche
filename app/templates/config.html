@@ -1,246 +1,79 @@
 {% extends "base.html" %}
-{% block title %}Oche - Settings{% endblock %}
+{% block title %}{{ _("Oche - Settings") }}{% endblock %}
+{% macro toggle(field, label, hint='', aria='') -%}
+<div class="toggle-row"><div class="toggle-label"><span>{{ _(label) }}</span>{% if hint %}<p class="hint">{{ _(hint) }}</p>{% endif %}</div><label class="toggle"><input type="checkbox" aria-label="{{ _(aria or label) }}" data-setting="{{ field }}" {{ 'checked' if config[field] }}><span class="toggle-track"><span class="toggle-thumb"></span></span></label></div>
+{%- endmacro %}
+{% macro switch(field, aria, checked, extra='') -%}
+<label class="toggle"><input type="checkbox" aria-label="{{ _(aria) }}" {% if field %}data-setting="{{ field }}" {% endif %}{{ extra | safe }} {{ 'checked' if checked }}><span class="toggle-track"><span class="toggle-thumb"></span></span></label>
+{%- endmacro %}
+{% macro page_row(label, hint, show_key, collapse_key, child=False, group='') -%}
+<div class="matrix-row{{ ' matrix-child' if child }}" role="row">
+  <div class="matrix-page" role="rowheader"><span>{{ _(label) }}</span>{% if hint %}<span class="hint">{{ _(hint) }}</span>{% endif %}</div>
+  <div role="cell">{% if show_key %}{{ switch(show_key, _('Show {name} in the sidebar', name=_(label)), config[show_key], 'data-group="' ~ group ~ '-show"' if group else '') }}{% else %}<span class="matrix-always">{{ _("Always") }}</span>{% endif %}</div>
+  <div role="cell">{{ switch(collapse_key, _('Start collapsed on {name}', name=_(label)), config[collapse_key], 'data-group="' ~ group ~ '-collapse"' if group else '') }}</div>
+</div>
+{%- endmacro %}
+{% macro section_row(label, hint, group, pages) -%}
+{%- set state = namespace(show=true, collapse=true) %}
+{%- for page in pages %}
+{%- if not config['show_page_' ~ page] %}{% set state.show = false %}{% endif %}
+{%- if not config['autohide_navbar_on_' ~ page] %}{% set state.collapse = false %}{% endif %}
+{%- endfor %}
+<div class="matrix-row matrix-master" role="row">
+  <div class="matrix-page" role="rowheader"><span>{{ _(label) }}</span><span class="hint">{{ _(hint) }}</span></div>
+  <div role="cell">{{ switch(None, _('Show all {name} pages in the sidebar', name=_(label)), state.show, 'data-master="' ~ group ~ '-show"') }}</div>
+  <div role="cell">{{ switch(None, _('Start collapsed on all {name} pages', name=_(label)), state.collapse, 'data-master="' ~ group ~ '-collapse"') }}</div>
+</div>
+{%- endmacro %}
 {% block content %}
 <div class="settings-page">
-<h1>Settings</h1>
-<p class="subtitle">Make Oche work the way you like.</p>
-
-<section class="card" id="local-https">
-  <h2>Local HTTPS</h2>
-  <p class="hint">Autodarts Play needs Oche to use HTTPS on your local network.</p>
-  <p class="hint">Use your local IP address and accept a browser warning, or use a domain you own for a trusted certificate. Domain setup needs two DNS records once; Oche handles renewal automatically.</p>
-  <p><a class="btn-link" href="/config/https">Configure HTTPS</a></p>
-</section>
-
-<div class="card">
-  <h2>Play</h2>
-  <div class="toggle-row">
-    <div class="toggle-label">
-      <span>Show in navbar</span>
-      <p class="hint">Show the Play tab in the top navigation.</p>
+  <header class="page-head">
+    <div>
+      <h1>{{ _("Settings") }}</h1>
+      <p class="subtitle">{{ _("Make Oche work the way you like.") }}</p>
     </div>
-    <label class="toggle">
-      <input type="checkbox" aria-label="Show Play in navbar" id="cfg-show-play" {{ 'checked' if config.show_play_in_navbar }}>
-      <span class="toggle-track"><span class="toggle-thumb"></span></span>
-    </label>
-  </div>
-  <div class="toggle-row">
-    <div class="toggle-label">
-      <span>Auto-hide navbar</span>
-      <p class="hint">Default the Play page's header to hidden. Can still be toggled per-browser from that page.</p>
+  </header>
+  <nav class="section-nav" aria-label="{{ _('Settings sections') }}">
+    <a href="#sidebar">{{ _("Sidebar") }}</a><a href="#autodarts">Autodarts</a><a href="#local-https">HTTPS</a><a href="#panels">{{ _("Panels") }}</a><a href="#application">{{ _("Application") }}</a>
+  </nav>
+  <section class="card" id="sidebar">
+    <h2>{{ _("Sidebar") }}</h2>
+    <p class="hint">{{ _("Choose which pages appear in the sidebar and which open with it collapsed to icons. Integrations, Profiles and Settings are always shown; the Oche logo opens Overview.") }}</p>
+    <div class="sidebar-matrix" role="table" aria-label="{{ _('Sidebar pages') }}">
+      <div class="matrix-row matrix-head" role="row"><span role="columnheader">{{ _("Page") }}</span><span role="columnheader">{{ _("Show") }}</span><span role="columnheader">{{ _("Start collapsed") }}</span></div>
+      {{ page_row('Home', 'Overview, integrations and profiles', None, 'autohide_navbar_on_home') }}
+      {{ page_row('Play on Autodarts', 'Autodarts Play inside Oche', 'show_play_in_navbar', 'autohide_navbar_on_play') }}
+      {{ page_row('Panels', 'Your website panels', 'show_panels_in_navbar', 'autohide_navbar_on_panels') }}
+      {{ page_row('Camera Enhancer', 'Optional camera tools in Integrations', 'show_page_cameras', 'autohide_navbar_on_cameras') }}
+      {{ section_row('System', 'Autodarts, status and updates', 'system', ['autodarts', 'system', 'updates']) }}
+      {{ page_row('Autodarts', '', 'show_page_autodarts', 'autohide_navbar_on_autodarts', child=True, group='system') }}
+      {{ page_row('Status', '', 'show_page_system', 'autohide_navbar_on_system', child=True, group='system') }}
+      {{ page_row('Updates', '', 'show_page_updates', 'autohide_navbar_on_updates', child=True, group='system') }}
     </div>
-    <label class="toggle">
-      <input type="checkbox" aria-label="Auto-hide navbar on Play" id="cfg-autohide-navbar-play" {{ 'checked' if config.autohide_navbar_on_play }}>
-      <span class="toggle-track"><span class="toggle-thumb"></span></span>
-    </label>
-  </div>
+  </section>
+  <section class="card" id="autodarts">
+    <h2>Autodarts</h2>
+    {{ toggle('autostart_autodarts','Start Autodarts on boot','Launch board detection automatically when Oche starts.') }}
+  </section>
+  <section class="card" id="local-https">
+    <h2>{{ _("Local HTTPS") }}</h2>
+    <p class="hint">{{ _("Autodarts Play needs Oche to use HTTPS on your local network. Use your local IP address and accept a browser warning, or use your domain for a trusted certificate.") }}</p>
+    <div class="btn-row"><a class="btn-link" href="/config/https">{{ _("Configure HTTPS") }}</a></div>
+  </section>
+  <section class="card" id="panels">
+    <h2>{{ _("Panels") }}</h2>
+    <p class="hint">{{ _("Your tools, one click away. Add a website to open it inside Oche; pinned panels are listed first in the sidebar.") }}</p>
+    <form id="panels-form"><div id="panel-list"></div><div id="panels-empty" class="panels-empty"><span aria-hidden="true">&#8862;</span><strong>{{ _("A place for your favorite tools") }}</strong><p>{{ _("Add a dashboard, lighting controls, or any website you use while playing.") }}</p></div><div class="panel-actions"><span id="panels-count" class="hint"></span><button type="button" id="add-panel"><span aria-hidden="true">+</span> {{ _("Add panel") }}</button></div><p id="panels-status" role="status" aria-live="polite"></p></form>
+    <p class="hint">{{ _("When Oche uses HTTPS, panels need their own HTTPS address. For HTTP-only sites, choose “Open in a new tab”.") }}</p>
+  </section>
+  <section class="card" id="application">
+    <h2>{{ _("Application") }}</h2>
+    <p class="hint">{{ _("Update Oche and board detection, or restart the application. Restarting briefly interrupts the board connection, lighting and caller.") }}</p>
+    <div class="btn-row"><a class="btn-link" href="/supervisor?service=updates">{{ _("Software updates") }}</a><button type="button" class="btn-neutral" data-restart disabled>{{ _("Restart Oche") }}</button></div>
+  </section>
+  <p id="settings-status" role="status" aria-live="polite"></p>
 </div>
-
-<div class="card">
-  <h2>Supervisor</h2>
-  <div class="toggle-row">
-    <div class="toggle-label">
-      <span>Show in navbar</span>
-      <p class="hint">Show the Supervisor tab in the top navigation.</p>
-    </div>
-    <label class="toggle">
-      <input type="checkbox" aria-label="Show Supervisor in navbar" id="cfg-show-autodarts" {{ 'checked' if config.show_autodarts_in_navbar }}>
-      <span class="toggle-track"><span class="toggle-thumb"></span></span>
-    </label>
-  </div>
-  <div class="toggle-row">
-    <div class="toggle-label">
-      <span>Start Autodarts on boot</span>
-      <p class="hint">Launches the Autodarts daemon automatically on container boot.</p>
-    </div>
-    <label class="toggle">
-      <input type="checkbox" aria-label="Start Autodarts on boot" id="cfg-autostart-autodarts" {{ 'checked' if config.autostart_autodarts }}>
-      <span class="toggle-track"><span class="toggle-thumb"></span></span>
-    </label>
-  </div>
-  <div class="toggle-row">
-    <div class="toggle-label">
-      <span>Start AutoGlow 2 on boot</span>
-      <p class="hint">Launches the AutoGlow 2 server automatically on container boot.</p>
-    </div>
-    <label class="toggle">
-      <input type="checkbox" aria-label="Start AutoGlow 2 on boot" id="cfg-autostart-autoglow" {{ 'checked' if config.autostart_autoglow }}>
-      <span class="toggle-track"><span class="toggle-thumb"></span></span>
-    </label>
-  </div>
-  <div class="toggle-row">
-    <div class="toggle-label">
-      <span>Start OcheCore on boot</span>
-      <p class="hint">Launches OcheCore automatically on container boot.</p>
-    </div>
-    <label class="toggle">
-      <input type="checkbox" aria-label="Start OcheCore on boot" id="cfg-autostart-ochecore" {{ 'checked' if config.autostart_ochecore }}>
-      <span class="toggle-track"><span class="toggle-thumb"></span></span>
-    </label>
-  </div>
-  <div class="toggle-row">
-    <div class="toggle-label">
-      <span>Auto-hide navbar</span>
-      <p class="hint">Default the Supervisor page's header to hidden. Can still be toggled per-browser from that page.</p>
-    </div>
-    <label class="toggle">
-      <input type="checkbox" aria-label="Auto-hide navbar on Supervisor" id="cfg-autohide-navbar-autodarts" {{ 'checked' if config.autohide_navbar_on_autodarts }}>
-      <span class="toggle-track"><span class="toggle-thumb"></span></span>
-    </label>
-  </div>
-</div>
-
-<div class="card">
-  <h2>AutoGlow 2 <span class="badge badge-yellow">Legacy</span></h2>
-  <p class="hint">AutoGlow 2 was OcheCore's predecessor for board lighting. OcheCore now
-    handles Autodarts connection, WLED lighting, and callers from <strong>Home</strong> —
-    leave this on only if you still rely on AutoGlow 2's own setup.</p>
-  <div class="toggle-row">
-    <div class="toggle-label">
-      <span>Show in navbar</span>
-      <p class="hint">Show the AutoGlow 2 tab in the top navigation and in Supervisor.</p>
-    </div>
-    <label class="toggle">
-      <input type="checkbox" aria-label="Show AutoGlow 2 in navbar" id="cfg-show-autoglow" {{ 'checked' if config.show_autoglow_in_navbar }}>
-      <span class="toggle-track"><span class="toggle-thumb"></span></span>
-    </label>
-  </div>
-  <div class="toggle-row">
-    <div class="toggle-label">
-      <span>Auto-hide navbar</span>
-      <p class="hint">Default the AutoGlow 2 page's header to hidden. Can still be toggled per-browser from that page.</p>
-    </div>
-    <label class="toggle">
-      <input type="checkbox" aria-label="Auto-hide navbar on AutoGlow 2" id="cfg-autohide-navbar-autoglow" {{ 'checked' if config.autohide_navbar_on_autoglow }}>
-      <span class="toggle-track"><span class="toggle-thumb"></span></span>
-    </label>
-  </div>
-</div>
-
-<div class="card">
-  <h2>Home</h2>
-  <div class="toggle-row">
-    <div class="toggle-label">
-      <span>Auto-hide navbar</span>
-      <p class="hint">Default the Home page's header to hidden. Can still be toggled per-browser from that page.</p>
-    </div>
-    <label class="toggle">
-      <input type="checkbox" aria-label="Auto-hide navbar on Home" id="cfg-autohide-navbar-ochecore" {{ 'checked' if config.autohide_navbar_on_ochecore }}>
-      <span class="toggle-track"><span class="toggle-thumb"></span></span>
-    </label>
-  </div>
-</div>
-
-<section class="card" id="panels">
-  <h2>Panels</h2>
-  <p class="subtitle">Your tools, one menu away. Add a website to open it inside Oche.</p>
-  <div class="toggle-row">
-    <div class="toggle-label">
-      <span>Show in navbar</span>
-      <p class="hint">Show pinned panels in the top navigation.</p>
-    </div>
-    <label class="toggle">
-      <input type="checkbox" aria-label="Show panels in navbar" id="cfg-show-panels" {{ 'checked' if config.show_panels_in_navbar }}>
-      <span class="toggle-track"><span class="toggle-thumb"></span></span>
-    </label>
-  </div>
-  <div class="toggle-row">
-    <div class="toggle-label">
-      <span>Auto-hide navbar</span>
-      <p class="hint">Default a panel page's header to hidden. Can still be toggled per-browser from that page.</p>
-    </div>
-    <label class="toggle">
-      <input type="checkbox" aria-label="Auto-hide navbar on panels" id="cfg-autohide-navbar-panels" {{ 'checked' if config.autohide_navbar_on_panels }}>
-      <span class="toggle-track"><span class="toggle-thumb"></span></span>
-    </label>
-  </div>
-  <form id="panels-form">
-    <div id="panel-list"></div>
-    <div id="panels-empty" class="panels-empty"><span aria-hidden="true">&#8862;</span><strong>A place for your favorite tools</strong><p>Add a dashboard, lighting controls, or any website you use while playing.</p></div>
-    <div class="panel-actions">
-      <span id="panels-count" class="hint"></span>
-      <button type="button" id="add-panel"><span aria-hidden="true">+</span> Add panel</button>
-    </div>
-    <p id="panels-status" role="status" aria-live="polite"></p>
-  </form>
-  <p class="hint">When Oche uses HTTPS, panels need their own HTTPS address. For HTTP-only sites or sites that block embedding, turn on “Open in a new tab”.</p>
-</section>
-</div>
-<template id="panel-row-template">
-  <div class="panel-row">
-    <label>Name<input class="panel-name" type="text" required maxlength="60" placeholder="My dashboard"></label>
-    <label>Website URL<input class="panel-url" type="url" required placeholder="http://wled.local" pattern="https?://.+"></label>
-    <button type="button" class="remove-panel" aria-label="Remove panel" title="Remove panel">
-      <svg aria-hidden="true" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3m-8 0 1 13h8l1-13M10 11v6M14 11v6"/></svg>
-    </button>
-    <div class="panel-options">
-      <div class="panel-option-toggle">
-        <span>Open in a new tab</span>
-        <label class="toggle">
-          <input class="panel-new-tab" type="checkbox">
-          <span class="toggle-track"><span class="toggle-thumb"></span></span>
-        </label>
-      </div>
-      <div class="panel-option-toggle">
-        <span>Pin to navbar</span>
-        <label class="toggle">
-          <input class="panel-pin" type="checkbox">
-          <span class="toggle-track"><span class="toggle-thumb"></span></span>
-        </label>
-      </div>
-    </div>
-  </div>
-</template>
+<template id="panel-row-template"><div class="panel-row"><label>{{ _("Name") }}<input class="panel-name" type="text" required maxlength="60" placeholder="{{ _('My dashboard') }}"></label><label>{{ _("Website URL") }}<input class="panel-url" type="url" required placeholder="http://wled.local" pattern="https?://.+"></label><button type="button" class="remove-panel" aria-label="{{ _('Remove panel') }}" title="{{ _('Remove panel') }}"><svg aria-hidden="true" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3m-8 0 1 13h8l1-13M10 11v6M14 11v6"/></svg></button><div class="panel-options"><div class="panel-option-toggle"><span>{{ _("Open in a new tab") }}</span><label class="toggle"><input class="panel-new-tab" type="checkbox"><span class="toggle-track"><span class="toggle-thumb"></span></span></label></div><div class="panel-option-toggle"><span>{{ _("Pin to top") }}</span><label class="toggle"><input class="panel-pin" type="checkbox"><span class="toggle-track"><span class="toggle-thumb"></span></span></label></div></div></div></template>
 <script id="initial-panels" type="application/json">{{ config.panels | tojson }}</script>
-<script src="/static/js/panels.js" defer></script>
-
-<script>
-const autostartInput = document.getElementById('cfg-autostart-autodarts');
-const autostartAutoglowInput = document.getElementById('cfg-autostart-autoglow');
-const autostartOchecoreInput = document.getElementById('cfg-autostart-ochecore');
-const autohidePlayInput = document.getElementById('cfg-autohide-navbar-play');
-const autohideAutodartsInput = document.getElementById('cfg-autohide-navbar-autodarts');
-const autohideAutoglowInput = document.getElementById('cfg-autohide-navbar-autoglow');
-const autohideOchecoreInput = document.getElementById('cfg-autohide-navbar-ochecore');
-const autohidePanelsInput = document.getElementById('cfg-autohide-navbar-panels');
-const showPlayInput = document.getElementById('cfg-show-play');
-const showAutodartsInput = document.getElementById('cfg-show-autodarts');
-const showAutoglowInput = document.getElementById('cfg-show-autoglow');
-const showPanelsInput = document.getElementById('cfg-show-panels');
-
-async function saveConfig() {
-  await fetch('/config/data', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      autostart_autodarts: autostartInput.checked,
-      autostart_autoglow: autostartAutoglowInput.checked,
-      autostart_ochecore: autostartOchecoreInput.checked,
-      autohide_navbar_on_play: autohidePlayInput.checked,
-      autohide_navbar_on_autodarts: autohideAutodartsInput.checked,
-      autohide_navbar_on_autoglow: autohideAutoglowInput.checked,
-      autohide_navbar_on_ochecore: autohideOchecoreInput.checked,
-      autohide_navbar_on_panels: autohidePanelsInput.checked,
-      show_play_in_navbar: showPlayInput.checked,
-      show_autodarts_in_navbar: showAutodartsInput.checked,
-      show_autoglow_in_navbar: showAutoglowInput.checked,
-      show_panels_in_navbar: showPanelsInput.checked,
-    }),
-  });
-}
-
-// Reflect "show in navbar" toggles in the navbar immediately - it's rendered
-// on this same page, so there's no need to wait for the next page load.
-[
-  [showPlayInput, 'nav-link-play'],
-  [showAutodartsInput, 'nav-link-autodarts'],
-  [showAutoglowInput, 'nav-link-autoglow'],
-].forEach(([input, linkId]) => {
-  const link = document.getElementById(linkId);
-  input.addEventListener('change', () => { link.hidden = !input.checked; });
-});
-
-[autostartInput, autostartAutoglowInput, autostartOchecoreInput, autohidePlayInput, autohideAutodartsInput, autohideAutoglowInput, autohideOchecoreInput, autohidePanelsInput, showPlayInput, showAutodartsInput, showAutoglowInput, showPanelsInput]
-  .forEach((input) => input.addEventListener('change', saveConfig));
-</script>
 {% endblock %}
+{% block scripts %}<script src="/static/js/panels.js" defer></script><script src="/static/js/settings.js" defer></script>{% endblock %}

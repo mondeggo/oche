@@ -52,7 +52,7 @@
         imageWidth <= 0 || imageHeight <= 0 ||
         !['[object Uint8ClampedArray]', '[object Uint8Array]'].includes(dataType) ||
         data.length < imageWidth * imageHeight * 4) {
-      return fail('invalid-frame', 'Waiting for a camera image.');
+      return fail('invalid-frame', tr("Waiting for a camera image."));
     }
 
     const left = Math.floor(selection.x * imageWidth);
@@ -65,7 +65,7 @@
     result.height = height;
     result.pixels = width * height;
     if (width < 8 || height < 8) {
-      return fail('roi-too-small', 'Select a larger area for the focus meter.');
+      return fail('roi-too-small', tr("Select a larger area for the focus meter."));
     }
 
     // Three rows avoid allocating another full camera frame on every sample.
@@ -108,16 +108,16 @@
     // Do not interpret noise in an underexposed image as improved focus, or
     // missing detail in a washed-out image as a focus adjustment problem.
     if (mean < 30 || result.clippedDark > 0.75) {
-      return fail('too-dark', 'Add more light or increase exposure before comparing focus.', true);
+      return fail('too-dark', tr("Add more light or increase exposure before comparing focus."), true);
     }
     if (mean > 225 || result.clippedBright > 0.45) {
-      return fail('too-bright', 'Reduce glare or exposure before comparing focus.', true);
+      return fail('too-bright', tr("Reduce glare or exposure before comparing focus."), true);
     }
     if (result.clippedDark + result.clippedBright > 0.8) {
-      return fail('clipped', 'Too much of this area is clipped to black or white. Adjust the lighting or select another area.', true);
+      return fail('clipped', tr("Too much of this area is clipped to black or white. Adjust the lighting or select another area."), true);
     }
     if (result.contrast < 3) {
-      return fail('low-detail', 'Choose an area with visible edges or texture.');
+      return fail('low-detail', tr("Choose an area with visible edges or texture."));
     }
     result.usable = true;
     return result;
@@ -154,7 +154,7 @@
       const score = sample?.score;
       if (!sample?.usable || !Number.isFinite(score) || score < 0) {
         return this.snapshot(Number.isFinite(score) ? Math.max(0, score) : 0, false, 'unavailable',
-          sample?.warning || sample?.lightingWarning || 'Waiting for a usable focus sample.',
+          sample?.warning || sample?.lightingWarning || tr("Waiting for a usable focus sample."),
           sample?.lightingWarning || null);
       }
       const previous = this.current;

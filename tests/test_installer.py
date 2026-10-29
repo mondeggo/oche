@@ -100,8 +100,20 @@ v4l2-ctl() {
         self.assertEqual(self.run_bash(source, env=env, args=("example/argument",)), "example/argument")
 
     def test_shell_syntax(self):
-        result = subprocess.run([BASH, "-n", "scripts/install.sh"], cwd=ROOT, capture_output=True)
-        self.assertEqual(result.returncode, 0, result.stderr.decode())
+        for script in ("scripts/install.sh", "scripts/oche.sh"):
+            with self.subTest(script=script):
+                result = subprocess.run([BASH, "-n", script], cwd=ROOT, capture_output=True)
+                self.assertEqual(result.returncode, 0, result.stderr.decode())
+
+    def test_helper_help_needs_no_docker(self):
+        source = '''
+docker() { echo DOCKER_CALLED >&2; return 1; }
+export -f docker
+"$BASH" scripts/oche.sh --help
+'''
+        output = self.run_bash(source, cwd=ROOT)
+        self.assertIn("status", output)
+        self.assertIn("cameras", output)
 
     def test_install_mode_default_detailed_and_invalid_retry(self):
         helpers = SCRIPT[:SCRIPT.index('install_docker() (')]
@@ -113,7 +125,7 @@ v4l2-ctl() {
                 self.assertTrue(output.endswith('MODE=' + expected), output)
 
     def test_easy_defaults_and_full_device_access_without_prompts_or_probes(self):
-        helpers = SCRIPT[SCRIPT.index('autodarts_config_mount() ('):SCRIPT.index('main() (')]
+        helpers = SCRIPT[SCRIPT.index('configure_cameras() ('):SCRIPT.index('main() (')]
         folder_block = SCRIPT[SCRIPT.index('section "Installation folder"'):
                               SCRIPT.index('mkdir -p -- "$install_dir"')]
         startup_block = SCRIPT[SCRIPT.index('section "Startup"'):
@@ -142,11 +154,10 @@ configure_cameras
             self.assertIn('      - "20"\n      - "44"', override)
 
     def test_detailed_camera_selection_still_accepts_none(self):
-        helpers = SCRIPT[SCRIPT.index('autodarts_config_mount() ('):SCRIPT.index('main() (')]
+        helpers = SCRIPT[SCRIPT.index('configure_cameras() ('):SCRIPT.index('main() (')]
         with tempfile.TemporaryDirectory() as folder:
             self.run_bash(helpers + '''
 install_mode=detailed
-install_home="$PWD"
 discover_cameras() { :; }
 configure_cameras <<< none
 ''', cwd=folder)
@@ -155,10 +166,9 @@ configure_cameras <<< none
             self.assertNotIn('device_cgroup_rules', override)
 
     def test_switching_full_access_to_none_removes_broad_permissions(self):
-        helpers = SCRIPT[SCRIPT.index('autodarts_config_mount() ('):SCRIPT.index('reconfigure_cameras() (')]
+        helpers = SCRIPT[SCRIPT.index('configure_cameras() ('):SCRIPT.index('reconfigure_cameras() (')]
         with tempfile.TemporaryDirectory() as folder:
             setup = helpers + '''
-install_home="$PWD"
 install_mode=detailed
 discover_cameras() { :; }
 find() { printf '44\\n'; }
@@ -173,12 +183,11 @@ getent() { :; }
             self.assertIn('devices: []', target.read_text())
 
     def test_custom_camera_override_is_preserved(self):
-        helpers = SCRIPT[SCRIPT.index('autodarts_config_mount() ('):SCRIPT.index('reconfigure_cameras() (')]
+        helpers = SCRIPT[SCRIPT.index('configure_cameras() ('):SCRIPT.index('reconfigure_cameras() (')]
         with tempfile.TemporaryDirectory() as folder:
             target = Path(folder) / 'docker-compose.override.yml'
             target.write_text('# Custom settings\nservices: {}\n')
             self.run_bash(helpers + '''
-install_home="$PWD"
 if configure_cameras <<< all; then exit 1; fi
 ''', cwd=folder)
             self.assertEqual(target.read_text(), '# Custom settings\nservices: {}\n')
@@ -186,30 +195,6 @@ if configure_cameras <<< all; then exit 1; fi
     def test_sourcing_installer_does_not_start_installation(self):
         output = self.run_bash('source scripts/install.sh\necho SOURCED', cwd=ROOT)
         self.assertEqual(output.strip(), 'SOURCED')
-
-    def test_existing_autodarts_configuration_mount(self):
-        function = SCRIPT[SCRIPT.index('autodarts_config_mount() ('):SCRIPT.index('configure_cameras() (')]
-        with tempfile.TemporaryDirectory() as folder:
-            root = Path(folder)
-            config_dir = root / "user's $home" / '.config' / 'autodarts'
-            config_dir.mkdir(parents=True)
-            config = config_dir / 'config.toml'
-            config.write_text('[cam]\ncams = []\n')
-            source = function + '\ninstall_home="$PWD/user\'s \\$home"\nautodarts_config_mount\n'
-            output = self.run_bash(source, cwd=folder)
-            self.assertIn("user''s $$home/.config/autodarts'", output)
-            self.assertIn('target: /app/host-autodarts', output)
-            self.assertIn('create_host_path: false', output)
-            self.assertNotIn('[cam]', output)
-            self.assertEqual(config.read_text(), '[cam]\ncams = []\n')
-
-    def test_missing_autodarts_configuration_uses_data_mount(self):
-        function = SCRIPT[SCRIPT.index('autodarts_config_mount() ('):SCRIPT.index('configure_cameras() (')]
-        with tempfile.TemporaryDirectory() as folder:
-            for directory_exists in (False, True):
-                if directory_exists:
-                    (Path(folder) / '.config' / 'autodarts').mkdir(parents=True)
-                self.assertEqual(self.run_bash(function + '\ninstall_home="$PWD"\nautodarts_config_mount\n', cwd=folder), '')
 
     def test_installer_places_helper_for_local_and_remote_installs(self):
         start = SCRIPT.index('# Ship the helper')

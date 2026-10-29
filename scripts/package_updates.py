@@ -1,11 +1,12 @@
 """Export verified, architecture-specific bundles from a prepared runtime image."""
+
 import argparse
 import hashlib
 import importlib.metadata
 import json
-from pathlib import Path
 import platform
 import tarfile
+from pathlib import Path
 
 
 def main():
@@ -16,9 +17,12 @@ def main():
     args = parser.parse_args()
     runtime_file = Path("/opt/oche-runtime-id")
     if args.runtime_only:
-        # Shared dependencies cannot be changed by application updates. OcheCore
-        # carries its isolated environment; the shared runtime is fingerprinted.
-        packages = sorted(f"{d.metadata['Name'].lower()}=={d.version}" for d in importlib.metadata.distributions())
+        # The merged application shares one fingerprinted dependency environment.
+        packages = sorted(
+            f"{d.metadata['Name'].lower()}=={d.version}"
+            for d in importlib.metadata.distributions()
+            if d.metadata["Name"].lower() != "oche"
+        )
         contract = "oche-runtime-1\n" + platform.python_version() + "\n" + "\n".join(packages)
         runtime_file.write_text(hashlib.sha256(contract.encode()).hexdigest())
         for source in Path("/opt/oche-bundles").iterdir():
@@ -30,9 +34,7 @@ def main():
     output.mkdir(parents=True, exist_ok=True)
     arch = {"x86_64": "amd64", "aarch64": "arm64"}[platform.machine()]
     entries = {}
-    # OcheCore and AutoDarts updates come from their own upstream releases (see
-    # upstream_releases.py). AutoGlow 2 is legacy and no longer receiving new
-    # builds. Only Oche itself needs publishing here.
+    # Oche includes its darts runtime. AutoDarts detection remains upstream.
     for source in sorted(p for p in Path("/opt/oche-bundles").iterdir() if p.name == "oche"):
         display_version = (source / "VERSION").read_text().strip()
         revision_file = source / "REVISION"
@@ -45,11 +47,17 @@ def main():
                 bundle.add(child, arcname=child.name)
         with archive.open("rb") as stream:
             digest = hashlib.file_digest(stream, "sha256").hexdigest()
-        entries[source.name] = {"version": version, "display_version": display_version,
-                                "revision": revision, "sha256": digest,
-                                "url": args.base_url.rstrip("/") + "/" + name,
-                                "runtime": runtime_file.read_text().strip()}
-    (output / f"updates-{arch}.json").write_text(json.dumps({"schema": 1, "platforms": {"linux-" + arch: entries}}, indent=2))
+        entries[source.name] = {
+            "version": version,
+            "display_version": display_version,
+            "revision": revision,
+            "sha256": digest,
+            "url": args.base_url.rstrip("/") + "/" + name,
+            "runtime": runtime_file.read_text().strip(),
+        }
+    (output / f"updates-{arch}.json").write_text(
+        json.dumps({"schema": 1, "platforms": {"linux-" + arch: entries}}, indent=2)
+    )
 
 
 if __name__ == "__main__":

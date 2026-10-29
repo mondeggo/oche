@@ -1,0 +1,115 @@
+:root {
+  color-scheme: light;
+  --background: #f5f4f1;
+  --surface: #fff;
+  --text: #303038;
+  --muted: #666671;
+  --border: #dddbd7;
+  --accent: #b43c43;
+  --brand: #654e38;
+  --success: #e3eee6;
+  --success-text: #2f6442;
+  --warning: #f4ead4;
+  --warning-text: #735820;
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --background: #1c1c21;
+  --surface: #292930;
+  --text: #e4e4e9;
+  --muted: #a5a5b1;
+  --border: #44444f;
+  --accent: #d45d64;
+  --brand: #dbc4a5;
+  --success: #253b30;
+  --success-text: #9dc5a9;
+  --warning: #403724;
+  --warning-text: #d6bb83;
+}
+* {
+  box-sizing: border-box;
+}
+[hidden] {
+  display: none !important;
+}
+html,
+body {
+  height: 100%;
+}
+body {
+  margin: 0;
+  background: var(--background);
+  color: var(--text);
+  font-family: "Segoe UI", Roboto, system-ui, sans-serif;
+  overflow: hidden;
+}
+#board {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(16px, 3vh, 40px);
+  padding: clamp(16px, 4vh, 56px);
+}
+#board-header {
+  text-align: center;
+}
+#board-title {
+  margin: 0;
+  font-size: clamp(24px, 4vw, 48px);
+  color: var(--brand);
+}
+#board-match {
+  margin: 4px 0 0;
+  font-size: clamp(14px, 1.6vw, 22px);
+  color: var(--muted);
+}
+#board-banner {
+  font-size: clamp(20px, 3vw, 36px);
+  color: var(--muted);
+  text-align: center;
+}
+#board-checkout {
+  font-size: clamp(16px, 2vw, 28px);
+  color: var(--success-text);
+  background: var(--success);
+  border-radius: 12px;
+  padding: 0.5em 1.2em;
+}
+#board-players {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: clamp(16px, 2.5vw, 48px);
+  width: 100%;
+}
+.board-player {
+  background: var(--surface);
+  border: 2px solid var(--border);
+  border-radius: 16px;
+  padding: clamp(16px, 2.5vw, 32px) clamp(24px, 4vw, 56px);
+  text-align: center;
+  min-width: clamp(200px, 22vw, 320px);
+}
+.board-player[data-active="true"] {
+  border-color: var(--accent);
+}
+.board-player-name {
+  font-size: clamp(16px, 2vw, 28px);
+  color: var(--muted);
+}
+.board-player[data-active="true"] .board-player-name {
+  color: var(--accent);
+}
+.board-player-score {
+  font-size: clamp(56px, 11vw, 160px);
+  font-weight: 700;
+  line-height: 1;
+  margin: 0.1em 0;
+}
+.board-player-detail {
+  font-size: clamp(14px, 1.6vw, 22px);
+  color: var(--muted);
+  min-height: 1.4em;
+}

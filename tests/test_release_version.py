@@ -1,30 +1,37 @@
-import unittest
-from unittest.mock import patch
+import subprocess
 
-from scripts.release_version import detect
+import pytest
+
+from scripts import release_version
 
 
-class ReleaseVersionTests(unittest.TestCase):
-    def test_push_version_comparison(self):
-        for previous, expected in (("0.1.0", True), ("0.1.1", False)):
-            with self.subTest(previous=previous), \
-                 patch("scripts.release_version.Path.read_text", return_value='[project]\nversion="0.1.1"'), \
-                 patch("scripts.release_version.subprocess.run"), \
-                 patch("scripts.release_version.subprocess.check_output", side_effect=["pyproject.toml\n", f'[project]\nversion="{previous}"']):
-                self.assertEqual(detect("a" * 40), ("0.1.1", expected))
+@pytest.mark.parametrize("version", ["3.0.0", "3.0.0a1", "3.1.0b2", "10.2.3rc11"])
+def test_release_versions_accept_final_and_pre_releases(version):
+    assert release_version.check(version) == version
 
-    def test_initial_push_and_manual_release(self):
-        with patch("scripts.release_version.Path.read_text", return_value='[project]\nversion="0.1.1"'):
-            self.assertEqual(detect("0" * 40), ("0.1.1", True))
-            self.assertEqual(detect(None, manual=True), ("0.1.1", True))
 
-    def test_adding_project_metadata_triggers_release(self):
-        with patch("scripts.release_version.Path.read_text", return_value='[project]\nversion="0.1.1"'), \
-             patch("scripts.release_version.subprocess.run"), \
-             patch("scripts.release_version.subprocess.check_output", return_value=""):
-            self.assertEqual(detect("a" * 40), ("0.1.1", True))
+@pytest.mark.parametrize("version", ["3.0", "v3.0.0", "3.0.0-a1", "03.0.0", "3.0.0a", "3.0.0.dev1"])
+def test_release_versions_reject_other_forms(version):
+    with pytest.raises(ValueError):
+        release_version.check(version)
 
-    def test_invalid_version_rejected(self):
-        with patch("scripts.release_version.Path.read_text", return_value='[project]\nversion="main"'):
-            with self.assertRaises(ValueError):
-                detect(None)
+
+def test_current_project_version_is_publishable():
+    version, changed = release_version.detect(None)
+    assert release_version.check(version) == version
+    assert changed is True
+
+
+def test_unchanged_version_is_not_published_again(tmp_path, monkeypatch):
+    project = '[project]\nname = "oche"\nversion = "{}"\n'
+    git = ["git", "-c", "user.email=ci@oche.test", "-c", "user.name=CI"]
+    monkeypatch.chdir(tmp_path)
+    subprocess.run(["git", "init", "-q"], check=True)
+    (tmp_path / "pyproject.toml").write_text(project.format("3.0.0a1"))
+    subprocess.run([*git, "add", "pyproject.toml"], check=True)
+    subprocess.run([*git, "commit", "-qm", "one"], check=True)
+    before = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
+    assert release_version.detect(before) == ("3.0.0a1", False)
+    assert release_version.detect(before, manual=True) == ("3.0.0a1", True)
+    (tmp_path / "pyproject.toml").write_text(project.format("3.0.0a2"))
+    assert release_version.detect(before) == ("3.0.0a2", True)

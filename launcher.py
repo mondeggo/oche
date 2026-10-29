@@ -1,16 +1,18 @@
 """Non-replaceable container entry point with self-update health rollback."""
+
 import os
-from pathlib import Path
 import signal
 import subprocess
 import sys
 import time
+from pathlib import Path
 from urllib.request import urlopen
 
 import oche_runtime as store
 
 
 def main():
+    root = Path(__file__).resolve().parent
     store.initialize()
     stopping = False
     child = None
@@ -24,11 +26,17 @@ def main():
     signal.signal(signal.SIGTERM, stop)
     signal.signal(signal.SIGINT, stop)
     while not stopping:
-        source = store.location("oche", "/app")
-        env = {**os.environ, "OCHE_LAUNCHER": "1", "OCHE_DATA_DIR": str(store.DATA),
-               "PYTHONPATH": "/app", "OCHE_BOOT_ID": os.urandom(16).hex()}
-        child = subprocess.Popen([sys.executable, "-m", "app.server"], cwd=source, env=env,
-                                 start_new_session=os.name == "posix")
+        source = store.location("oche", root)
+        env = {
+            **os.environ,
+            "OCHE_LAUNCHER": "1",
+            "OCHE_DATA_DIR": str(store.DATA.resolve()),
+            "PYTHONPATH": str(root),
+            "OCHE_BOOT_ID": os.urandom(16).hex(),
+        }
+        child = subprocess.Popen(
+            [sys.executable, "-m", "app.server"], cwd=source, env=env, start_new_session=os.name == "posix"
+        )
         deadline = time.monotonic() + 90
         healthy = False
         while child.poll() is None and not stopping:
@@ -41,8 +49,12 @@ def main():
             if not healthy:
                 try:
                     import json
-                    with urlopen(f"http://127.0.0.1:{os.environ.get('OCHE_PORT', '8180')}/healthz", timeout=2) as response:
-                        healthy = json.load(response).get("boot_id") == env["OCHE_BOOT_ID"]
+
+                    with urlopen(
+                        f"http://127.0.0.1:{os.environ.get('OCHE_PORT', '8180')}/healthz", timeout=2
+                    ) as response:
+                        payload = json.load(response)
+                        healthy = payload.get("ok") is True and payload.get("boot_id") == env["OCHE_BOOT_ID"]
                 except Exception:
                     pass
                 if healthy and state.get("pending"):
@@ -67,9 +79,12 @@ def main():
         state = store.read_state("oche")
         # A restart request starts the candidate on the next loop; failure of
         # that candidate restores the last healthy release.
-        if state.get("pending") and source == store.location("oche", "/app"):
-            state.update(active=state.get("previous"), pending=False,
-                         error="Oche failed its startup health check; restored previous version")
+        if state.get("pending") and source == store.location("oche", root):
+            state.update(
+                active=state.get("previous"),
+                pending=False,
+                error="Oche failed its startup health check; restored previous version",
+            )
             store.write_state("oche", state)
         if not stopping:
             time.sleep(1)

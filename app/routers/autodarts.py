@@ -10,7 +10,7 @@ from fastapi.responses import PlainTextResponse
 from app.templating import templates
 
 from app.config import LOG_DIR, load_config
-from app.services import autodarts, autoglow
+from app.services import autodarts
 from app.services.autodarts_terminal import AutodartsTerminal
 from app.security import same_origin
 from app.log_download import log_download
@@ -21,7 +21,7 @@ terminal_slots = BoundedSemaphore(4)
 
 @router.get("/terminal")
 async def terminal_page(request: Request):
-    return templates.TemplateResponse("terminal.html", {"request": request})
+    return templates.TemplateResponse(request=request, name="terminal.html", context={"request": request})
 
 
 @router.websocket("/terminal/ws")
@@ -39,7 +39,7 @@ async def terminal_socket(websocket: WebSocket):
             await websocket.send_json({"error": "The setup terminal requires the Linux Oche container."})
             return
         if autodarts.get_status()["status"] != "running":
-            await websocket.send_json({"error": "Start Autodarts in Supervisor, then reconnect."})
+            await websocket.send_json({"error": "Start Autodarts above, then reconnect."})
             return
         acquired = terminal_slots.acquire(blocking=False)
         if not acquired:
@@ -98,22 +98,14 @@ async def terminal_socket(websocket: WebSocket):
 
 
 async def page(request: Request):
-    from app.services import ochecore
-    services = {"autodarts": autodarts, "autoglow": autoglow, "ochecore": ochecore}
-    service = request.query_params.get("service", "autodarts")
-    if service not in services:
-        service = "autodarts"
+    service = "autodarts"
     config = load_config()
-    return templates.TemplateResponse(
-        "autodarts.html",
-        {
+    return templates.TemplateResponse(request=request, name="autodarts.html", context={
             "request": request,
             "service": service,
-            "status": services[service].get_status(),
+            "status": autodarts.get_status(),
             "config": config,
             "active_nav": "autodarts",
-            "allow_header_autohide": True,
-            "autohide_navbar_default": config.get("autohide_navbar_on_autodarts", False),
         },
     )
 

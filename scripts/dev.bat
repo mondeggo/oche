@@ -1,28 +1,36 @@
 @echo off
-REM Build and launch Oche locally with live logs and reload.
 setlocal
-cd /d "%~dp0.."
+cd /d "%~dp0.." || exit /b 1
 
-where docker >nul 2>&1
+set "OCHE_DEV_LAUNCHER="
+if not "%~2"=="" goto usage
+if "%~1"=="" goto prepare
+if /i "%~1"=="--launcher" (
+    set "OCHE_DEV_LAUNCHER=1"
+    goto prepare
+)
+
+:usage
+echo Usage: scripts\dev.bat [--launcher]
+exit /b 2
+
+:prepare
+echo Starting native Windows development, without Docker.
+echo Autodarts detection is included in the Linux container image, not this Windows process.
+echo For container development: docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+echo.
+where uv >nul 2>&1
 if errorlevel 1 (
-    echo Install and start Docker first.
+    echo Install uv and make sure it is available on PATH.
     exit /b 1
 )
 
-set "COMPOSE_OVERRIDE="
-if exist docker-compose.override.yml set "COMPOSE_OVERRIDE=-f docker-compose.override.yml"
-set "UPDATE_OVERRIDE="
-if "%~1"=="--updates" (
-    set "UPDATE_OVERRIDE=-f docker-compose.updates.yml"
-    echo Launcher mode: application updates enabled; source live reload disabled.
-) else if not "%~1"=="" (
-    echo Usage: scripts\dev.bat [--updates]
-    exit /b 2
-)
+uv sync --locked
+if errorlevel 1 exit /b %errorlevel%
 
-echo Oche development: http://localhost:8180
-echo HTTPS uses port 8443 by default when enabled in Settings; override with OCHE_DEV_HTTPS_PORT.
-echo Stop other Oche containers first; standalone OcheCore development can run alongside on port 9180.
-echo Press Ctrl+C to stop; logs appear below.
-docker compose -p oche-dev -f docker-compose.yml %COMPOSE_OVERRIDE% -f docker-compose.build.yml %UPDATE_OVERRIDE% up --build
+if defined OCHE_DEV_LAUNCHER (
+    uv run python launcher.py
+) else (
+    uv run python -m uvicorn app.main:app --host 127.0.0.1 --port 8180 --reload
+)
 exit /b %errorlevel%

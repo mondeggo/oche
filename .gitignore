@@ -1,5 +1,6 @@
-AutoGlow-v*.zip
 _ag_extract_tmp/
+ressources/
+AGENTS.md
 
 # Local runtime data and machine-specific configuration
 /data/
@@ -30,3 +31,11 @@ htmlcov/
 .vscode/
 .DS_Store
 Thumbs.db
+
+.test-runs/
+.test-tmp*/
+.preview/
+artifacts/
+
+# Nested Git worktrees
+.worktrees/

@@ -8,6 +8,7 @@
 
   let saveTimer = null;
   let statusClearTimer = null;
+  let writing = Promise.resolve(true);
 
   function refresh() {
     const count = list.children.length;
@@ -43,50 +44,52 @@
     }));
   }
 
-  // The navbar (pinned panels + the "Panels" dropdown) lives on this same
-  // page, via base.html - update it in place instead of waiting for a reload.
+  // The sidebar's panel list lives on this same page, via base.html -
+  // update it in place instead of waiting for a reload. Pinned panels come first.
   function renderNav(panels) {
-    const pinnedContainer = document.getElementById('nav-pinned-panels');
-    if (pinnedContainer) {
-      pinnedContainer.replaceChildren(...panels.filter(p => p.pinned).map(makePanelLink('pinned-panel')));
+    const list = document.getElementById('sidebar-panel-list');
+    if (!list) return;
+    const ordered = [...panels.filter(p => p.pinned), ...panels.filter(p => !p.pinned)];
+    if (!ordered.length) {
+      list.replaceChildren(navLink(tr("Add a panel"), '/config#panels', '+', false, 'nav-empty'));
+      return;
     }
-    const dropdownList = document.getElementById('panels-menu-list');
-    if (dropdownList) {
-      if (panels.length) {
-        dropdownList.replaceChildren(...panels.map(p => {
-          const item = document.createElement('div');
-          item.className = 'panels-menu-item';
-          item.append(makePanelLink('panel-menu-name')(p));
-          return item;
-        }));
-      } else {
-        const empty = document.createElement('p');
-        empty.className = 'panels-menu-empty';
-        empty.textContent = 'Keep your favorite tools in reach.';
-        dropdownList.replaceChildren(empty);
-      }
-    }
+    list.replaceChildren(...ordered.map(p => navLink(p.name, p.open_in_new_tab ? p.url : `/panels/${p.id}`,
+      p.name.slice(0, 1).toUpperCase(), p.open_in_new_tab)));
   }
 
-  function makePanelLink(className) {
-    return (p) => {
-      const a = document.createElement('a');
-      a.className = className;
-      a.title = p.name;
-      a.textContent = p.name;
-      if (p.open_in_new_tab) {
-        a.href = p.url;
-        a.target = '_blank';
-        a.rel = 'noopener noreferrer';
-      } else {
-        a.href = `/panels/${p.id}`;
-      }
-      return a;
-    };
+  function navLink(name, href, monogram, external, extraClass = '') {
+    const a = document.createElement('a');
+    a.className = `nav-item ${extraClass}`.trim();
+    a.href = href;
+    a.dataset.label = name;
+    const mark = document.createElement('span');
+    mark.className = 'nav-monogram';
+    mark.setAttribute('aria-hidden', 'true');
+    mark.textContent = monogram;
+    const text = document.createElement('span');
+    text.className = 'nav-text';
+    text.textContent = name;
+    a.append(mark, text);
+    if (external) {
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      const trailing = document.createElement('span');
+      trailing.className = 'nav-trailing';
+      trailing.setAttribute('aria-label', tr("Opens in a new tab"));
+      trailing.textContent = '↗';
+      a.append(trailing);
+    }
+    return a;
   }
 
-  async function save() {
-    status.textContent = 'Saving…';
+  function save() {
+    writing = writing.then(saveNow);
+    return writing;
+  }
+
+  async function saveNow() {
+    status.textContent = tr("Saving…");
     try {
       const response = await fetch('/panels/data', {
         method: 'PUT',
@@ -95,8 +98,8 @@
       });
       if (!response.ok) {
         throw new Error(response.status === 422
-          ? 'Check each name and URL. URLs must start with http:// or https://.'
-          : 'Could not save panels. Please try again.');
+          ? tr("Check each name and URL. URLs must start with http:// or https://.")
+          : tr("Could not save panels. Please try again."));
       }
       const data = await response.json();
       // Newly added rows have no id yet - adopt the ones the server assigned,
@@ -105,10 +108,12 @@
         if (data.panels[i]) row.dataset.id = data.panels[i].id;
       });
       renderNav(data.panels);
-      status.textContent = 'Saved';
+      status.textContent = tr("Saved");
       statusClearTimer = setTimeout(() => { status.textContent = ''; }, 1500);
+      return true;
     } catch (error) {
-      status.textContent = error.message || 'Could not save panels. Please try again.';
+      status.textContent = tr(error.message) || tr("Could not save panels. Please try again.");
+      return false;
     }
   }
 
@@ -116,11 +121,21 @@
     clearTimeout(saveTimer);
     clearTimeout(statusClearTimer);
     if (!form.checkValidity()) {
-      status.textContent = list.children.length ? 'Fill in each panel’s name and URL to save.' : '';
+      status.textContent = list.children.length ? tr("Fill in each panel’s name and URL to save.") : '';
       return;
     }
     saveTimer = setTimeout(save, delay);
   }
+
+  const prepareAppearance = window.ocheBeforeAppearanceChange;
+  window.ocheBeforeAppearanceChange = async () => {
+    await prepareAppearance?.();
+    await writing;
+    if (saveTimer === null) return;
+    clearTimeout(saveTimer);
+    if (!form.checkValidity()) throw new Error(tr("Fill in each panel’s name and URL to save."));
+    if (!await save()) throw new Error(tr("Could not save panels. Please try again."));
+  };
 
   JSON.parse(document.getElementById('initial-panels').textContent).forEach(addPanel);
   refresh();

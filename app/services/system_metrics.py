@@ -1,6 +1,5 @@
 import shutil
 import time
-from typing import Optional
 
 import psutil
 
@@ -27,15 +26,17 @@ def _io_snapshot() -> dict:
 # Disk/network counters from psutil are cumulative since boot, not a rate -
 # keep the previous sample around so get_status() can diff against it.
 _last_io = _io_snapshot()
+_cached: dict | None = None
+_cached_at = 0.0
 
 
 def _rate_mb_s(prev: int, now: int, dt: float) -> float:
     if dt <= 0:
         return 0.0
-    return round(max(now - prev, 0) / dt / (1024 ** 2), 2)
+    return round(max(now - prev, 0) / dt / (1024**2), 2)
 
 
-def _cpu_temp_c() -> Optional[float]:
+def _cpu_temp_c() -> float | None:
     sensors = getattr(psutil, "sensors_temperatures", None)
     if sensors is None:
         return None
@@ -55,7 +56,10 @@ def _cpu_temp_c() -> Optional[float]:
 
 
 def get_status() -> dict:
-    global _last_io
+    global _last_io, _cached, _cached_at
+    now = time.monotonic()
+    if _cached is not None and now - _cached_at < 1:
+        return dict(_cached)
 
     mem = psutil.virtual_memory()
     disk = shutil.disk_usage(DATA_DIR)
@@ -69,15 +73,15 @@ def get_status() -> dict:
     net_sent_mb_s = _rate_mb_s(_last_io["net_sent"], io_now["net_sent"], dt)
     _last_io = io_now
 
-    return {
+    _cached = {
         "cpu_percent": psutil.cpu_percent(interval=None),
         "cpu_count": psutil.cpu_count() or 1,
         "mem_percent": mem.percent,
-        "mem_used_gb": round(mem.used / (1024 ** 3), 1),
-        "mem_total_gb": round(mem.total / (1024 ** 3), 1),
+        "mem_used_gb": round(mem.used / (1024**3), 1),
+        "mem_total_gb": round(mem.total / (1024**3), 1),
         "disk_percent": disk_percent,
-        "disk_used_gb": round(disk.used / (1024 ** 3), 1),
-        "disk_total_gb": round(disk.total / (1024 ** 3), 1),
+        "disk_used_gb": round(disk.used / (1024**3), 1),
+        "disk_total_gb": round(disk.total / (1024**3), 1),
         "disk_read_mb_s": disk_read_mb_s,
         "disk_write_mb_s": disk_write_mb_s,
         "net_recv_mb_s": net_recv_mb_s,
@@ -85,3 +89,5 @@ def get_status() -> dict:
         "cpu_temp_c": _cpu_temp_c(),
         "uptime_s": int(time.time() - psutil.boot_time()),
     }
+    _cached_at = now
+    return dict(_cached)

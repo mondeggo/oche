@@ -7,8 +7,8 @@
     href="{{ panel.url }}"
     target="_blank"
     rel="noopener noreferrer"
-    title="Open in a new tab"
-    aria-label="Open in a new tab"
+    title="{{ _('Open in a new tab') }}"
+    aria-label="{{ _('Open in a new tab') }}"
   >
     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
       <path d="M7 17 17 7M9 7h8v8"></path>
@@ -17,9 +17,9 @@
   {% if request.url.scheme == 'https' and panel.url.lower().startswith('http://') %}
   <div class="board-placeholder" id="panel-https-required">
     <div class="board-placeholder-inner">
-      <h1 class="board-placeholder-title">This panel needs HTTPS</h1>
-      <p class="board-placeholder-text">Oche is using HTTPS. To show this panel here, enter the panel's own HTTPS address in Settings. You can also open its current address with the new-tab button.</p>
-      <a class="btn-link" href="/config#panels">Edit panel settings</a>
+      <h1 class="board-placeholder-title">{{ _("This panel needs HTTPS") }}</h1>
+      <p class="board-placeholder-text">{{ _("Oche is using HTTPS. To show this panel here, enter the panel's own HTTPS address in Settings. You can also open its current address with the new-tab button.") }}</p>
+      <a class="btn-link" href="/config#panels">{{ _("Edit panel settings") }}</a>
     </div>
   </div>
   {% else %}

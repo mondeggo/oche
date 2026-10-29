@@ -1,8 +1,8 @@
-// Apply the cached appearance before CSS loads, then follow OcheCore's saved theme.
+// Apply Oche's saved appearance before CSS loads and share it with local tools.
 (() => {
   const key = 'oche.theme';
   const requestKey = 'oche.theme.request';
-  const endpoint = '/ochecore/ui/api/ui';
+  const endpoint = '/api/ui';
   const system = matchMedia('(prefers-color-scheme: light)');
   const valid = value => value === 'dark' || value === 'light';
   const read = () => {
@@ -11,10 +11,13 @@
       return valid(value) ? value : null;
     } catch (_) { return null; }
   };
-  let preference = read();
+  let preference = document.documentElement.dataset.theme || read() || 'dark';
   let owner = window;
   let savedUI = null;
   let pendingTheme = null;
+  let pendingLanguage = null;
+  let flight = Promise.resolve();
+  let lastError = null;
   let revision = 0;
   let syncing = false;
   try {
@@ -28,7 +31,7 @@
     const button = document.getElementById('theme-toggle');
     if (!button) return;
     const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
-    button.title = button.ariaLabel = `Switch to ${next} theme`;
+    button.title = button.ariaLabel = tr(next === 'dark' ? tr("Switch to dark theme") : tr("Switch to light theme"));
   }
 
   function coreSettings() {
@@ -50,12 +53,6 @@
         const child = frame.contentWindow;
         if (child.ocheTheme) {
           child.ocheTheme.apply(preference);
-        } else if (new URL(frame.src).pathname.startsWith('/ochecore/ui/')) {
-          const settings = coreSettings();
-          child.dispatchEvent(new child.CustomEvent('ochecore:ui-settings', {
-            detail: { ...settings, theme,
-              embedded: settings?.embedded ?? (child.document.documentElement.dataset.embedded === 'true') },
-          }));
         }
       } catch (_) { /* External panels keep their own appearance. */ }
     }
@@ -66,32 +63,45 @@
     apply(theme);
   }
 
-  async function sync() {
-    if (owner !== window || syncing) return;
+  function sync() {
+    if (owner !== window) return owner.ocheTheme.refreshSettings();
+    if (syncing) return flight;
     syncing = true;
     const requestedRevision = revision;
-    const desired = pendingTheme;
-    try {
+    const desired = { ...(pendingTheme ? { theme: pendingTheme } : {}),
+      ...(pendingLanguage ? { language: pendingLanguage } : {}) };
+    const patch = Object.keys(desired).length > 0;
+    flight = (async () => { try {
       const response = await fetch(endpoint, {
-        method: desired ? 'PATCH' : 'GET',
+        method: patch ? 'PATCH' : 'GET',
         cache: 'no-store',
-        headers: desired ? { 'Content-Type': 'application/json' } : undefined,
-        body: desired ? JSON.stringify({ theme: desired }) : undefined,
+        headers: patch ? { 'Content-Type': 'application/json' } : undefined,
+        body: patch ? JSON.stringify({ ...desired, profile_id: document.documentElement.dataset.profileId || undefined }) : undefined,
         signal: AbortSignal.timeout(5000),
       });
-      if (!response.ok) return;
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        lastError = new Error(error.detail || tr("Cannot save appearance settings."));
+        if (response.status === 409) pendingTheme = pendingLanguage = null;
+        return;
+      }
       const settings = await response.json();
       if (!valid(settings.theme) || requestedRevision !== revision) return;
       savedUI = settings;
-      if (desired) pendingTheme = null;
+      lastError = null;
+      if (patch) pendingTheme = pendingLanguage = null;
+      document.documentElement.dataset.profileId = settings.profile_id || '';
       remember(settings.theme);
+      if (settings.language && settings.language !== document.documentElement.lang) location.reload();
     } catch (_) {
-      // Core may be stopped. Keep the local appearance and retry the latest choice.
+      lastError = new Error(tr("Cannot save appearance settings. Check the Oche connection."));
+      // Oche may be restarting. Keep the local appearance and retry the latest choice.
     } finally {
       syncing = false;
       // A newer click during this request must win over its older response.
-      if (pendingTheme && requestedRevision !== revision) sync();
-    }
+      if ((pendingTheme || pendingLanguage) && requestedRevision !== revision) sync();
+    } })();
+    return flight;
   }
 
   function queueTheme(theme) {
@@ -110,12 +120,39 @@
     // Publish user choices separately from the cache refreshed by server polling.
     // Other tabs can replace an offline choice without mistaking old GETs for clicks.
     try {
-      localStorage.setItem(requestKey, JSON.stringify({ theme, id: `${Date.now()}-${Math.random()}` }));
+      localStorage.setItem(requestKey, JSON.stringify({ theme, profile_id: document.documentElement.dataset.profileId, id: `${Date.now()}-${Math.random()}` }));
     } catch (_) { /* Keep the choice in this page when storage is unavailable. */ }
     queueTheme(theme);
   }
 
-  window.ocheTheme = { set, apply, refresh, coreSettings, preference: () => preference };
+  async function flush() {
+    if (owner !== window) return owner.ocheTheme.flush();
+    await flight;
+    if (pendingTheme || pendingLanguage) await sync();
+    if (lastError && (pendingTheme || pendingLanguage)) throw lastError;
+  }
+  async function setLanguage(language) {
+    if (owner !== window) return owner.ocheTheme.setLanguage(language);
+    if (!['en', 'fr', 'de', 'pt-PT'].includes(language)) return;
+    await window.ocheI18n.prepare();
+    await flush();
+    revision++;
+    pendingLanguage = language;
+    await sync();
+    if (lastError) throw lastError;
+  }
+  function applyProfile(appearance, profileId) {
+    if (owner !== window) return owner.ocheTheme.applyProfile(appearance, profileId);
+    revision++;
+    pendingTheme = pendingLanguage = null;
+    lastError = null;
+    document.documentElement.dataset.profileId = profileId;
+    savedUI = { ...appearance, profile_id: profileId };
+    remember(appearance.theme);
+    if (appearance.language !== document.documentElement.lang) location.reload();
+  }
+  window.ocheTheme = { set, apply, refresh, coreSettings, flush, setLanguage, applyProfile,
+    prepare: () => owner.ocheI18n.prepare(), refreshSettings: sync, preference: () => preference };
   apply(preference);
   document.addEventListener('DOMContentLoaded', refresh);
   document.addEventListener('load', event => {
@@ -135,7 +172,7 @@
         // A newer choice may already have arrived while this event was queued.
         if (event.newValue !== localStorage.getItem(requestKey)) return;
         const request = JSON.parse(event.newValue);
-        if (valid(request?.theme)) queueTheme(request.theme);
+        if (valid(request?.theme) && (!request.profile_id || request.profile_id === document.documentElement.dataset.profileId)) queueTheme(request.theme);
       } catch (_) { /* Ignore malformed or unavailable storage. */ }
     }
   });

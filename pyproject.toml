@@ -1,11 +1,11 @@
 [build-system]
-requires = ["hatchling>=1.25", "hatch-requirements-txt>=0.4"]
+requires = ["hatchling>=1.27", "hatch-requirements-txt>=0.4"]
 build-backend = "hatchling.build"
 
 [project]
 name = "oche"
-version = "0.1.5"
-description = "Oche darts application supervisor"
+version = "0.2.0"
+description = "One connected workspace for your darts setup"
 requires-python = ">=3.12"
 dynamic = ["dependencies"]
 
@@ -17,3 +17,18 @@ packages = ["app"]
 
 [tool.hatch.build.targets.wheel.force-include]
 "oche_runtime.py" = "oche_runtime.py"
+
+[dependency-groups]
+dev = ["pytest>=8,<10", "pytest-asyncio>=0.26,<2", "ruff>=0.11,<1"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+pythonpath = [".", "tests/core"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 110
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I", "UP", "B", "ASYNC"]

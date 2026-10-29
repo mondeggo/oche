@@ -1,0 +1,1738 @@
+"""Headless WLED targets, phase colours and numeric matrix displays over the JSON API."""
+
+import asyncio
+import time
+from collections.abc import Callable
+from datetime import UTC, datetime
+from ipaddress import IPv4Address
+from pathlib import Path
+from typing import Annotated, Literal
+from urllib.parse import urlsplit
+from uuid import uuid4
+
+import httpx
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
+from zeroconf import Error as ZeroconfError
+from zeroconf import IPVersion, ServiceStateChange
+from zeroconf.asyncio import AsyncServiceBrowser, AsyncServiceInfo, AsyncZeroconf
+
+from app.core.autodarts.errors import ConnectionProblem
+from app.core.events import Event, EventBus
+from app.core.integrations.sources import PlaySources, event_allowed, integration_view
+from app.core.storage import write_private_json
+
+Phase = Literal["idle", "ready", "takeout", "waiting"]
+EffectName = Literal[
+    "single",
+    "double",
+    "triple",
+    "outer_bull",
+    "bull",
+    "miss",
+    "throw",
+    "score_180",
+    "bust",
+    "leg_win",
+    "match_win",
+    "match_started",
+    "match_ended",
+    "turn_started",
+    "takeout_started",
+    "takeout_finished",
+    "manual_reset",
+    "calibration_started",
+    "calibration_finished",
+]
+Identifier = Annotated[str, Field(pattern=r"^[a-zA-Z0-9_-]{1,40}$")]
+Colour = Annotated[str, Field(pattern=r"^#[0-9a-fA-F]{6}$")]
+PRIORITY = {name: 1 for name in EffectName.__args__} | {
+    "bull": 2,
+    "score_180": 3,
+    "bust": 4,
+    "leg_win": 5,
+    "match_win": 6,
+}
+PlayerSlot = Annotated[int, Field(ge=1, le=10)]
+# Sensible default tint per score source so two panels are readable without extra setup.
+MATRIX_SOURCE_COLOURS = {"local_remaining": "#00ff00", "opponent_remaining": "#ff0000"}
+# WLED's "tt" is tenths of a second; smooths ordinary segment changes without feeling
+# sluggish. Individually addressed pixels (scores, pixel ranges) stay instant - see payload().
+DEFAULT_TRANSITION = 2
+DISCOVERY_SECONDS = 3
+# Status clients see a direct connection result even while automation is off. Checks stay
+# cached for a few seconds so frequent polling does not turn into a stream of requests.
+CHECK_SECONDS = 10
+WLED_SERVICE = "_wled._tcp.local."
+
+
+class Model(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+
+class Appearance(Model):
+    color: Colour = "#ffffff"
+    brightness: int = Field(default=128, ge=0, le=255, strict=True)
+    effect: int = Field(default=0, ge=0, le=255, strict=True)
+
+
+class Effect(Appearance):
+    duration: float = Field(default=2, ge=0.1, le=30)
+    # Effects are switched on and off from the editor without deleting their settings.
+    enabled: bool = True
+
+
+class PlayerAppearance(Appearance):
+    name_filter: str = Field(default="", max_length=80)
+
+
+class PhaseColours(Model):
+    idle: Appearance = Field(
+        default_factory=lambda: Appearance(color="#6f00dd", brightness=64, effect=2)
+    )
+    ready: Appearance = Field(default_factory=lambda: Appearance(color="#00ff00"))
+    takeout: Appearance = Field(default_factory=lambda: Appearance(color="#e17100", brightness=191))
+    waiting: Appearance = Field(default_factory=lambda: Appearance(color="#ff0000"))
+
+
+class Matrix(Model):
+    width: int = Field(default=16, ge=5, le=64, strict=True)
+    height: int = Field(default=8, ge=5, le=64, strict=True)
+    x: int = Field(default=0, ge=0, le=65535, strict=True)
+    y: int = Field(default=0, ge=0, le=65535, strict=True)
+    serpentine: bool = True
+    rotation: Literal[0, 90, 180, 270] = 0
+    source: Literal[
+        "remaining",
+        "local_remaining",
+        "opponent_remaining",
+        "player_remaining",
+        "turn_score",
+        "last_dart",
+    ] = "remaining"
+    player_slot: PlayerSlot = 1
+    appearance: Appearance = Field(default_factory=Appearance)
+
+    @model_validator(mode="after")
+    def valid_dimensions(self):
+        width = self.height if self.rotation in {90, 270} else self.width
+        if width < 11 or self.width * self.height > 512:
+            raise ValueError("Matrix must fit three digits and contain at most 512 pixels")
+        # Score panels read best with a player-tinted default: my score green,
+        # opponent red. An explicit colour always wins over this convenience default.
+        if "appearance" not in self.model_fields_set:
+            color = MATRIX_SOURCE_COLOURS.get(self.source)
+            if color:
+                self.appearance.color = color
+        return self
+
+
+def default_effects() -> dict[EffectName, Effect]:
+    return {
+        "throw": Effect(color="#ffffff", effect=12, duration=0.6),
+        "single": Effect(color="#00aaff", effect=3, duration=0.6),
+        "double": Effect(color="#ff8000", effect=1, duration=0.8),
+        "triple": Effect(color="#a000ff", effect=33, duration=1),
+        "outer_bull": Effect(color="#00ffaa", effect=6, duration=1),
+        "bull": Effect(color="#ff0080", effect=9, duration=1.5),
+        "miss": Effect(color="#808080", effect=12, duration=0.5),
+        "score_180": Effect(color="#ffb000", effect=33),
+        "bust": Effect(color="#ff0000"),
+        "leg_win": Effect(color="#00aaff"),
+        "match_win": Effect(color="#a000ff", effect=9, duration=10),
+    }
+
+
+class Target(Model):
+    id: Identifier
+    name: str = Field(min_length=1, max_length=80)
+    enabled: bool = True
+    segment: int = Field(default=0, ge=0, le=255, strict=True)
+    mode: Literal["segment", "pixels", "matrix"] = "segment"
+    start: int = Field(default=0, ge=0, le=65535, strict=True)
+    count: int = Field(default=1, ge=1, le=1024, strict=True)
+    phases: PhaseColours = Field(default_factory=PhaseColours)
+    effects: dict[EffectName, Effect] = Field(default_factory=default_effects)
+    players: dict[PlayerSlot, PlayerAppearance] = Field(default_factory=dict)
+    matrix: Matrix = Field(default_factory=Matrix)
+
+    @property
+    def stop(self) -> int:
+        count = self.matrix.width * self.matrix.height if self.mode == "matrix" else self.count
+        return self.start + count
+
+    @model_validator(mode="after")
+    def valid_effects(self):
+        if self.mode != "segment" and "idle" not in self.phases.model_fields_set:
+            self.phases.idle.effect = 0
+        if self.mode != "segment" and "effects" not in self.model_fields_set:
+            for effect in self.effects.values():
+                effect.effect = 0
+        appearances = [*self.effects.values(), *self.players.values(), self.matrix.appearance]
+        appearances += [getattr(self.phases, key) for key in Phase.__args__]
+        if self.mode != "segment" and any(item.effect for item in appearances):
+            raise ValueError("Native WLED effects require a whole-segment target")
+        return self
+
+
+class DeviceAddress(Model):
+    url: str
+
+    @field_validator("url")
+    @classmethod
+    def valid_url(cls, value):
+        if any(character.isspace() for character in value):
+            raise ValueError("WLED addresses must not contain whitespace")
+        parts = urlsplit(value)
+        if (
+            parts.scheme not in {"http", "https"}
+            or not parts.hostname
+            or parts.username
+            or parts.password
+            or parts.query
+            or parts.fragment
+            or parts.path not in {"", "/"}
+        ):
+            raise ValueError("Use a WLED HTTP(S) origin, such as http://wled.local")
+        if parts.port is not None and not 1 <= parts.port <= 65535:
+            raise ValueError("Invalid WLED port")
+        return value.rstrip("/")
+
+
+class Device(DeviceAddress):
+    id: Identifier
+    name: str = Field(min_length=1, max_length=80)
+    enabled: bool = True
+    idle_timeout_minutes: int | None = Field(default=None, ge=1, le=1440)
+    targets: list[Target] = Field(default_factory=list, max_length=16)
+
+    @model_validator(mode="after")
+    def separate_targets(self):
+        if len({target.id for target in self.targets}) != len(self.targets):
+            raise ValueError("Target IDs must be unique within a device")
+        active = [target for target in self.targets if target.enabled]
+        for index, first in enumerate(active):
+            for second in active[index + 1 :]:
+                if first.segment != second.segment:
+                    continue
+                overlap = "segment" in {first.mode, second.mode}
+                if first.mode == second.mode == "matrix" and first.start == second.start == 0:
+                    a, b = first.matrix, second.matrix
+                    overlap = max(a.x, b.x) < min(a.x + a.width, b.x + b.width) and max(
+                        a.y, b.y
+                    ) < min(a.y + a.height, b.y + b.height)
+                elif first.mode == second.mode and first.mode in {"pixels", "matrix"}:
+                    overlap = max(first.start, second.start) < min(first.stop, second.stop)
+                # Mixed matrix/pixel footprints need the controller's row stride.
+                # validate_capabilities checks their actual pixel indices before sending.
+                if overlap:
+                    raise ValueError("Enabled targets must not overlap within a segment")
+        if sum(t.stop - t.start for t in active if t.mode != "segment") > 1024:
+            raise ValueError("A device can control at most 1024 individual pixels")
+        return self
+
+
+class TargetStyle(Model):
+    phases: PhaseColours = Field(default_factory=PhaseColours)
+    effects: dict[EffectName, Effect] = Field(default_factory=default_effects)
+    players: dict[PlayerSlot, PlayerAppearance] = Field(default_factory=dict)
+    matrix: Appearance = Field(default_factory=Appearance)
+
+
+class LightingProfile(Model):
+    id: Identifier
+    name: str = Field(min_length=1, max_length=60)
+    targets: dict[Identifier, dict[Identifier, TargetStyle]] = Field(default_factory=dict)
+
+
+class ProfileName(Model):
+    name: str = Field(min_length=1, max_length=60)
+    source: Literal["current", "blank"] = "current"
+
+
+class ProfileSelection(Model):
+    id: Identifier
+
+
+class WLEDConfig(Model, PlaySources):
+    enabled: bool = False
+    devices: list[Device] = Field(default_factory=list, max_length=8)
+    active_profile: Identifier = "default"
+    profiles: list[LightingProfile] = Field(
+        default_factory=lambda: [LightingProfile(id="default", name="Default")],
+        min_length=1,
+        max_length=12,
+    )
+
+    @model_validator(mode="after")
+    def unique_devices(self):
+        if len({d.id for d in self.devices}) != len(self.devices):
+            raise ValueError("Device IDs must be unique")
+        if len({d.url.lower() for d in self.devices}) != len(self.devices):
+            raise ValueError("Configure each WLED URL once")
+        if len({p.id for p in self.profiles}) != len(self.profiles):
+            raise ValueError("Profile IDs must be unique")
+        if len({p.name.casefold() for p in self.profiles}) != len(self.profiles):
+            raise ValueError("Profile names must be unique")
+        if self.active_profile not in {p.id for p in self.profiles}:
+            raise ValueError("The active lighting profile must exist")
+        return self
+
+
+class Preview(Model):
+    target_id: Identifier
+    phase: Phase = "ready"
+    event: EffectName | None = None
+    player: PlayerSlot | None = None
+    value: int | None = Field(default=None, ge=0, le=9999, strict=True)
+    duration: float = Field(default=3, ge=0.5, le=10)
+    # Matrix panels can show their corner pixels instead of a score, which reveals how the
+    # physical panel is wired when rotation and serpentine rows are chosen.
+    corners: bool = False
+
+
+class DraftPreview(Preview):
+    device: Device
+
+
+class Power(Model):
+    on: bool = Field(strict=True)
+
+
+def rgb(appearance: Appearance, scale: bool = False, *, white: bool = False) -> str:
+    values = [int(appearance.color[index : index + 2], 16) for index in (1, 3, 5)]
+    if white:
+        # Neutral RGB plus W works with manual and automatic white extraction.
+        values = [max(values)] * 4
+    if scale:
+        values = [round(value * appearance.brightness / 255) for value in values]
+    return "".join(f"{value:02X}" for value in values)
+
+
+# Compact fallback for panels that cannot fit three 4x8 digits.
+DIGITS = {
+    "0": (7, 5, 5, 5, 7),
+    "1": (2, 6, 2, 2, 7),
+    "2": (7, 1, 7, 4, 7),
+    "3": (7, 1, 7, 1, 7),
+    "4": (5, 5, 7, 1, 1),
+    "5": (7, 4, 7, 1, 7),
+    "6": (7, 4, 7, 5, 7),
+    "7": (7, 1, 1, 1, 1),
+    "8": (7, 5, 7, 5, 7),
+    "9": (7, 5, 7, 1, 7),
+    "-": (0, 0, 7, 0, 0),
+}
+
+
+LARGE_DIGITS = {
+    "0": (0b0110, 0b1001, 0b1001, 0b1001, 0b1001, 0b1001, 0b1001, 0b0110),
+    "1": (0b0010, 0b0110, 0b0010, 0b0010, 0b0010, 0b0010, 0b0010, 0b0111),
+    "2": (0b0110, 0b1001, 0b0001, 0b0010, 0b0100, 0b1000, 0b1000, 0b1111),
+    "3": (0b1110, 0b0001, 0b0001, 0b0110, 0b0001, 0b0001, 0b0001, 0b1110),
+    "4": (0b1001, 0b1001, 0b1001, 0b1111, 0b0001, 0b0001, 0b0001, 0b0001),
+    "5": (0b1111, 0b1000, 0b1000, 0b1110, 0b0001, 0b0001, 0b1001, 0b0110),
+    "6": (0b0110, 0b1000, 0b1000, 0b1110, 0b1001, 0b1001, 0b1001, 0b0110),
+    "7": (0b1111, 0b0001, 0b0001, 0b0010, 0b0010, 0b0100, 0b0100, 0b0100),
+    "8": (0b0110, 0b1001, 0b1001, 0b0110, 0b1001, 0b1001, 0b1001, 0b0110),
+    "9": (0b0110, 0b1001, 0b1001, 0b0111, 0b0001, 0b0001, 0b0001, 0b0110),
+    "-": (0, 0, 0, 0b1111, 0, 0, 0, 0),
+}
+
+
+def matrix_pixels(
+    matrix: Matrix, value: int | None, appearance: Appearance, *, white: bool = False
+) -> list[str]:
+    width, height = matrix.width, matrix.height
+    logical_w, logical_h = (height, width) if matrix.rotation in {90, 270} else (width, height)
+    text = str(value) if isinstance(value, int) and 0 <= value <= 9999 else "---"
+    if len(text) * 4 - 1 > logical_w:
+        text = "---"
+    digits, glyph_w, glyph_h = (
+        (LARGE_DIGITS, 4, 8)
+        if logical_h >= 8 and logical_w >= max(3, len(text)) * 5 - 1
+        else (DIGITS, 3, 5)
+    )
+    advance = glyph_w + 1
+    pixels = ["000000"] * (width * height)
+    offset_x = (logical_w - (len(text) * advance - 1)) // 2
+    offset_y = (logical_h - glyph_h) // 2
+    color = rgb(appearance, scale=True, white=white)
+    for digit, character in enumerate(text):
+        for row, bits in enumerate(digits[character]):
+            for column in range(glyph_w):
+                if not bits & (1 << (glyph_w - 1 - column)):
+                    continue
+                x, y = offset_x + digit * advance + column, offset_y + row
+                if matrix.rotation == 90:
+                    x, y = width - 1 - y, x
+                elif matrix.rotation == 180:
+                    x, y = width - 1 - x, height - 1 - y
+                elif matrix.rotation == 270:
+                    x, y = y, height - 1 - x
+                if matrix.serpentine and y % 2:
+                    x = width - 1 - x
+                pixels[y * width + x] = color
+    return pixels
+
+
+# Panel corners in reading order: first pixel, top-right, bottom-left, bottom-right. The
+# editor draws the same four colours so a physical panel can be compared with the diagram.
+CORNER_COLOURS = ("#00ff00", "#ff0000", "#0000ff", "#ffffff")
+
+
+def corner_pixels(matrix: Matrix, *, white: bool = False) -> list[str]:
+    """Paint a panel's four corners so wiring order and serpentine rows can be checked.
+
+    Colours land where the physical panel shows them: odd serpentine rows are mirrored the
+    same way matrix_pixels() mirrors a digit, so a swapped or straight-rowed panel is
+    immediately visible. Rotation only turns the digits, never these corner markers.
+    """
+    width, height = matrix.width, matrix.height
+    pixels = ["000000"] * (width * height)
+    corners = ((0, 0), (width - 1, 0), (0, height - 1), (width - 1, height - 1))
+    for colour, (x, y) in zip(CORNER_COLOURS, corners, strict=True):
+        column = width - 1 - x if matrix.serpentine and y % 2 else x
+        pixels[y * width + column] = rgb(Appearance(color=colour), white=white)
+    return pixels
+
+
+def matrix_face(
+    target: Target, view: dict, corners: bool, segments: dict | None = None
+) -> list[str]:
+    """What a matrix panel shows right now, as rows of palette codes.
+
+    `0` is a dark pixel, `1` the panel's own colour and `2`-`5` the four corner markers, so
+    the editor canvas draws the frame WLED was given without reimplementing the digits.
+    """
+    canvas = (segments or {}).get(target.segment, {}).get("matrix")
+    # Native WLED 2D canvases handle their own panel wiring, exactly like payload().
+    shown = target.matrix.model_copy(update={"serpentine": False}) if canvas else target.matrix
+    if corners:
+        pixels = corner_pixels(shown)
+        codes = {
+            rgb(Appearance(color=colour)): str(index + 2)
+            for index, colour in enumerate(CORNER_COLOURS)
+        }
+    else:
+        pixels = matrix_pixels(shown, matrix_value(target.matrix, view), target.matrix.appearance)
+        codes = {rgb(target.matrix.appearance, scale=True): "1"}
+    width = target.matrix.width
+    return [
+        "".join(codes.get(pixel, ".") for pixel in pixels[row * width : (row + 1) * width])
+        for row in range(target.matrix.height)
+    ]
+
+
+def player_appearance(target: Target, view: dict) -> Appearance | None:
+    """Player colours apply only while the local board is confirmed ready."""
+    player = view.get("player") or {}
+    if view["phase"] != "ready" or not player.get("is_local"):
+        return None
+    for slot, style in sorted(target.players.items()):
+        if (
+            style.name_filter.casefold() in player.get("name", "").casefold()
+            if style.name_filter
+            else player.get("index") == slot - 1
+        ):
+            return style
+    return None
+
+
+def matrix_value(matrix: Matrix, view: dict) -> int | None:
+    if matrix.source in {"remaining", "turn_score", "last_dart"}:
+        return view.get(matrix.source)
+    players = view.get("players", [])
+    if matrix.source == "player_remaining":
+        matches = [p for p in players if p.get("index") == matrix.player_slot - 1]
+    else:
+        local = [p for p in players if p.get("is_local")]
+        if len(local) != 1:
+            return None
+        matches = (
+            local
+            if matrix.source == "local_remaining"
+            else [p for p in players if p.get("id") != local[0].get("id")]
+        )
+    return matches[0].get("remaining") if len(matches) == 1 else None
+
+
+def target_pixels(target: Target, segment: dict) -> set[int]:
+    """Resolve a target's footprint using segment-local logical pixel indices."""
+    canvas = segment.get("matrix")
+    if target.mode == "matrix" and canvas:
+        panel = target.matrix
+        return {
+            (panel.y + row) * canvas["width"] + panel.x + column
+            for row in range(panel.height)
+            for column in range(panel.width)
+        }
+    return set(range(target.start, target.stop))
+
+
+def payload(
+    device: Device,
+    view: dict,
+    overlays: dict,
+    preview: Preview | None = None,
+    *,
+    info: dict | None = None,
+    corners: set[str] = frozenset(),
+) -> dict:
+    """Compose once per segment so independent pixel targets share one frozen frame."""
+    segments: dict[int, dict] = {}
+    metadata = {s["id"]: s for s in (info or {}).get("segments", [])}
+    for target in device.targets:
+        if not target.enabled:
+            continue
+        overlay = overlays.get(target.id)
+        appearance = (
+            overlay or player_appearance(target, view) or getattr(target.phases, view["phase"])
+        )
+        segment = segments.setdefault(target.segment, {"id": target.segment, "on": True})
+        details = metadata.get(target.segment, {})
+        white = details.get("color_mode") == "white"
+        if target.mode == "segment":
+            segment.update(
+                frz=False,
+                fx=appearance.effect,
+                bri=appearance.brightness,
+                col=[list(bytes.fromhex(rgb(appearance, white=white)))],
+                tt=DEFAULT_TRANSITION,
+            )
+            if details.get("color_mode") == "on_off":
+                segment["on"] = appearance.brightness > 0 and appearance.color != "#000000"
+        else:
+            # Individually addressed pixels (scores, pixel ranges) must change crisply.
+            segment.update(bri=255, tt=0)
+            indices = segment.setdefault("i", [])
+            if target.mode == "matrix":
+                appearance = overlay or target.matrix.appearance
+                # Native WLED 2D indices are row-major; WLED applies panel wiring.
+                matrix = (
+                    target.matrix.model_copy(update={"serpentine": False})
+                    if details.get("matrix")
+                    else target.matrix
+                )
+                canvas = details.get("matrix")
+                if target.id in corners or (
+                    preview and preview.corners and preview.target_id == target.id
+                ):
+                    # Corner colours replace the score while the editor shows them or a
+                    # corner preview runs; the digits come back as soon as they are off.
+                    pixels = corner_pixels(matrix, white=white)
+                else:
+                    value = (
+                        preview.value
+                        if preview and preview.target_id == target.id
+                        else matrix_value(target.matrix, view)
+                    )
+                    pixels = matrix_pixels(matrix, value, appearance, white=white)
+                if canvas and (matrix.x or matrix.y or matrix.width != canvas["width"]):
+                    for row in range(matrix.height):
+                        start = (matrix.y + row) * canvas["width"] + matrix.x
+                        indices.extend(
+                            [start, *pixels[row * matrix.width : (row + 1) * matrix.width]]
+                        )
+                else:
+                    indices.extend([target.start, *pixels])
+            else:
+                indices.extend(
+                    [target.start, target.stop, rgb(appearance, scale=True, white=white)]
+                )
+    return {"seg": list(segments.values())}
+
+
+def effect_name(event: Event) -> str | None:
+    if event.kind != "normalized" or event.snapshot:
+        return None
+    if event.event in {
+        "match_started",
+        "match_ended",
+        "manual_reset",
+        "calibration_started",
+        "calibration_finished",
+    }:
+        return event.event
+    if not (event.data.get("player") or {}).get("is_local"):
+        return None
+    if event.event in {
+        "bust",
+        "leg_win",
+        "match_win",
+        "turn_started",
+        "takeout_started",
+        "takeout_finished",
+    }:
+        return event.event
+    if (
+        event.event == "turn_end"
+        and event.data.get("score") == 180
+        and not event.data.get("busted")
+    ):
+        return "score_180"
+    if event.event == "throw":
+        segment = event.data.get("dart", {}).get("segment", {})
+        number, multiplier = segment.get("number"), segment.get("multiplier")
+        if number == 0 or multiplier == 0:
+            return "miss"
+        if number == 25:
+            return "bull" if multiplier == 2 else "outer_bull"
+        return {1: "single", 2: "double", 3: "triple"}.get(multiplier, "throw")
+    return None
+
+
+async def request(
+    http: httpx.AsyncClient, device: DeviceAddress, path: str, body=None, *, array: bool = False
+):
+    try:
+        async with asyncio.timeout(3):
+            response = await http.request(
+                "GET" if body is None else "POST",
+                device.url + path,
+                **({"json": body} if body is not None else {}),
+                timeout=2,
+            )
+        if not response.is_success:
+            raise ConnectionProblem(f"WLED returned HTTP {response.status_code}.")
+        data = response.json()
+        if not isinstance(data, list if array else dict):
+            raise ConnectionProblem("WLED returned an invalid response.")
+        if not array and (data.get("error") or data.get("success") is False):
+            raise ConnectionProblem("WLED rejected the command.")
+        return data
+    except (httpx.TimeoutException, TimeoutError) as exc:
+        raise ConnectionProblem(
+            "Timed out waiting for WLED. It may be powered off, asleep, or unreachable "
+            "across a VLAN or guest network."
+        ) from exc
+    except httpx.ConnectError as exc:
+        raise ConnectionProblem(
+            "Cannot connect to WLED at this address. Check that it is powered on, on the "
+            "same network, and that the address is correct."
+        ) from exc
+    except httpx.HTTPError as exc:
+        raise ConnectionProblem("Cannot reach WLED. Check its address and power.") from exc
+    except ValueError as exc:
+        raise ConnectionProblem("WLED returned invalid JSON.") from exc
+
+
+async def inspect_device(
+    http: httpx.AsyncClient,
+    device: DeviceAddress,
+    *,
+    metadata: bool = False,
+    data: dict | None = None,
+) -> dict:
+    data = await request(http, device, "/json") if data is None else data
+    try:
+        info, state = data["info"], data["state"]
+        led_info = info.get("leds")
+        canvas = led_info.get("matrix") if isinstance(led_info, dict) else None
+        if canvas is not None and (
+            not isinstance(canvas, dict)
+            or any(type(canvas.get(key)) is not int or canvas[key] <= 0 for key in ("w", "h"))
+        ):
+            raise ValueError
+        segments = [
+            {
+                "id": s["id"],
+                "name": s.get("n") or f"Segment {s['id']}",
+                "length": s.get("len", s["stop"] - s["start"]),
+                "start": s["start"],
+                "stop": s["stop"],
+                "on": s.get("on", True),
+            }
+            for s in state["seg"]
+            if s["stop"] > s["start"]
+        ]
+        if not isinstance(info["ver"], str) or not segments:
+            raise ValueError
+        for segment in segments:
+            if any(
+                type(segment[key]) is not int or segment[key] < 0
+                for key in ("id", "start", "stop", "length")
+            ):
+                raise ValueError
+            source = next(s for s in state["seg"] if s["id"] == segment["id"])
+            transformed = (
+                source.get("grp", 1) != 1
+                or source.get("spc", 0) != 0
+                or source.get("of", 0) != 0
+                or any(source.get(key, False) for key in ("rev", "mi", "rY", "mY", "tp"))
+            )
+            segment["pixel_control_error"] = (
+                "In WLED, set segment grouping to 1, spacing and offset to 0, "
+                "and disable reverse, mirror and transpose before using pixels or scores."
+                if transformed
+                else None
+            )
+            if canvas and segment["start"] < canvas["w"] * canvas["h"]:
+                start_y, stop_y = source["startY"], source["stopY"]
+                if (
+                    type(start_y) is not int
+                    or type(stop_y) is not int
+                    or not 0 <= start_y < stop_y <= canvas["h"]
+                    or segment["stop"] > canvas["w"]
+                ):
+                    raise ValueError
+                matrix = {
+                    "width": segment["stop"] - segment["start"],
+                    "height": stop_y - start_y,
+                    "start_y": start_y,
+                    "stop_y": stop_y,
+                }
+                segment["matrix"] = matrix
+                # WLED 0.15 serializes len as X width, even for a 2D segment.
+                segment["length"] = matrix["width"] * matrix["height"]
+        result = {
+            "name": str(info.get("name", "WLED")),
+            "version": info["ver"],
+            "on": state.get("on"),
+            "brightness": state.get("bri"),
+            "segments": segments,
+        }
+        if canvas:
+            result["matrix"] = {"width": canvas["w"], "height": canvas["h"]}
+    except (KeyError, TypeError, ValueError) as exc:
+        raise ConnectionProblem("The device did not return valid WLED capabilities.") from exc
+    count = info.get("fxcount")
+
+    def complete_effects(value: object) -> bool:
+        return (
+            isinstance(value, list)
+            and bool(value)
+            and all(isinstance(name, str) and name.strip() for name in value)
+            and (type(count) is not int or count <= 0 or len(value) >= count)
+        )
+
+    effects = data.get("effects")
+    if not complete_effects(effects):
+        try:
+            effects = await request(http, device, "/json/eff", array=True)
+        except ConnectionProblem as exc:
+            raise ConnectionProblem(f"Cannot load WLED effects from /json/eff. {exc}") from exc
+        if not complete_effects(effects):
+            raise ConnectionProblem("WLED returned an incomplete or invalid effect list.")
+    # Keep reserved entries so each array index remains the controller's native effect ID.
+    result["effects"] = effects
+    if metadata:
+        try:
+            definitions = await request(http, device, "/json/fxdata", array=True)
+        except ConnectionProblem:
+            definitions = []  # Older firmware can still be probed and used.
+        result["effect_colors"] = [effect_colors(value) for value in definitions]
+    leds = info.get("leds")
+    light_capabilities = leds.get("seglc") if isinstance(leds, dict) else None
+    # WLED lists active segments in order, not by segment ID (IDs may have gaps).
+    if isinstance(light_capabilities, list) and len(light_capabilities) == len(segments):
+        for segment, value in zip(segments, light_capabilities, strict=True):
+            if type(value) is int and 0 <= value <= 7:
+                segment["light_capabilities"] = value
+    result["outputs"] = parse_outputs(leds.get("ins") if isinstance(leds, dict) else None)
+    if metadata:
+        for path in ("/json/cfg", "/cfg.json"):
+            try:
+                configuration = await request(http, device, path)
+                outputs = parse_outputs(configuration.get("hw", {}).get("led", {}).get("ins"))
+            except (ConnectionProblem, AttributeError):
+                continue
+            if outputs:
+                result["outputs"] = outputs
+                break
+    set_segment_modes(result)
+    return result
+
+
+def parse_outputs(entries: object) -> list[dict]:
+    """Read configured bus types, not physical strip detection or GPIO assumptions."""
+    # WLED 0.15 bus IDs: wled00/const.h and Bus::hasRGB/hasWhite in bus_manager.h.
+    names = {
+        18: "WS2812 white",
+        19: "WS2812 white x3",
+        20: "WS2812 CCT",
+        21: "WS2812 warm white / amber",
+        22: "WS281x RGB",
+        23: "GS8608",
+        24: "WS2811 400 kHz",
+        25: "TM1829",
+        26: "UCS8903",
+        27: "APA106",
+        28: "FW1906 RGB+CCT",
+        29: "UCS8904 RGBW",
+        30: "SK6812 RGBW",
+        31: "TM1814 RGBW",
+        32: "WS2805 RGB+CCT",
+        33: "TM1914",
+        34: "SM16825 RGB+CCT",
+        40: "On/off",
+        41: "PWM white",
+        42: "PWM CCT",
+        43: "PWM RGB",
+        44: "PWM RGBW",
+        45: "PWM RGB+CCT",
+        50: "WS2801",
+        51: "APA102",
+        52: "LPD8806",
+        53: "P9813",
+        54: "LPD6803",
+        80: "DDP RGB",
+        82: "Art-Net RGB",
+        88: "DDP RGBW",
+        89: "Art-Net RGBW",
+    }
+    outputs = []
+    for index, entry in enumerate(entries[:32] if isinstance(entries, list) else []):
+        if not isinstance(entry, dict):
+            continue
+        start, length, kind = (entry.get(key) for key in ("start", "len", "type"))
+        if type(start) is not int or type(length) is not int or start < 0 or length <= 0:
+            continue
+        pins = entry.get("pin", [])
+        pins = [pins] if type(pins) is int else pins
+        pins = (
+            [p for p in pins if type(p) is int and 0 <= p < 255] if isinstance(pins, list) else []
+        )
+        if type(kind) is not int or kind not in names:
+            mode = "unknown"
+        elif kind in {18, 19, 20, 21, 41, 42}:
+            mode = "white"
+        elif kind in {28, 29, 30, 31, 32, 34, 44, 45, 88, 89}:
+            mode = "color_white"
+        else:
+            mode = "on_off" if kind == 40 else "color"
+        if type(kind) is int and 80 <= kind <= 95:
+            pins = []  # Network buses encode an IP address in the pin array.
+        outputs.append(
+            {
+                "id": index,
+                "pins": pins,
+                "start": start,
+                "stop": start + length,
+                "length": length,
+                "type": kind if type(kind) is int else None,
+                "color_mode": mode,
+                "type_name": names.get(kind, f"LED type {kind}")
+                if type(kind) is int
+                else "LED output",
+            }
+        )
+    return outputs
+
+
+def set_segment_modes(info: dict) -> None:
+    """Prefer fully covered bus types; segment capabilities describe virtual controls."""
+    for segment in info["segments"]:
+        value = segment.get("light_capabilities")
+        mode = "unknown"
+        if value is not None:
+            if value & 1:
+                mode = "color_white" if value & 2 else "color"
+            else:
+                mode = "white" if value & 6 else "on_off"
+        covered = segment["start"]
+        modes = set()
+        # Native 2D bounds are logical coordinates, not physical bus offsets.
+        outputs = [] if segment.get("matrix") else info.get("outputs", [])
+        for output in sorted(outputs, key=lambda item: item["start"]):
+            if output["stop"] <= segment["start"] or output["start"] >= segment["stop"]:
+                continue
+            if output["start"] > covered:
+                break
+            covered = max(covered, output["stop"])
+            modes.add(output["color_mode"])
+        if covered >= segment["stop"] and modes and "unknown" not in modes:
+            if "color_white" in modes or {"color", "white"} <= modes:
+                mode = "color_white"
+            else:
+                mode = next(value for value in ("color", "white", "on_off") if value in modes)
+        segment["color_mode"] = mode
+
+
+def effect_colors(metadata: object) -> list[str | None]:
+    """Read WLED's color-slot labels; missing metadata keeps the default controls."""
+    sections = metadata.split(";") if isinstance(metadata, str) else []
+    if len(sections) < 2:
+        return ["Colour", "Background", "Accent"]
+    labels = sections[1].split(",")
+    return [
+        (default if labels[index] == "!" else labels[index]) or None
+        if index < len(labels)
+        else None
+        for index, default in enumerate(("Colour", "Background", "Accent"))
+    ]
+
+
+async def discover_devices(http: httpx.AsyncClient) -> list[dict]:
+    """Browse WLED's IPv4 advertisements and verify candidates without changing lights."""
+    tasks: dict[str, asyncio.Task] = {}
+    active: set[str] = set()
+    found: dict[str, dict] = {}
+    slots = asyncio.Semaphore(4)
+
+    async def resolve(zeroconf, service_type: str, name: str) -> None:
+        async with slots:
+            try:
+                info = AsyncServiceInfo(service_type, name)
+                if not await info.async_request(zeroconf, 1000) or not info.port:
+                    return
+                for address in info.parsed_addresses(IPVersion.V4Only)[:2]:
+                    ip = IPv4Address(address)
+                    if ip.is_loopback or ip.is_multicast or ip.is_unspecified:
+                        continue
+                    url = f"http://{ip}" + (f":{info.port}" if info.port != 80 else "")
+                    device = Device(id="discovered", name="WLED", url=url)
+                    try:
+                        details = await inspect_device(http, device)
+                    except ConnectionProblem:
+                        continue
+                    found[name] = {
+                        "name": details["name"].strip()[:80] or "WLED",
+                        "address": str(ip),
+                        "url": url,
+                        "hostname": (info.server or "").rstrip("."),
+                        "version": details["version"],
+                    }
+                    return
+            except (OSError, ValueError, ZeroconfError):
+                return  # An invalid or disappearing advertisement does not stop other devices.
+
+    def changed(zeroconf, service_type, name, state_change):
+        if state_change is ServiceStateChange.Removed:
+            active.discard(name)
+            return
+        if name not in tasks and len(tasks) < 32:
+            tasks[name] = asyncio.create_task(resolve(zeroconf, service_type, name))
+        if name in tasks:
+            active.add(name)
+
+    try:
+        async with AsyncZeroconf(ip_version=IPVersion.V4Only) as zeroconf:
+            browser = None
+            try:
+                browser = AsyncServiceBrowser(zeroconf.zeroconf, WLED_SERVICE, handlers=[changed])
+                await asyncio.sleep(DISCOVERY_SECONDS)
+                await browser.async_cancel()
+                browser = None
+                if tasks:
+                    await asyncio.wait(tasks.values(), timeout=DISCOVERY_SECONDS)
+            finally:
+                if browser is not None:
+                    await browser.async_cancel()
+                for task in tasks.values():
+                    task.cancel()
+                await asyncio.gather(*tasks.values(), return_exceptions=True)
+    except (OSError, ZeroconfError) as exc:
+        raise ConnectionProblem(
+            "Cannot start local device discovery. Check network access or add an address manually."
+        ) from exc
+    unique = {device["url"]: device for name, device in found.items() if name in active}
+    return sorted(unique.values(), key=lambda device: (device["name"].casefold(), device["url"]))
+
+
+def validate_capabilities(device: Device, info: dict) -> None:
+    segments = {item["id"]: item for item in info["segments"]}
+    selected = []
+    occupied: dict[int, set[int]] = {}
+    for target in device.targets:
+        if not target.enabled:
+            continue
+        segment = segments.get(target.segment)
+        if segment is None:
+            raise ConnectionProblem(f"{target.name}: segment {target.segment} does not exist.")
+        if target.mode != "segment" and segment.get("pixel_control_error"):
+            raise ConnectionProblem(f"{target.name}: {segment['pixel_control_error']}")
+        matrix = segment.get("matrix")
+        if (
+            target.mode == "matrix"
+            and matrix
+            and (
+                target.start != 0
+                or target.matrix.x + target.matrix.width > matrix["width"]
+                or target.matrix.y + target.matrix.height > matrix["height"]
+            )
+        ):
+            raise ConnectionProblem(
+                f"{target.name}: use First LED 0 and place the panel within the "
+                f"{matrix['width']} × {matrix['height']} WLED 2D segment."
+            )
+        if target.mode == "matrix" and not matrix and (target.matrix.x or target.matrix.y):
+            raise ConnectionProblem(
+                f"{target.name}: panel X/Y positions require a WLED 2D segment."
+            )
+        if target.mode != "segment" and target.stop > segment["length"]:
+            raise ConnectionProblem(f"{target.name}: pixels exceed the segment length.")
+        if target.mode != "segment":
+            pixels = target_pixels(target, segment)
+            used = occupied.setdefault(target.segment, set())
+            if used & pixels:
+                raise ConnectionProblem("Enabled targets must not overlap within a segment.")
+            used.update(pixels)
+        appearances = [getattr(target.phases, phase) for phase in Phase.__args__]
+        effect_appearances = [item for item in target.effects.values() if item.enabled]
+        for appearance in [*appearances, *effect_appearances, *target.players.values()]:
+            if appearance.effect >= len(info["effects"]) or info["effects"][appearance.effect] in {
+                "RSVD",
+                "-",
+            }:
+                raise ConnectionProblem(
+                    f"{target.name}: native effect is unavailable on this device."
+                )
+        for other in selected:
+            overlap = max(other["start"], segment["start"]) < min(other["stop"], segment["stop"])
+            other_matrix = other.get("matrix")
+            if matrix and other_matrix:
+                overlap &= max(matrix["start_y"], other_matrix["start_y"]) < min(
+                    matrix["stop_y"], other_matrix["stop_y"]
+                )
+            elif bool(matrix) != bool(other_matrix):
+                overlap = False  # Linear segments start after the native matrix canvas.
+            if other["id"] != segment["id"] and overlap:
+                raise ConnectionProblem("Selected WLED segments overlap. Use separate segments.")
+        selected.append(segment)
+
+
+class DeviceWorker:
+    def __init__(
+        self, device: Device, http: httpx.AsyncClient, bus: EventBus, view: Callable,
+        accept_event: Callable | None = None,
+    ):
+        self.device, self.http, self.bus, self.view = device, http, bus, view
+        self.accept_event = accept_event
+        self.lock = asyncio.Lock()
+        self.info: dict | None = None
+        self.error: str | None = None
+        self.connected = False
+        self.power_off = False
+        self.off_segments: set[int] = set()
+        self.reset_on_close = True
+        self.last_sent: str | None = None
+        self.sent = 0
+        self.overlays: dict[str, tuple[float, int, Effect, str]] = {}
+        self.last_payload: dict | None = None
+        self.idle_since: float | None = None
+        self.checked_at = 0.0
+        self.corners: set[str] = set()
+
+    async def probe(self, *, refresh: bool = False) -> dict:
+        self.checked_at = time.monotonic()
+        previous = self.info
+        self.info = await inspect_device(
+            self.http, self.device, metadata=refresh or previous is None
+        )
+        if previous and not refresh:
+            for key in ("outputs", "effect_colors"):
+                if not self.info.get(key) and key in previous:
+                    self.info[key] = previous[key]
+            set_segment_modes(self.info)
+        validate_capabilities(self.device, self.info)
+        return self.info
+
+    def accept(self, event: Event) -> None:
+        if event.kind != "normalized" or event.snapshot:
+            return
+        if self.accept_event and not self.accept_event(event):
+            return
+        fresh = (datetime.now(UTC) - event.received_at).total_seconds() <= 2
+        local = bool((event.data.get("player") or {}).get("is_local"))
+        if event.event in {
+            "throw_corrected",
+            "throw_removed",
+            "match_started",
+            "manual_reset",
+            "calibration_started",
+        }:
+            self.overlays.clear()
+        elif event.event == "turn_started" and fresh:
+            # A bot's turn can arrive milliseconds after the local takeout finishes.
+            self.overlays = {
+                key: item
+                for key, item in self.overlays.items()
+                if not local and item[3] == "takeout_finished"
+            }
+        elif event.event == "throw" and local and fresh:
+            self.overlays = {
+                key: item for key, item in self.overlays.items() if item[3] != "takeout_finished"
+            }
+        name = effect_name(event)
+        if name is None or not fresh:
+            return
+        now = time.monotonic()
+        for target in self.device.targets:
+            effect = target.effects.get(name)
+            priority = PRIORITY[name]
+            if effect is None and event.event == "throw":
+                effect, priority = target.effects.get("throw"), PRIORITY["throw"]
+            old = self.overlays.get(target.id)
+            if (
+                target.enabled
+                and effect
+                and effect.enabled
+                and (not old or old[0] <= now or priority >= old[1])
+            ):
+                self.overlays[target.id] = (now + effect.duration, priority, effect, name)
+
+    def desired(self, view: dict) -> dict:
+        now = time.monotonic()
+        self.overlays = {key: item for key, item in self.overlays.items() if item[0] > now}
+        if not view["available"]:
+            self.overlays.clear()
+        overlays = {key: item[2] for key, item in self.overlays.items()}
+        return self.apply_power(
+            payload(self.device, view, overlays, info=self.info, corners=self.corners)
+        )
+
+    def faces(self, view: dict) -> dict[str, list[str]]:
+        """What this device's matrix panels currently show, keyed by target id."""
+        segments = {segment["id"]: segment for segment in (self.info or {}).get("segments", [])}
+        return {
+            target.id: matrix_face(target, view, target.id in self.corners, segments)
+            for target in self.device.targets
+            if target.enabled and target.mode == "matrix"
+        }
+
+    def idle_timeout_elapsed(self, view: dict) -> bool:
+        """Track a continuous idle streak; True once it reaches the configured timeout."""
+        now = time.monotonic()
+        timeout = self.device.idle_timeout_minutes
+        if timeout is None or view["phase"] != "idle":
+            self.idle_since = None
+            return False
+        if self.idle_since is None:
+            self.idle_since = now
+            return False
+        return now - self.idle_since >= timeout * 60
+
+    def apply_power(self, body: dict) -> dict:
+        return {
+            **body,
+            "seg": [s for s in body["seg"] if s["id"] not in self.off_segments]
+            + [{"id": segment, "on": False} for segment in sorted(self.off_segments)],
+        }
+
+    async def send(self, body: dict) -> None:
+        body = self.apply_power(body)
+        if body["seg"]:
+            await request(self.http, self.device, "/json/state", body)
+            self.sent += 1
+            self.last_sent = datetime.now(UTC).isoformat()
+        self.last_payload = body
+        self.error, self.connected = None, True
+
+    async def run(self) -> None:
+        next_probe, next_retry = 0.0, 0.0
+        with self.bus.subscribe(capacity=64) as queue:
+            try:
+                while True:
+                    try:
+                        event = await asyncio.wait_for(queue.get(), timeout=0.25)
+                        self.accept(event)
+                        while not queue.empty():
+                            self.accept(queue.get_nowait())
+                    except TimeoutError:
+                        pass
+                    if time.monotonic() < next_retry:
+                        continue
+                    async with self.lock:
+                        try:
+                            if time.monotonic() >= next_probe:
+                                await self.probe()
+                                next_probe = time.monotonic() + 15
+                                self.last_payload = None  # Recover after controller power cycles.
+                            if self.power_off or (self.info and self.info.get("on") is False):
+                                self.connected, self.error = True, None
+                                continue
+                            view = self.view()
+                            if self.idle_timeout_elapsed(view):
+                                await request(self.http, self.device, "/json/state", {"on": False})
+                                self.power_off = True
+                                self.overlays.clear()
+                                self.last_payload = None
+                                self.connected, self.error = True, None
+                                continue
+                            body = self.desired(view)
+                            if body != self.last_payload:
+                                await self.send(body)
+                        except ConnectionProblem as exc:
+                            self.error, self.connected = str(exc), False
+                            self.overlays.clear()
+                            next_probe = 0
+                            next_retry = time.monotonic() + 5
+            finally:
+                # Clear ready indications on shutdown or configuration changes when reachable.
+                if (
+                    self.reset_on_close
+                    and not self.power_off
+                    and self.info
+                    and self.info.get("on") is not False
+                    and self.last_payload
+                ):
+                    try:
+                        await self.send(
+                            payload(self.device, {"phase": "waiting"}, {}, info=self.info)
+                        )
+                    except ConnectionProblem:
+                        pass
+
+
+class WLED:
+    def __init__(
+        self,
+        path: Path,
+        http: httpx.AsyncClient,
+        bus: EventBus,
+        view: Callable,
+        *,
+        initial: WLEDConfig | None = None,
+        name: str = "WLED",
+    ):
+        self.path, self.http, self.bus = path, http, bus
+        self.view = lambda: integration_view(self.config, view())
+        self.config = initial.model_copy(deep=True) if initial is not None else WLEDConfig()
+        self.name = name
+        self.peer: WLED | None = None
+        self.error: str | None = None
+        self.workers: dict[str, DeviceWorker] = {}
+        self.managed: set[str] = set()
+        self.tasks: list[asyncio.Task] = []
+        self.discovery_lock = asyncio.Lock()
+        try:
+            if initial is None and path.exists():
+                self.config = WLEDConfig.model_validate_json(path.read_text(encoding="utf-8"))
+            self.sync_profiles(self.config)
+        except (OSError, UnicodeError, ValidationError):
+            self.error = "Cannot load wled.json. Fix or replace the configuration through the API."
+
+    @staticmethod
+    def origin(url: str) -> str:
+        return str(httpx.URL(url)).rstrip("/").lower()
+
+    def active_addresses(self, config: WLEDConfig | None = None) -> set[str]:
+        config = config if config is not None else self.config
+        return {
+            self.origin(d.url)
+            for d in config.devices
+            if config.enabled and d.enabled and any(t.enabled for t in d.targets)
+        }
+
+    def check_ownership(self, config: WLEDConfig) -> None:
+        if self.peer and config.enabled and self.peer.config.enabled:
+            raise ConnectionProblem(
+                f"{self.peer.name} is already enabled. Disable it before enabling {self.name}."
+            )
+
+    def check_manual_control(self, device: Device) -> None:
+        if self.peer and self.origin(device.url) in self.peer.active_addresses():
+            raise ConnectionProblem(
+                f"This controller is automated by {self.peer.name}. Disable it there first."
+            )
+
+    def start(self) -> None:
+        self.workers = {
+            device.id: DeviceWorker(
+                device, self.http, self.bus, self.view,
+                lambda event: event_allowed(self.config, event, self.view()),
+            )
+            for device in self.config.devices
+        }
+        self.managed = {
+            key
+            for key, worker in self.workers.items()
+            if self.config.enabled
+            and worker.device.enabled
+            and any(target.enabled for target in worker.device.targets)
+        }
+        self.tasks = [
+            asyncio.create_task(worker.run(), name=f"wled-{key}")
+            for key, worker in self.workers.items()
+            if key in self.managed
+        ]
+
+    async def check_connections(self) -> None:
+        """Report each controller's own answer instead of assuming it while automation is off.
+
+        Status clients call this before reading `status()`, so the UI shows a real connection
+        result for controllers the automation loop is not already talking to. Results are
+        cached for CHECK_SECONDS: devices the loop runs never need this, and polling the rest
+        every couple of seconds stays cheap.
+        """
+        stale = [
+            worker
+            for key, worker in list(self.workers.items())
+            if key not in self.managed and time.monotonic() - worker.checked_at >= CHECK_SECONDS
+        ]
+        if stale:
+            await asyncio.gather(*(self.check(worker) for worker in stale), return_exceptions=True)
+
+    async def check(self, worker: DeviceWorker) -> None:
+        """Probe one controller; a failure stays on the worker for status() to report."""
+        async with worker.lock:
+            try:
+                await worker.probe()
+                worker.connected, worker.error = True, None
+            except ConnectionProblem as exc:
+                worker.connected, worker.error = False, str(exc)
+            except Exception as exc:  # One unexpected device must not fail the status route.
+                worker.connected, worker.error = False, f"Cannot check this controller: {exc}"
+
+    async def close(self) -> None:
+        for task in self.tasks:
+            task.cancel()
+        await asyncio.gather(*self.tasks, return_exceptions=True)
+        self.tasks.clear()
+
+    async def configure(self, config: WLEDConfig, *, persist: bool = True) -> None:
+        config = config.model_copy(deep=True)
+        self.check_ownership(config)
+        self.sync_profiles(config)
+        if persist:
+            write_private_json(self.path, config.model_dump(mode="json"))
+        active_devices = {
+            d.url.lower(): d
+            for d in config.devices
+            if config.enabled and d.enabled and any(t.enabled for t in d.targets)
+        }
+        powered_off = {w.device.url.lower() for w in self.workers.values() if w.power_off}
+        off_segments = {w.device.url.lower(): set(w.off_segments) for w in self.workers.values()}
+        for worker in self.workers.values():
+            updated = active_devices.get(worker.device.url.lower())
+            old_targets = {
+                (t.id, t.segment, t.mode, t.start, t.stop)
+                for t in worker.device.targets
+                if t.enabled
+            }
+            new_targets = (
+                {(t.id, t.segment, t.mode, t.start, t.stop) for t in updated.targets if t.enabled}
+                if updated
+                else set()
+            )
+            worker.reset_on_close = not old_targets.issubset(new_targets)
+        await self.close()
+        self.config, self.error = config, None
+        self.start()
+        for worker in self.workers.values():
+            worker.power_off = worker.device.url.lower() in powered_off
+            worker.off_segments = off_segments.get(worker.device.url.lower(), set())
+
+    @staticmethod
+    def sync_profiles(config: WLEDConfig) -> None:
+        """Store active styles and share only device/target geometry between profiles."""
+        for profile in config.profiles:
+            updated = {}
+            for device in config.devices:
+                styles = {}
+                for target in device.targets:
+                    current = TargetStyle(
+                        phases=target.phases,
+                        effects=target.effects,
+                        players=target.players,
+                        matrix=target.matrix.appearance,
+                    ).model_copy(deep=True)
+                    style = (
+                        current
+                        if profile.id == config.active_profile
+                        else profile.targets.get(device.id, {})
+                        .get(target.id, current)
+                        .model_copy(deep=True)
+                    )
+                    if target.mode != "segment":
+                        for appearance in [
+                            *style.effects.values(),
+                            *style.players.values(),
+                            style.matrix,
+                            *(getattr(style.phases, p) for p in Phase.__args__),
+                        ]:
+                            appearance.effect = 0
+                    styles[target.id] = style
+                updated[device.id] = styles
+            profile.targets = updated
+
+    @staticmethod
+    def apply_profile(config: WLEDConfig, profile: LightingProfile) -> None:
+        for device in config.devices:
+            for target in device.targets:
+                style = profile.targets[device.id][target.id]
+                target.phases = style.phases.model_copy(deep=True)
+                target.players = {
+                    key: value.model_copy(deep=True) for key, value in style.players.items()
+                }
+                target.effects = {
+                    key: effect.model_copy(deep=True) for key, effect in style.effects.items()
+                }
+                target.matrix.appearance = style.matrix.model_copy(deep=True)
+        config.active_profile = profile.id
+
+    def create_profile_config(
+        self, name: str, source: Literal["current", "blank"] = "current"
+    ) -> WLEDConfig:
+        config = self.config.model_copy(deep=True)
+        if any(p.name.casefold() == name.casefold() for p in config.profiles):
+            raise ConnectionProblem("A profile with that name already exists.")
+        if len(config.profiles) >= 12:
+            raise ConnectionProblem("Keep at most 12 profiles.")
+        active = next(p for p in config.profiles if p.id == config.active_profile)
+        profile = active.model_copy(update={"id": uuid4().hex[:12], "name": name}, deep=True)
+        if source == "blank":
+            profile.targets = {}
+            for device in config.devices:
+                styles = {}
+                for target in device.targets:
+                    defaults = Target(id=target.id, name=target.name, mode=target.mode)
+                    styles[target.id] = TargetStyle(
+                        phases=defaults.phases,
+                        effects=defaults.effects,
+                        players=defaults.players,
+                        matrix=defaults.matrix.appearance,
+                    )
+                profile.targets[device.id] = styles
+        config.profiles.append(profile)
+        self.apply_profile(config, profile)
+        return config
+
+    def select_profile_config(self, profile_id: str) -> WLEDConfig:
+        config = self.config.model_copy(deep=True)
+        profile = next((p for p in config.profiles if p.id == profile_id), None)
+        if profile is None:
+            raise ConnectionProblem("Unknown profile.")
+        self.apply_profile(config, profile)
+        return config
+
+    def delete_profile_config(self, profile_id: str) -> WLEDConfig:
+        config = self.config.model_copy(deep=True)
+        if not any(p.id == profile_id for p in config.profiles):
+            raise ConnectionProblem("Unknown profile.")
+        if len(config.profiles) == 1:
+            raise ConnectionProblem("Keep at least one profile.")
+        config.profiles = [p for p in config.profiles if p.id != profile_id]
+        if config.active_profile == profile_id:
+            self.apply_profile(config, config.profiles[0])
+        return config
+
+    async def discover(self) -> dict:
+        if self.discovery_lock.locked():
+            raise ConnectionProblem("WLED discovery is already running. Try again shortly.")
+        async with self.discovery_lock:
+            return {"devices": await discover_devices(self.http)}
+
+    def worker(self, device_id: str) -> DeviceWorker:
+        if device_id not in self.workers:
+            raise ConnectionProblem("Unknown WLED device. Save it first.")
+        return self.workers[device_id]
+
+    async def probe(self, device_id: str) -> dict:
+        worker = self.worker(device_id)
+        async with worker.lock:
+            try:
+                result = await worker.probe(refresh=True)
+                worker.connected, worker.error = True, None
+                return result
+            except ConnectionProblem as exc:
+                worker.connected, worker.error = False, str(exc)
+                raise
+
+    async def probe_address(self, address: DeviceAddress) -> dict:
+        info = await inspect_device(self.http, address, metadata=True)
+        for worker in self.workers.values():
+            if worker.device.url.lower() == address.url.lower():
+                async with worker.lock:
+                    worker.info = info
+                    worker.connected, worker.error = True, None
+        return info
+
+    async def show_corners(self, device_id: str, target_id: str, on: bool) -> dict:
+        """Hold a matrix panel's corner colours until this is switched off again.
+
+        A preview restores the previous frame after a few seconds; this keeps the corners
+        visible while the toggle is on, so the physical panel can be compared with the
+        editor diagram. Switching it off sends the panel's ordinary frame straight away.
+        """
+        worker = self.worker(device_id)
+        target = next(
+            (
+                item
+                for item in worker.device.targets
+                if item.id == target_id and item.mode == "matrix"
+            ),
+            None,
+        )
+        if target is None:
+            raise ConnectionProblem("Only matrix panels show corner colours.")
+        self.check_manual_control(worker.device)
+        async with worker.lock:
+            if target.segment in worker.off_segments:
+                raise ConnectionProblem("Turn this output on before showing its corner colours.")
+            wanted = worker.corners | {target_id} if on else worker.corners - {target_id}
+            try:
+                info = await worker.probe()
+                device = worker.device.model_copy(
+                    update={"targets": [target.model_copy(update={"enabled": True})]}
+                )
+                validate_capabilities(device, info)
+                state = {"on": info.get("on"), "bri": info.get("brightness")}
+                if on and (state["on"] is False or state["bri"] == 0):
+                    # Individual pixels need power and brightness, exactly like a preview.
+                    await request(
+                        self.http,
+                        device,
+                        "/json/state",
+                        {"on": True, "bri": state["bri"] or 128, "tt": 0},
+                    )
+                    info["on"] = True
+                elif not on and state["on"] is False:
+                    # Nothing is lit while the controller is off; the next frame is normal.
+                    worker.corners = wanted
+                    worker.connected, worker.error = True, None
+                    return {"target_id": target_id, "on": on, "corners": sorted(wanted)}
+                await request(
+                    self.http,
+                    device,
+                    "/json/state",
+                    payload(device, self.view(), {}, info=info, corners=wanted),
+                )
+            except ConnectionProblem as exc:
+                worker.connected, worker.error = False, str(exc)
+                raise
+            worker.corners = wanted
+            # The automation loop owns the next full frame, so let it send one.
+            worker.last_payload = None
+            worker.connected, worker.error = True, None
+            return {"target_id": target_id, "on": on, "corners": sorted(wanted)}
+
+    async def power(self, on: bool, device_id: str | None = None) -> dict:
+        workers = [self.worker(device_id)] if device_id else list(self.workers.values())
+        for worker in workers:
+            self.check_manual_control(worker.device)
+        if not workers:
+            raise ConnectionProblem("No WLED devices configured.")
+        results = []
+        for worker in workers:
+            async with worker.lock:
+                try:
+                    await request(self.http, worker.device, "/json/state", {"on": on})
+                    if worker.info:
+                        worker.info["on"] = on
+                    worker.power_off = not on
+                    worker.connected, worker.error = True, None
+                    worker.overlays.clear()
+                    worker.last_payload = None
+                    worker.idle_since = None  # A manual action restarts the idle clock.
+                    results.append({"id": worker.device.id, "on": on, "applied": True})
+                except ConnectionProblem as exc:
+                    worker.connected, worker.error = False, str(exc)
+                    results.append({"id": worker.device.id, "applied": False, "error": str(exc)})
+        return {"applied": all(item["applied"] for item in results), "devices": results}
+
+    async def output_power(self, device_id: str, output_id: int, on: bool) -> dict:
+        worker = self.worker(device_id)
+        self.check_manual_control(worker.device)
+        async with worker.lock:
+            info = await worker.probe(refresh=True)
+            output = next((item for item in info["outputs"] if item["id"] == output_id), None)
+            if output is None:
+                raise ConnectionProblem("Unknown WLED output. Check the connection again.")
+            touching = [
+                s
+                for s in info["segments"]
+                if max(s["start"], output["start"]) < min(s["stop"], output["stop"])
+            ]
+            if not touching or any(
+                s.get("matrix") or s["start"] < output["start"] or s["stop"] > output["stop"]
+                for s in touching
+            ):
+                raise ConnectionProblem(
+                    "This output needs separate, non-overlapping segments in WLED. "
+                    "Update its segments and check the connection again."
+                )
+            selected = {s["id"] for s in touching}
+            off_segments = worker.off_segments - selected if on else worker.off_segments | selected
+            body = {"seg": [{"id": key, "on": on} for key in sorted(selected)], "tt": 0}
+            if on and (worker.power_off or info.get("on") is False):
+                # Waking one output must not wake the other outputs with the master switch.
+                others = {s["id"] for s in info["segments"]} - selected
+                off_segments |= others
+                body["seg"] += [{"id": key, "on": False} for key in sorted(others)]
+                body["on"] = True
+                body["bri"] = info.get("brightness") or 128
+            await request(self.http, worker.device, "/json/state", body)
+            worker.off_segments = off_segments
+            if on:
+                worker.power_off = False
+                info["on"] = True
+            for segment in info["segments"]:
+                if segment["id"] in selected or segment["id"] in off_segments:
+                    segment["on"] = segment["id"] not in off_segments
+            worker.overlays.clear()
+            worker.last_payload = None
+            worker.connected, worker.error = True, None
+            return {"applied": True, "output_id": output_id, "on": on}
+
+    async def preview_draft(self, draft: DraftPreview, *, scene_view: dict | None = None) -> dict:
+        """Preview a target or simulated scene, then restore settings without persisting."""
+        self.check_manual_control(draft.device)
+        target = next((t for t in draft.device.targets if t.id == draft.target_id), None)
+        if target is None:
+            raise ConnectionProblem("Unknown WLED target.")
+        appearance = (
+            target.matrix.appearance
+            if scene_view is not None
+            else preview_appearance(target, draft)
+        )
+        device = draft.device.model_copy(
+            update={
+                "targets": draft.device.targets
+                if scene_view is not None
+                else [target.model_copy(update={"enabled": True})]
+            }
+        )
+        worker = next(
+            (w for w in self.workers.values() if w.device.url.lower() == device.url.lower()), None
+        )
+        async with worker.lock if worker else asyncio.Lock():
+            selected_segments = {t.segment for t in device.targets if t.enabled}
+            if worker and selected_segments & worker.off_segments:
+                raise ConnectionProblem("Turn this output on before previewing its lighting.")
+            snapshot = await request(self.http, device, "/json")
+            info = await inspect_device(self.http, device, data=snapshot, metadata=True)
+            validate_capabilities(device, info)
+            if worker:
+                worker.info = info
+            state = snapshot["state"]
+            segment = next(s for s in state["seg"] if s["id"] == target.segment)
+            managed = bool(worker and self.config.enabled and worker.device.enabled)
+            for frozen in state["seg"]:
+                if frozen["id"] not in selected_segments or not frozen.get("frz"):
+                    continue
+                details = next(item for item in info["segments"] if item["id"] == frozen["id"])
+                owned = (
+                    managed
+                    and worker.last_payload
+                    and all(
+                        any(
+                            old.enabled
+                            and (old.segment, old.mode) == (new.segment, new.mode)
+                            and target_pixels(old, details) == target_pixels(new, details)
+                            for old in worker.device.targets
+                        )
+                        for new in device.targets
+                        if new.enabled and new.segment == frozen["id"]
+                    )
+                )
+                if not owned:
+                    raise ConnectionProblem(
+                        "This segment has frozen pixels that WLED cannot return for restoration. "
+                        "Choose a native effect in WLED before previewing a new target."
+                    )
+            keys = {"id", "on", "bri", "col", "fx", "sx", "ix", "pal", "frz"}
+            restore_segment = {key: value for key, value in segment.items() if key in keys}
+            restore_segment.setdefault("frz", False)
+            restore = {"seg": [restore_segment], "tt": 0}
+            if scene_view is not None:
+                restore["seg"] = [
+                    {**{k: v for k, v in item.items() if k in keys}, "frz": item.get("frz", False)}
+                    for item in state["seg"]
+                    if item["id"] in selected_segments
+                ]
+            restore.update({key: state[key] for key in ("on", "bri") if key in state})
+            try:
+                # WLED requires power and brightness before individual pixel commands.
+                if state.get("on") is False or state.get("bri") == 0:
+                    await request(
+                        self.http,
+                        device,
+                        "/json/state",
+                        {"on": True, "bri": state.get("bri") or 128, "tt": 0},
+                    )
+                await request(
+                    self.http,
+                    device,
+                    "/json/state",
+                    payload(
+                        device,
+                        scene_view or {"phase": draft.phase},
+                        (
+                            {
+                                t.id: t.effects[draft.event]
+                                for t in device.targets
+                                if draft.event in t.effects and t.effects[draft.event].enabled
+                            }
+                            if scene_view is not None
+                            else {target.id: appearance}
+                        ),
+                        None if scene_view is not None else draft,
+                        info=info,
+                    ),
+                )
+                await asyncio.sleep(draft.duration)
+            finally:
+                try:
+                    await request(self.http, device, "/json/state", restore)
+                    if managed and state.get("on") is not False:
+                        await worker.send(worker.desired(self.view()))
+                except ConnectionProblem as exc:
+                    if worker:
+                        worker.connected, worker.error = False, str(exc)
+                    raise ConnectionProblem(
+                        "Preview ended, but WLED could not be restored. Check its connection."
+                    ) from exc
+            if worker:
+                worker.connected, worker.error = True, None
+        return {"applied": True, "restored": True, "duration": draft.duration}
+
+    async def test(self, device_id: str, preview: Preview) -> dict:
+        worker = self.worker(device_id)
+        try:
+            return await self.preview_draft(
+                DraftPreview(device=worker.device, **preview.model_dump())
+            )
+        except ConnectionProblem as exc:
+            worker.error, worker.connected = str(exc), False
+            raise
+
+    def status(self) -> dict:
+        view = self.view()
+        return {
+            "enabled": self.config.enabled,
+            "active_profile": self.config.active_profile,
+            "error": self.error,
+            "game": view,
+            "devices": [
+                {
+                    "id": key,
+                    "name": worker.device.name,
+                    "url": worker.device.url,
+                    "enabled": worker.device.enabled,
+                    "on": False
+                    if worker.power_off
+                    else worker.info.get("on")
+                    if worker.info
+                    else None,
+                    "connected": worker.connected,
+                    "error": worker.error,
+                    "corners": sorted(worker.corners),
+                    # What each matrix panel shows, so the editor canvas can draw it.
+                    "faces": worker.faces(view),
+                    "last_sent": worker.last_sent,
+                    "commands_sent": worker.sent,
+                    "off_segments": sorted(worker.off_segments),
+                    "info": worker.info,
+                }
+                for key, worker in self.workers.items()
+            ],
+        }
+
+
+def preview_appearance(target: Target, preview: Preview) -> Appearance:
+    if preview.player is not None:
+        style = target.players.get(preview.player)
+        if style is None:
+            raise ConnectionProblem("Enable this player colour before previewing it.")
+        return style
+    if preview.event:
+        effect = target.effects.get(preview.event)
+        if effect is None:
+            raise ConnectionProblem("Enable this game effect in the draft before previewing it.")
+        return effect
+    return (
+        target.matrix.appearance
+        if target.mode == "matrix"
+        else getattr(target.phases, preview.phase)
+    )

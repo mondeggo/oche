@@ -1,0 +1,87 @@
+{%- macro icon(name) -%}
+<svg class="nav-icon" aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+{%- if name == 'play' -%}<path d="M8 5.5v13l10.5-6.5Z"/>
+{%- elif name == 'overview' -%}<path d="M4 11.5 12 5l8 6.5V19a1 1 0 0 1-1 1h-4.5v-5h-5v5H5a1 1 0 0 1-1-1Z"/>
+{%- elif name == 'integrations' -%}<path d="M9 3v4m6-4v4M7 7h10v4a5 5 0 0 1-10 0Zm5 9v5"/>
+{%- elif name == 'profiles' -%}<circle cx="12" cy="8.5" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/>
+{%- elif name == 'autodarts' -%}<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r=".6" fill="currentColor"/>
+{%- elif name == 'cameras' -%}<path d="M4 8h3l1.5-2h7L17 8h3v11H4Z"/><circle cx="12" cy="13" r="3.5"/>
+{%- elif name == 'system' -%}<path d="M3 12h4l2.5-6 5 12L17 12h4"/>
+{%- elif name == 'updates' -%}<path d="M12 4v11m-4.5-4.5L12 15l4.5-4.5M5 20h14"/>
+{%- elif name == 'settings' -%}<circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.2l2-1.5-2-3.4-2.3 1a7 7 0 0 0-2-1.2L14.3 3h-4l-.4 2.6a7 7 0 0 0-2 1.2l-2.3-1-2 3.4 2 1.5a7 7 0 0 0 0 2.4l-2 1.5 2 3.4 2.3-1a7 7 0 0 0 2 1.2l.4 2.6h4l.4-2.6a7 7 0 0 0 2-1.2l2.3 1 2-3.4-2-1.5c.1-.4.1-.8.1-1.2Z"/>
+{%- elif name == 'collapse' -%}<rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><path d="M9.5 4.5v15M15.5 10l-2 2 2 2"/>
+{%- endif -%}
+</svg>
+{%- endmacro -%}
+{%- macro item(href, label, icon_name, current=False, page=None) -%}
+<a class="nav-item" href="{{ href }}" data-label="{{ _(label) }}"{% if page %} data-page="{{ page }}"{% endif %}{% if current or (core_page|default(false) and home_page|default('overview') == page) %} aria-current="page"{% endif %}>{{ icon(icon_name) }}<span class="nav-text">{{ _(label) }}</span></a>
+{%- endmacro -%}
+{%- set home = core_page is defined and core_page -%}
+<aside id="app-sidebar" class="app-sidebar" aria-label="Oche">
+  <div class="sidebar-head">
+    <a class="brand" href="/" aria-label="{{ _('Oche Home') }}" title="Home"><span class="brand-mark" aria-hidden="true"></span><span class="nav-text">Oche</span></a>
+  </div>
+  <nav id="main-nav" class="sidebar-nav" aria-label="{{ _('Main navigation') }}">
+    <div class="nav-section">
+      <a id="nav-link-play" class="nav-item nav-play" href="/play" data-label="{{ _('Play on Autodarts') }}" data-nav-sync {{ 'aria-current=page' if active_nav == 'play' }} {{ 'hidden' if not nav_visibility.play }}>{{ icon('play') }}<span class="nav-text">{{ _("Play on Autodarts") }}</span></a>
+      <a class="nav-item nav-play nav-play-oche" href="/local" data-label="{{ _('Play on Oche') }}" {{ 'aria-current=page' if active_nav == 'local' }}>{{ icon('autodarts') }}<span class="nav-text">{{ _("Play on Oche") }}</span></a>
+    </div>
+
+    <div class="nav-section">
+      <a class="nav-item" href="/integrations" data-label="{{ _('Integrations') }}" data-page="integrations" data-subpages="autodarts events" {% if home_page|default('') in ['integrations', 'autodarts', 'events'] %}aria-current="page"{% endif %}>{{ icon('integrations') }}<span class="nav-text">{{ _("Integrations") }}</span></a>
+      <div class="nav-children">
+        <a class="nav-child" href="/integrations/visual-wled" data-page="wled2" {% if home_page|default('') == 'wled2' %}aria-current="page"{% endif %} data-integration="wled2">Visual WLED</a>
+        <a id="nav-integration-wled" class="nav-child" href="/integrations/wled" data-page="wled" {% if home_page|default('') == 'wled' %}aria-current="page"{% endif %} data-integration="wled" data-nav-sync {{ 'hidden' if not nav_integrations.wled }}>WLED</a>
+        <a id="nav-integration-caller" class="nav-child" href="/integrations/caller" data-page="caller" {% if home_page|default('') == 'caller' %}aria-current="page"{% endif %} data-integration="caller" data-nav-sync {{ 'hidden' if not nav_integrations.caller }}>{{ _("Caller") }}</a>
+        <a id="nav-integration-scoreboard" class="nav-child" href="/integrations/scoreboard" data-page="scoreboard" {% if home_page|default('') == 'scoreboard' %}aria-current="page"{% endif %} data-integration="scoreboard" data-nav-sync {{ 'hidden' if not nav_integrations.scoreboard }}>{{ _("Scoreboard") }}</a>
+        <a id="nav-link-cameras" class="nav-child" href="/integrations/cameras" data-label="{{ _('Camera Enhancer') }}" data-nav-sync {{ 'hidden' if not nav_visibility.pages.cameras }} {{ 'aria-current=page' if active_nav == 'cameras' }}>{{ _("Camera Enhancer") }}</a>
+      </div>
+      {{ item('/profiles', 'Profiles', 'profiles', False, 'profiles') }}
+    </div>
+
+    <div id="sidebar-panels" class="nav-section" data-nav-sync {{ 'hidden' if not nav_visibility.panels }}>
+      <p class="nav-label"><span class="nav-text">{{ _("Panels") }}</span></p>
+      <div id="sidebar-panel-list">
+        {%- for p in (nav_panels | selectattr('pinned') | list) + (nav_panels | rejectattr('pinned') | list) %}
+        <a class="nav-item" href="{{ p.url if p.open_in_new_tab else '/panels/' ~ p.id }}" data-label="{{ p.name }}"{% if p.open_in_new_tab %} target="_blank" rel="noopener noreferrer"{% endif %}{% if active_nav == 'panels' and panel is defined and panel.id == p.id %} aria-current="page"{% endif %}><span class="nav-monogram" aria-hidden="true">{{ p.name[:1] | upper }}</span><span class="nav-text">{{ p.name }}</span>{% if p.open_in_new_tab %}<span class="nav-trailing" aria-label="{{ _('Opens in a new tab') }}">↗</span>{% endif %}</a>
+        {%- else %}
+        <a class="nav-item nav-empty" href="/config#panels" data-label="{{ _('Add a panel') }}"><span class="nav-monogram" aria-hidden="true">+</span><span class="nav-text">{{ _("Add a panel") }}</span></a>
+        {%- endfor %}
+      </div>
+    </div>
+
+    <div id="sidebar-system" class="nav-section" data-nav-sync {{ 'hidden' if not nav_visibility.system }}>
+      <p class="nav-label"><span class="nav-text">{{ _("System") }}</span></p>
+      <a id="nav-link-autodarts" class="nav-item" href="/supervisor" data-label="Autodarts" data-nav-sync {{ 'hidden' if not nav_visibility.pages.autodarts }} {{ 'aria-current=page' if active_nav == 'autodarts' }}>{{ icon('autodarts') }}<span class="nav-text">Autodarts</span><span class="service-update-dot" data-update-dot="autodarts" hidden role="img" aria-label="{{ _('Update available') }}"></span></a>
+      <a id="nav-link-system" class="nav-item" href="/supervisor?service=system" data-label="{{ _('Status') }}" data-nav-sync {{ 'hidden' if not nav_visibility.pages.system }} {{ 'aria-current=page' if active_nav == 'system' }}>{{ icon('system') }}<span class="nav-text">{{ _("Status") }}</span></a>
+      <a id="nav-link-updates" class="nav-item" href="/supervisor?service=updates" data-label="{{ _('Updates') }}" data-nav-sync {{ 'hidden' if not nav_visibility.pages.updates }} {{ 'aria-current=page' if active_nav == 'updates' }}>{{ icon('updates') }}<span class="nav-text">{{ _("Updates") }}</span><span class="service-update-dot" data-update-dot="updates" hidden role="img" aria-label="{{ _('Updates available') }}"></span></a>
+    </div>
+  </nav>
+
+  <div class="sidebar-foot">
+    <div class="nav-section">
+      {{ item('/config', 'Settings', 'settings', active_nav == 'config') }}
+    </div>
+    <div class="nav-section sidebar-context">
+      <label class="nav-profile"><span class="nav-text">{{ _("Profile") }}</span>
+        <select id="app-profile" aria-label="{{ _('Active profile') }}"{% if not nav_profiles.profiles %} disabled{% endif %}>
+          {%- for p in nav_profiles.profiles %}<option value="{{ p.id }}"{% if p.id == nav_profiles.active_profile %} selected{% endif %}>{{ p.name }}</option>{% endfor -%}
+        </select>
+      </label>
+      <div class="sidebar-health" id="sidebar-health" role="group" aria-label="{{ _('Status') }}">
+        <a class="health-row" href="/supervisor" data-health="autodarts" data-label="Autodarts"><span class="health-dot" aria-hidden="true"></span><span class="nav-text">Autodarts</span></a>
+        <a class="health-row" href="/supervisor" data-health="local" data-label="{{ _('Local') }}"><span class="health-dot" aria-hidden="true"></span><span class="nav-text">{{ _("Local") }}</span></a>
+        <a class="health-row" href="/integrations/autodarts" data-health="cloud" data-label="{{ _('Cloud') }}"><span class="health-dot" aria-hidden="true"></span><span class="nav-text">{{ _("Cloud") }}</span></a>
+      </div>
+    </div>
+    <div class="nav-section sidebar-tools">
+      <span class="sidebar-version nav-text">Oche {{ app_version }}</span>
+      <select id="language-select" class="language-select" aria-label="{{ _('Interface language') }}" title="{{ _('Interface language') }}">{% for code, label in ui_languages.items() %}<option value="{{ code }}" lang="{{ code }}" title="{{ label }}" aria-label="{{ label }}"{% if code == ui_language %} selected{% endif %}>{{ code[:2] | upper }}</option>{% endfor %}</select>
+      <button id="theme-toggle" class="icon-button theme-toggle" type="button" aria-label="{{ _('Switch to light theme') }}" title="{{ _('Switch to light theme') }}">
+        <svg class="theme-sun" aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg>
+        <svg class="theme-moon" aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 13a8.5 8.5 0 0 1-9.5-9.5A8.5 8.5 0 1 0 20.5 13Z"/></svg>
+      </button>
+      <button id="sidebar-collapse" class="icon-button sidebar-collapse" type="button" aria-controls="app-sidebar" aria-expanded="true" aria-label="{{ _('Collapse sidebar') }}" title="{{ _('Collapse sidebar') }}">{{ icon('collapse') }}</button>
+    </div>
+  </div>
+</aside>

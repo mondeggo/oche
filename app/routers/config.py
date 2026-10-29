@@ -18,27 +18,29 @@ router = APIRouter(prefix="/config", tags=["config"])
 
 
 class ConfigUpdate(BaseModel):
-    # All optional: callers (the Settings page, and the Supervisor page's
-    # inline toggles) only send the fields they're changing.
+    model_config = {"extra": "forbid"}
     autostart_autodarts: Optional[bool] = None
-    autostart_autoglow: Optional[bool] = None
-    autostart_ochecore: Optional[bool] = None
+    autohide_navbar_on_home: Optional[bool] = None
     autohide_navbar_on_play: Optional[bool] = None
     autohide_navbar_on_autodarts: Optional[bool] = None
-    autohide_navbar_on_autoglow: Optional[bool] = None
-    autohide_navbar_on_ochecore: Optional[bool] = None
+    autohide_navbar_on_cameras: Optional[bool] = None
+    autohide_navbar_on_system: Optional[bool] = None
+    autohide_navbar_on_updates: Optional[bool] = None
     autohide_navbar_on_panels: Optional[bool] = None
     show_play_in_navbar: Optional[bool] = None
-    show_autodarts_in_navbar: Optional[bool] = None
-    show_autoglow_in_navbar: Optional[bool] = None
     show_panels_in_navbar: Optional[bool] = None
+    show_page_autodarts: Optional[bool] = None
+    show_page_cameras: Optional[bool] = None
+    show_page_system: Optional[bool] = None
+    show_page_updates: Optional[bool] = None
 
 
 @router.get("")
 async def page(request: Request):
     return templates.TemplateResponse(
-        "config.html",
-        {"request": request, "config": load_config(), "active_nav": "config"},
+        request=request,
+        name="config.html",
+        context={"request": request, "config": load_config(), "active_nav": "config"},
     )
 
 
@@ -72,10 +74,14 @@ class DomainName(BaseModel):
             value = value.encode("idna").decode("ascii")
         except UnicodeError:
             raise ValueError("Invalid domain")
-        if len(value) > 253 or "." not in value or any(
-            not re.fullmatch(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?", label)
-            for label in value.split(".")
-        ) or value.endswith((".local", ".localhost", ".internal", ".test", ".invalid")):
+        if (
+            len(value) > 253
+            or "." not in value
+            or any(
+                not re.fullmatch(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?", label) for label in value.split(".")
+            )
+            or value.endswith((".local", ".localhost", ".internal", ".test", ".invalid"))
+        ):
             raise ValueError("Use a public DNS name")
         try:
             ipaddress.ip_address(value)
@@ -115,7 +121,11 @@ def local_addresses(request):
     for candidate in candidates:
         try:
             address = ipaddress.ip_address(candidate)
-            if address.version == 4 and address.is_private and not (address.is_loopback or address.is_link_local or address.is_unspecified):
+            if (
+                address.version == 4
+                and address.is_private
+                and not (address.is_loopback or address.is_link_local or address.is_unspecified)
+            ):
                 if str(address) not in addresses:
                     addresses.append(str(address))
         except ValueError:
@@ -139,7 +149,9 @@ def https_service(request):
 
 @router.get("/https")
 async def https_page(request: Request):
-    return templates.TemplateResponse("https.html", {"request": request, "active_nav": "config"})
+    return templates.TemplateResponse(
+        request=request, name="https.html", context={"request": request, "active_nav": "config"}
+    )
 
 
 @router.get("/https/status")
@@ -186,12 +198,18 @@ async def prepare_certificate(request: Request):
     try:
         setup = DomainSetup.model_validate(await request.json())
     except (ValidationError, ValueError):
-        raise HTTPException(status_code=422, detail="Enter a valid domain, email, and local IPv4 address, and accept the Let's Encrypt terms.")
+        raise HTTPException(
+            status_code=422,
+            detail="Enter a valid domain, email, and local IPv4 address, and accept the Let's Encrypt terms.",
+        )
     try:
         service.acme.prepare(setup.domain, setup.email, setup.local_ip, setup.replace_registration)
         remember_http_port(request)
     except (OSError, RuntimeError) as error:
-        raise HTTPException(status_code=409, detail=str(error) if isinstance(error, RuntimeError) else "Could not save certificate settings.") from error
+        raise HTTPException(
+            status_code=409,
+            detail=str(error) if isinstance(error, RuntimeError) else "Could not save certificate settings.",
+        ) from error
     return JSONResponse({"started": True}, status_code=202, headers={"Cache-Control": "no-store"})
 
 
@@ -206,5 +224,10 @@ async def request_certificate(request: Request):
         https_service(request).acme.begin(request.app, setup.domain)
         remember_http_port(request)
     except (OSError, RuntimeError) as error:
-        raise HTTPException(status_code=409, detail=str(error) if isinstance(error, RuntimeError) else "Could not start the certificate check.") from error
+        raise HTTPException(
+            status_code=409,
+            detail=str(error)
+            if isinstance(error, RuntimeError)
+            else "Could not start the certificate check.",
+        ) from error
     return JSONResponse({"started": True}, status_code=202, headers={"Cache-Control": "no-store"})

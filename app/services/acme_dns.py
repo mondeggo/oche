@@ -13,6 +13,9 @@ import urllib.error
 import urllib.request
 from urllib.parse import urlsplit
 
+import dns.exception
+import dns.resolver
+
 
 DEFAULT_SERVER = "https://auth.acme-dns.io"
 
@@ -70,10 +73,7 @@ def register():
 
 def lookup(name, record_type):
     # Public DNS is required for CA validation; /etc/hosts and split DNS can hide
-    # a missing public record. Import lazily while an older dev image is running.
-    import dns.exception
-    import dns.resolver
-
+    # a missing public record.
     resolver = dns.resolver.Resolver(configure=False)
     resolver.nameservers = ["1.1.1.1", "8.8.8.8"]
     try:

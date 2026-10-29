@@ -6,7 +6,7 @@
   const contextMenu = document.getElementById('terminal-context-menu');
   const copyStatus = document.getElementById('terminal-copy-status');
   const isMac = /Mac/.test(navigator.platform);
-  const selectionHint = `Hold ${isMac ? 'Option' : 'Shift'} and drag to select text.`;
+  const selectionHint = tr("Hold {0} and drag to select text.", {"0": (isMac ? tr("Option") : 'Shift')});
   let selectedText = '';
   let hoveredLink = null;
   let pressedLink = null;
@@ -133,7 +133,7 @@
       }
       if (!copied) copied = copyWithTextarea(text);
     } catch (_) { /* Show failure without losing the selected text. */ }
-    copyStatus.textContent = copied ? 'Copied.' : 'Copy failed. Select text and use your browser’s Copy command.';
+    copyStatus.textContent = copied ? tr("Copied.") : tr("Copy failed. Select text and use your browser’s Copy command.");
   }
   function hideContextMenu() { contextMenu.hidden = true; }
   container.addEventListener('contextmenu', event => {
@@ -230,13 +230,13 @@
     pressedLink = null;
     sessionError = false;
     reconnect.disabled = true;
-    status.textContent = 'Connecting…';
+    status.textContent = tr("Connecting…");
     const url = new URL('/autodarts/terminal/ws', location.href);
     url.protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
     socket = new WebSocket(url);
     socket.binaryType = 'arraybuffer';
     socket.onopen = () => {
-      status.textContent = 'Connected';
+      status.textContent = tr("Connected");
       resize();
       if (!matchMedia('(pointer: coarse)').matches) terminal.focus();
     };
@@ -245,7 +245,7 @@
         const message = JSON.parse(event.data);
         if (message.error) {
           sessionError = true;
-          status.textContent = message.error;
+          status.textContent = tr(message.error);
         }
       } else {
         terminal.write(new Uint8Array(event.data));
@@ -253,11 +253,11 @@
     };
     socket.onclose = () => {
       reconnect.disabled = false;
-      if (!sessionError) status.textContent = 'Disconnected. Reconnect to open board setup.';
+      if (!sessionError) status.textContent = tr("Disconnected. Reconnect to open board setup.");
     };
     socket.onerror = () => {
       sessionError = true;
-      status.textContent = 'Unable to connect. Check that Autodarts is running, then reconnect.';
+      status.textContent = tr("Unable to connect. Check that Autodarts is running, then reconnect.");
     };
   }
   terminal.onData(data => {

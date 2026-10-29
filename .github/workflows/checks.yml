@@ -1,0 +1,35 @@
+name: Checks
+
+on:
+  pull_request:
+  push:
+    branches-ignore: [main]
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: Tests and lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install locked dependencies
+        run: uv sync --locked
+      - name: Python tests
+        run: uv run pytest -q
+      - name: Frontend tests
+        run: node --test tests/test_frontend.mjs tests/test_integrations_frontend.mjs
+      - name: Lint
+        run: >-
+          uv run ruff check app/core app/main.py app/templating.py launcher.py oche_runtime.py
+          scripts/package_updates.py scripts/release_version.py
+      - name: Shell script syntax
+        run: for script in scripts/*.sh; do bash -n "$script"; done

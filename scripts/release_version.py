@@ -1,19 +1,29 @@
-"""Detect project-version changes across a push, matching OcheCore releases."""
+"""Detect a project-version change across a push so CI publishes each version once."""
+
 import os
-from pathlib import Path
 import re
 import subprocess
 import tomllib
+from pathlib import Path
+
+# X.Y.Z with an optional PEP 440 pre-release, for example 0.2.0, 0.3.0a1 or 1.0.0rc2.
+VERSION = re.compile(r"(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)((a|b|rc)(0|[1-9]\d*))?")
 
 
-def detect(before, manual=False):
-    current = tomllib.loads(Path("pyproject.toml").read_text())["project"]["version"]
-    if not re.fullmatch(r"(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)", current):
-        raise ValueError("Release versions must use X.Y.Z, for example 0.1.1")
+def check(version: str) -> str:
+    if not VERSION.fullmatch(version):
+        raise ValueError("Release versions must use X.Y.Z or X.Y.Z(a|b|rc)N, for example 0.3.0a1")
+    return version
+
+
+def detect(before: str | None, manual: bool = False) -> tuple[str, bool]:
+    current = check(tomllib.loads(Path("pyproject.toml").read_text())["project"]["version"])
     previous = None
     if before and before != "0" * 40:
         subprocess.run(["git", "cat-file", "-e", f"{before}^{{commit}}"], check=True)
-        files = subprocess.check_output(["git", "ls-tree", "--name-only", before, "--", "pyproject.toml"], text=True)
+        files = subprocess.check_output(
+            ["git", "ls-tree", "--name-only", before, "--", "pyproject.toml"], text=True
+        )
         if files.strip():
             content = subprocess.check_output(["git", "show", f"{before}:pyproject.toml"], text=True)
             previous = tomllib.loads(content)["project"]["version"]
