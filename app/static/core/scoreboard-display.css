@@ -1,30 +1,35 @@
+/* A standalone screen: it repeats Oche's palette from theme.css instead of loading it. */
 :root {
   color-scheme: light;
-  --background: #f5f4f1;
-  --surface: #fff;
-  --text: #303038;
-  --muted: #666671;
-  --border: #dddbd7;
-  --accent: #b43c43;
-  --brand: #654e38;
-  --success: #e3eee6;
-  --success-text: #2f6442;
-  --warning: #f4ead4;
-  --warning-text: #735820;
+  --background: #f5f1e7;
+  --surface: #fffdf7;
+  --text: #17261f;
+  --muted: #42534b;
+  --border: #17261f;
+  --pop: #17261f;
+  --accent: #ff7b66;
+  --brand: #17261f;
+  --success: #91dfb7;
+  --success-text: #17261f;
+  --warning: #ffd463;
+  --warning-text: #17261f;
+  --lime: #ddf56f;
+  --on-pop: #17261f;
 }
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --background: #1c1c21;
-  --surface: #292930;
-  --text: #e4e4e9;
-  --muted: #a5a5b1;
-  --border: #44444f;
-  --accent: #d45d64;
-  --brand: #dbc4a5;
-  --success: #253b30;
-  --success-text: #9dc5a9;
-  --warning: #403724;
-  --warning-text: #d6bb83;
+  --background: #13201a;
+  --surface: #1a2b23;
+  --text: #f5f1e7;
+  --muted: #a7b6ad;
+  --border: #557565;
+  --pop: #050b08;
+  --accent: #ff7b66;
+  --brand: #ddf56f;
+  --success: #91dfb7;
+  --success-text: #17261f;
+  --warning: #ffd463;
+  --warning-text: #17261f;
 }
 * {
   box-sizing: border-box;
@@ -40,7 +45,7 @@ body {
   margin: 0;
   background: var(--background);
   color: var(--text);
-  font-family: "Segoe UI", Roboto, system-ui, sans-serif;
+  font-family: "Aptos", "Segoe UI", "Trebuchet MS", Roboto, system-ui, sans-serif;
   overflow: hidden;
 }
 #board {
@@ -57,7 +62,10 @@ body {
 }
 #board-title {
   margin: 0;
+  font-family: "Arial Rounded MT Bold", "Trebuchet MS", ui-rounded, "Segoe UI", sans-serif;
   font-size: clamp(24px, 4vw, 48px);
+  font-weight: 400;
+  letter-spacing: -0.03em;
   color: var(--brand);
 }
 #board-match {
@@ -74,8 +82,11 @@ body {
   font-size: clamp(16px, 2vw, 28px);
   color: var(--success-text);
   background: var(--success);
-  border-radius: 12px;
-  padding: 0.5em 1.2em;
+  border: 2px solid var(--border);
+  border-radius: 999px;
+  box-shadow: 0 4px 0 var(--pop);
+  font-weight: 800;
+  padding: 0.4em 1.2em;
 }
 #board-players {
   display: flex;
@@ -87,24 +98,33 @@ body {
 .board-player {
   background: var(--surface);
   border: 2px solid var(--border);
-  border-radius: 16px;
+  border-radius: 24px;
+  box-shadow: 0 6px 0 var(--pop);
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s ease;
   padding: clamp(16px, 2.5vw, 32px) clamp(24px, 4vw, 56px);
   text-align: center;
   min-width: clamp(200px, 22vw, 320px);
 }
+/* The thrower's card pops up in lime with ink text. */
 .board-player[data-active="true"] {
-  border-color: var(--accent);
+  background: var(--lime);
+  color: var(--on-pop);
+  transform: translateY(-6px);
+  box-shadow: 0 10px 0 var(--pop);
 }
 .board-player-name {
   font-size: clamp(16px, 2vw, 28px);
+  font-weight: 800;
   color: var(--muted);
 }
-.board-player[data-active="true"] .board-player-name {
-  color: var(--accent);
+.board-player[data-active="true"] :is(.board-player-name, .board-player-detail) {
+  color: var(--on-pop);
 }
 .board-player-score {
+  font-family: "Arial Rounded MT Bold", "Trebuchet MS", ui-rounded, "Segoe UI", sans-serif;
   font-size: clamp(56px, 11vw, 160px);
-  font-weight: 700;
+  font-weight: 400;
+  letter-spacing: -0.04em;
   line-height: 1;
   margin: 0.1em 0;
 }

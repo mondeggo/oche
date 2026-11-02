@@ -83,7 +83,7 @@
       ...palette,
       background: color('--bg'), foreground: color('--fg'),
       cursor: color('--fg'), cursorAccent: color('--bg'),
-      selectionBackground: light ? '#AC353D33' : '#DBC4A54D',
+      selectionBackground: light ? '#DDF56FB3' : '#DDF56F4D',
     };
   }
   const terminal = new Terminal({

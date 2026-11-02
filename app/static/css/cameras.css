@@ -5,19 +5,19 @@
 .camera-workspace button { min-height: 40px; flex: none; }
 .camera-settings-heading { display: flex; justify-content: flex-end; align-items: center; flex-wrap: wrap; gap: 12px; margin-top: 12px; }
 .camera-hint, .camera-health { color: var(--fg-dim); font-size: .85rem; }
-.camera-notice { padding: 10px 14px; border: 1px solid var(--border); background: var(--card); border-radius: var(--radius-sm); overflow-wrap: anywhere; }
+.camera-notice { padding: 10px 14px; border: var(--line-width) dashed var(--border-strong); background: var(--card); border-radius: var(--radius-sm); overflow-wrap: anywhere; }
 ul.camera-notice { padding-left: 32px; }
 .camera-previews { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 16px 0; }
-.camera-workspace .camera-tile { display: block; min-width: 0; padding: 10px; border: 2px solid var(--border); border-radius: var(--radius); background: var(--card); color: var(--fg); text-align: left; font: inherit; cursor: pointer; }
-.camera-workspace .camera-tile:hover { border-color: var(--input-border); background: var(--card); }
-.camera-workspace .camera-tile.selected { border-color: var(--brand); }
+.camera-workspace .camera-tile { display: block; min-width: 0; padding: 10px; border: 2px solid var(--border-strong); border-radius: var(--radius); background: var(--card); color: var(--fg); text-align: left; font: inherit; cursor: pointer; }
+.camera-workspace .camera-tile:hover { border-color: var(--outline); background: var(--card); }
+.camera-workspace .camera-tile.selected { border-color: var(--outline); box-shadow: 0 0 0 3px var(--lime), var(--pop); }
 .camera-tile-heading, .camera-health { display: block; }
 .camera-tile-heading { font-weight: 600; margin-bottom: 7px; }
 .camera-thumbnail { display: flex; position: relative; align-items: center; justify-content: center; aspect-ratio: 4 / 3; overflow: hidden; background: var(--bg); border-radius: 5px; }
 .camera-thumbnail img { display: block; width: 100%; height: 100%; object-fit: contain; }
 .camera-thumbnail > span { position: absolute; inset: auto 5px 5px; border-radius: 4px; padding: 4px; background: var(--overlay); color: var(--fg-dim); font-size: .75rem; text-align: center; }
 .camera-health { padding-top: 8px; overflow-wrap: anywhere; }
-.camera-focus { display: grid; grid-template-columns: minmax(0, 2.2fr) minmax(240px, 1fr); gap: 20px; background: var(--card); padding: 20px; border: 1px solid var(--border); border-radius: var(--radius); }
+.camera-focus { display: grid; grid-template-columns: minmax(0, 2.2fr) minmax(240px, 1fr); gap: 20px; background: var(--card); padding: 20px; border: var(--line-width) solid var(--outline); box-shadow: var(--pop); border-radius: var(--radius); }
 .camera-focus-main { min-width: 0; }
 .camera-canvas-wrap { position: relative; background: var(--bg); }
 #camera-focus-canvas { width: 100%; height: auto; display: block; touch-action: none; cursor: crosshair; }
@@ -35,7 +35,7 @@ ul.camera-notice { padding-left: 32px; }
 .camera-audio-label { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
 .camera-audio-label input { width: 18px; height: 18px; }
 .camera-section-title { margin: 32px 0 12px !important; color: var(--fg-dim); font-size: .72rem !important; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
-.camera-settings { margin-top: 12px; padding: 0 20px; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); }
+.camera-settings { margin-top: 12px; padding: 0 20px; background: var(--card); border: var(--line-width) solid var(--outline); border-radius: var(--radius); box-shadow: var(--pop); }
 .camera-settings[open] { padding-bottom: 20px; }
 .camera-settings > summary { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin: 0 -20px; padding: 16px 20px; list-style: none; cursor: pointer; }
 .camera-settings > summary::-webkit-details-marker { display: none; }

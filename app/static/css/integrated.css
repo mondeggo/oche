@@ -21,10 +21,11 @@
   z-index: 90;
   max-width: calc(100vw - 32px);
   padding: 12px 18px;
-  border: 1px solid var(--border);
+  border: var(--line-width) solid var(--outline);
   border-radius: var(--radius-sm);
   background: var(--card);
   color: var(--fg);
-  box-shadow: 0 8px 24px var(--shadow);
+  box-shadow: var(--pop), 0 8px 24px var(--shadow);
   font-size: 14px;
+  font-weight: 700;
 }

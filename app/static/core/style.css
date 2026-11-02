@@ -5,9 +5,10 @@
 .core-workspace .play-sources [data-play-source-state] { min-width: 2em; color: var(--muted); }
 .core-workspace .play-sources button[aria-checked="true"] { background: var(--selected-bg); color: var(--selected-fg); border-color: var(--primary); }
 .core-workspace {
-  font-family: "Segoe UI", Roboto, system-ui, sans-serif;
+  font-family: var(--font-body);
   color: var(--text);
-  background: var(--background);
+  /* Transparent so the page's colour bubbles show through. */
+  background: transparent;
   --background: var(--bg);
   --surface: var(--card);
   --text: var(--fg);
@@ -61,29 +62,45 @@
   align-items: center;
   justify-content: center;
   min-height: 40px;
-  padding: 9px 16px;
-  border: 1px solid var(--button-border);
-  border-radius: var(--radius-sm);
-  background: var(--button);
+  padding: 9px 18px;
+  border: var(--line-width) solid var(--outline);
+  border-radius: 999px;
+  background: var(--surface);
   color: var(--text);
   text-decoration: none;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 800;
   cursor: pointer;
 }
 .core-workspace button:hover,
 .core-workspace .button:hover {
   background: var(--hover);
-  border-color: var(--hover-border);
+}
+/* Buttons press down onto their shadow; flat controls below override it. */
+.core-workspace :where(button, .button) {
+  box-shadow: var(--pop-sm);
+  transition: background 0.15s ease, transform 0.12s ease, box-shadow 0.12s ease;
+}
+.core-workspace :where(button:hover:not(:disabled), .button:hover) {
+  transform: translateY(-1px);
+  box-shadow: var(--pop);
+}
+.core-workspace :where(button:active:not(:disabled), .button:active) {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 var(--pop-color);
 }
 .core-workspace .primary {
   background: var(--primary);
-  border-color: var(--primary);
   color: var(--primary-text);
 }
 .core-workspace .primary:hover {
   background: var(--primary-hover);
-  border-color: var(--primary-hover);
+}
+/* Segmented choices, tabs and menu rows stay flat inside their container. */
+.core-workspace :is(.stream-picker, .wled-power, .wled-editor-tabs, .select-menu-heading, .select-menu-options) button,
+.core-workspace :is(.quiet, .wled-remove) {
+  box-shadow: none;
+  transform: none;
 }
 .core-workspace button:disabled,
 .core-workspace input:disabled,
@@ -93,9 +110,11 @@
   color: var(--disabled-text);
   opacity: 1;
   cursor: default;
+  box-shadow: none;
+  transform: none;
 }
 .core-workspace :focus-visible {
-  outline: 2px solid var(--focus);
+  outline: 3px solid var(--focus);
   outline-offset: 3px;
 }
 .core-workspace .skip-link {
@@ -111,10 +130,11 @@
 }
 .core-workspace .eyebrow {
   color: var(--muted);
+  font-family: var(--font-mono);
   font-size: 11px;
   letter-spacing: 1.2px;
   text-transform: uppercase;
-  font-weight: 650;
+  font-weight: 800;
 }
 .core-workspace .switch {
   justify-content: space-between;
@@ -126,10 +146,10 @@
   display: inline-flex;
   align-items: center;
   flex-shrink: 0;
-  width: 32px;
-  height: 20px;
+  width: 36px;
+  height: 22px;
   padding: 2px;
-  border: 1px solid var(--muted);
+  border: var(--line-width) solid var(--outline);
   border-radius: 20px;
   background: var(--inset);
 }
@@ -138,14 +158,14 @@
   height: 14px;
   border-radius: 50%;
   background: var(--muted);
+  transition: transform .25s cubic-bezier(.34, 1.56, .64, 1);
 }
 .core-workspace .switch[aria-checked="true"] .switch-track {
-  border-color: var(--primary);
-  background: var(--primary);
+  background: var(--lime);
 }
 .core-workspace .switch[aria-checked="true"] .switch-thumb {
-  transform: translateX(12px);
-  background: var(--primary-text);
+  transform: translateX(14px);
+  background: var(--on-pop);
 }
 .core-workspace .core-main {
   width: 100%;
@@ -165,16 +185,36 @@
   margin: 0 0 8px;
 }
 .core-workspace h1 {
+  position: relative;
+  z-index: 0;
+  width: fit-content;
   margin: 0;
-  font-size: 30px;
-  line-height: 1.2;
-  font-weight: 650;
-  letter-spacing: -0.8px;
+  font-family: var(--font-display);
+  font-size: 32px;
+  line-height: 1.15;
+  font-weight: 400;
+  letter-spacing: -0.03em;
+}
+/* OcheCore's tilted lime highlighter under the page title. */
+.core-workspace .page-header h1::after {
+  content: "";
+  position: absolute;
+  right: -0.1em;
+  bottom: 0.04em;
+  left: -0.06em;
+  z-index: -1;
+  height: 0.3em;
+  border-radius: 999px;
+  background: var(--lime);
+  opacity: 0.85;
+  transform: rotate(-1.5deg);
 }
 .core-workspace h2 {
   margin: 0;
-  font-size: 16px;
-  font-weight: 650;
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 400;
+  letter-spacing: -0.01em;
 }
 .core-workspace p {
   margin: 8px 0 0;
@@ -193,10 +233,11 @@
 }
 .core-workspace .panel {
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: var(--line-width) solid var(--outline);
   border-radius: var(--radius);
   padding: 24px;
-  margin-bottom: 16px;
+  margin-bottom: 18px;
+  box-shadow: var(--pop);
 }
 .core-workspace .panel-heading {
   display: flex;
@@ -207,29 +248,34 @@
 }
 .core-workspace .badge {
   display: inline-block;
+  border: var(--line-width) solid var(--button-border);
   border-radius: 999px;
-  padding: 3px 10px;
+  padding: 2px 10px;
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 800;
   background: var(--badge);
   color: var(--badge-text);
   white-space: nowrap;
 }
 .core-workspace .badge[data-tone="good"] {
-  background: var(--success);
-  color: var(--success-text);
+  border-color: var(--outline);
+  background: var(--mint);
+  color: var(--on-pop);
 }
 .core-workspace .badge[data-tone="warning"] {
-  background: var(--warning);
-  color: var(--warning-text);
+  border-color: var(--outline);
+  background: var(--yellow);
+  color: var(--on-pop);
 }
-.core-workspace .board-panel {
-  border-top: 3px solid var(--accent);
+/* Featured panels carry a coral lip along the top. */
+.core-workspace :is(.board-panel, .connection-card, .wled-overview) {
+  box-shadow: var(--pop), inset 0 5px 0 var(--accent);
 }
 .core-workspace .board-name {
-  font-size: 28px;
-  font-weight: 600;
-  letter-spacing: -0.6px;
+  font-family: var(--font-display);
+  font-size: 30px;
+  font-weight: 400;
+  letter-spacing: -0.03em;
   overflow-wrap: anywhere;
 }
 .core-workspace .board-panel .button {
@@ -246,8 +292,9 @@
 }
 .core-workspace .metrics dd {
   margin: 10px 0 0;
-  font-size: 20px;
-  font-weight: 600;
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 400;
   overflow-wrap: anywhere;
 }
 .core-workspace .metrics a {
@@ -277,7 +324,7 @@
   padding: 25px 0;
 }
 .core-workspace .integration-row + .integration-row {
-  border-top: 1px solid var(--border);
+  border-top: 1px dashed var(--button-border);
 }
 .core-workspace .integration-description {
   flex: 1;
@@ -319,11 +366,16 @@
 .core-workspace select {
   width: 100%;
   min-height: 43px;
-  border: 1px solid var(--control-border);
-  border-radius: 6px;
-  padding: 10px 12px;
+  border: var(--line-width) solid var(--control-border);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
   background: var(--input);
   color: inherit;
+}
+.core-workspace :is(input:not([type="checkbox"], [type="range"], [type="color"]), select):focus {
+  outline: 0;
+  background: var(--surface);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--cyan) 40%, transparent);
 }
 .core-workspace .field-row select {
   flex: 1;
@@ -378,8 +430,10 @@
 .core-workspace .warning {
   margin-bottom: 20px;
   padding: 12px 16px;
+  border: var(--line-width) solid currentColor;
   border-radius: var(--radius-sm);
   font-size: 13px;
+  font-weight: 700;
 }
 .core-workspace .notice {
   display: flex;
@@ -410,7 +464,8 @@
   flex-wrap: wrap;
   gap: 4px;
   padding: 4px;
-  border-radius: 8px;
+  border: var(--line-width) solid var(--outline);
+  border-radius: 999px;
   background: var(--inset);
 }
 .core-workspace .stream-picker button {
@@ -422,9 +477,9 @@
   color: var(--muted);
 }
 .core-workspace .stream-picker button[aria-pressed="true"] {
-  background: var(--surface);
-  border-color: var(--border);
-  color: var(--text);
+  background: var(--primary);
+  border-color: transparent;
+  color: var(--primary-text);
 }
 .core-workspace .empty-state {
   padding: 52px 8px;
@@ -545,7 +600,6 @@
   grid-template-columns: 1fr;
   gap: 12px 24px;
   padding: 16px 24px;
-  border-top: 2px solid var(--accent);
 }
 .core-workspace .wled-live {
   display: flex;
@@ -559,9 +613,10 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 22px;
-  font-weight: 600;
-  letter-spacing: -0.4px;
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 400;
+  letter-spacing: -0.03em;
 }
 .core-workspace #wled-phase::before {
   content: "";
@@ -639,9 +694,9 @@
   display: inline-flex;
   padding: 3px;
   gap: 2px;
-  border: 1px solid var(--border);
+  border: var(--line-width) solid var(--outline);
   background: var(--inset);
-  border-radius: 8px;
+  border-radius: 999px;
 }
 .core-workspace .wled-power button {
   min-height: 32px;
@@ -652,9 +707,9 @@
   font-size: 12px;
 }
 .core-workspace .wled-power button[aria-pressed="true"] {
-  background: var(--surface);
-  color: var(--text);
-  border-color: var(--border);
+  background: var(--primary);
+  color: var(--primary-text);
+  border-color: transparent;
 }
 .core-workspace #wled-probe {
   font-size: 12px;
@@ -718,9 +773,8 @@
   align-items: center;
   text-align: left;
   padding: 16px;
-  border-color: var(--border);
   background: var(--input);
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
 }
 .core-workspace .wled-outputs button strong {
   font-size: 14px;
@@ -757,8 +811,8 @@
 }
 .core-workspace .wled-outputs button[aria-pressed="true"] {
   background: var(--selected);
-  border-color: var(--accent);
-  box-shadow: 0 0 0 1px var(--accent);
+  border-color: var(--outline);
+  box-shadow: var(--pop-sm), inset 0 0 0 2px var(--lime);
   color: var(--selected-text);
 }
 .core-workspace .wled-outputs button:hover {
@@ -778,7 +832,7 @@
 .core-workspace .wled-empty {
   text-align: center;
   background: var(--input);
-  border: 1px dashed var(--border);
+  border: 2px dashed var(--button-border);
   border-radius: 10px;
   padding: 28px 20px;
 }
@@ -837,7 +891,7 @@
 }
 .core-workspace .wled-editor-tabs button {
   border: 0;
-  border-bottom: 2px solid transparent;
+  border-bottom: 4px solid transparent;
   border-radius: 0;
   background: transparent;
   color: var(--muted);
@@ -848,6 +902,7 @@
 .core-workspace .wled-editor-tabs button[aria-selected="true"] {
   border-bottom-color: var(--accent);
   color: var(--text);
+  font-weight: 800;
 }
 .core-workspace .wled-editor-tabs button:hover {
   color: var(--text);
@@ -979,14 +1034,16 @@
   margin-top: 2px;
 }
 .core-workspace .wled-phase-card[aria-current="step"] {
-  border-color: var(--accent);
+  border-color: var(--outline);
+  box-shadow: var(--pop-sm);
 }
 .core-workspace .wled-phase-card[aria-current="step"] .wled-rule-heading strong::after {
   content: "NOW";
-  color: var(--selected-text);
-  background: var(--selected);
-  padding: 2px 5px;
-  border-radius: 3px;
+  color: var(--on-pop);
+  background: var(--lime);
+  padding: 2px 6px;
+  border: 1px solid var(--outline);
+  border-radius: 999px;
   font-size: 9px;
   letter-spacing: 0.5px;
   margin-left: 8px;
@@ -1142,11 +1199,11 @@
   inset: auto;
   margin: 0;
   padding: 8px;
-  border: 1px solid var(--control-border);
-  border-radius: 10px;
+  border: var(--line-width) solid var(--outline);
+  border-radius: var(--radius-sm);
   color: var(--text);
   background: var(--surface);
-  box-shadow: 0 14px 40px #0003;
+  box-shadow: var(--pop), 0 14px 40px var(--shadow);
   max-height: min(460px, calc(100dvh - 24px));
   max-width: calc(100vw - 24px);
   overflow: hidden;
@@ -1229,11 +1286,11 @@
   width: min(540px, calc(100vw - 32px));
   max-height: calc(100dvh - 48px);
   padding: 24px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
+  border: var(--line-width) solid var(--outline);
+  border-radius: var(--radius);
   background: var(--surface);
   color: var(--text);
-  box-shadow: 0 20px 80px #0005;
+  box-shadow: 0 6px 0 var(--pop-color), 0 20px 80px var(--shadow);
 }
 .core-workspace dialog::backdrop {
   background: #0008;
@@ -1288,18 +1345,19 @@
 }
 
 /* Integrations: AutoDarts connection first, then each integration as a card. */
-[data-theme="light"] .core-workspace .panel { box-shadow: 0 1px 2px var(--shadow); }
-.core-workspace .connection-card { border-top: 3px solid var(--accent); }
 .core-workspace .connection-title { display: flex; align-items: center; gap: 14px; }
 .core-workspace .connection-title .hint { margin: 2px 0 0; }
-.core-workspace .connection-logo { display: grid; place-items: center; flex: none; width: 40px; height: 40px; border-radius: var(--radius-sm); background: var(--inset); }
+.core-workspace .connection-logo { display: grid; place-items: center; flex: none; width: 42px; height: 42px; border: var(--line-width) solid var(--outline); border-radius: var(--radius-sm); background: var(--inset); transform: rotate(-4deg); }
 .core-workspace .connection-logo img { width: 26px; height: 26px; }
-.core-workspace .connection-board { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border); font-size: 13px; }
-.core-workspace .section-heading { margin: 28px 0 12px; color: var(--muted); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; }
+.core-workspace .connection-board { margin-top: 18px; padding-top: 16px; border-top: 1px dashed var(--button-border); font-size: 13px; }
+.core-workspace .section-heading { margin: 28px 0 12px; color: var(--muted); font-family: var(--font-mono); font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
 .core-workspace .integration-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-bottom: 16px; }
-.core-workspace .integration-card { display: flex; flex-direction: column; margin: 0; }
+.core-workspace .integration-card { display: flex; flex-direction: column; margin: 0; box-shadow: var(--pop), inset 0 5px 0 var(--cyan); }
+.core-workspace .integration-card:nth-child(4n+2) { box-shadow: var(--pop), inset 0 5px 0 var(--yellow); }
+.core-workspace .integration-card:nth-child(4n+3) { box-shadow: var(--pop), inset 0 5px 0 var(--mint); }
+.core-workspace .integration-card:nth-child(4n+4) { box-shadow: var(--pop), inset 0 5px 0 var(--coral); }
 .core-workspace .integration-card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.core-workspace .integration-card-head h3 { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 17px; font-weight: 650; }
+.core-workspace .integration-card-head h3 { display: flex; align-items: center; gap: 8px; margin: 0; font-family: var(--font-display); font-size: 18px; font-weight: 400; }
 .core-workspace .integration-card .muted { flex: 1; font-size: 13px; }
 .core-workspace .integration-card .switch { min-width: 104px; }
 .core-workspace .integration-card-link { align-self: flex-start; margin-top: 16px; font-size: 13px; font-weight: 600; }
@@ -1307,7 +1365,8 @@
   .core-workspace .integration-grid { grid-template-columns: 1fr; }
 }
 .core-workspace .events-card { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 24px; color: inherit; text-decoration: none; }
-.core-workspace .events-card:hover { border-color: var(--border-strong); }
-.core-workspace .events-card h3 { margin: 0; font-size: 15px; font-weight: 650; }
+.core-workspace .events-card { transition: transform .15s ease, box-shadow .15s ease; }
+.core-workspace .events-card:hover { transform: translateY(-2px); box-shadow: 0 6px 0 var(--pop-color); }
+.core-workspace .events-card h3 { margin: 0; font-family: var(--font-display); font-size: 16px; font-weight: 400; }
 .core-workspace .events-card .muted { margin-top: 2px; font-size: 13px; }
 .core-workspace .events-card .integration-card-link { margin: 0; color: var(--link); text-decoration: underline; text-underline-offset: 3px; white-space: nowrap; }
