@@ -3,12 +3,12 @@ import asyncio
 import httpx
 
 from app.core.api.ui import UISettings
-from app.core.autodarts.auth import DeviceAuth
-from app.core.autodarts.cloud import CloudConnection
-from app.core.autodarts.detection import LocalDetection
-from app.core.autodarts.errors import ConnectionProblem
+from app.core.board.detection import LocalDetection
 from app.core.config import ConnectionConfig, Settings
+from app.core.errors import ConnectionProblem
 from app.core.events import EventBus, RawEventRecorder
+from app.core.integrations.autodarts.account.auth import DeviceAuth
+from app.core.integrations.autodarts.account.cloud import CloudConnection
 from app.core.integrations.caller.service import Caller
 from app.core.integrations.sources import integration_view
 from app.core.integrations.wled.service import WLED

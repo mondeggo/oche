@@ -8,8 +8,9 @@ from urllib.parse import urlsplit
 import httpx
 import pytest
 
-from app.core.autodarts.auth import DeviceAuth, safe_error
-from app.core.autodarts.errors import ConnectionProblem, LoginRequired
+from app.core.errors import ConnectionProblem, safe_error
+from app.core.integrations.autodarts.account.auth import DeviceAuth
+from app.core.integrations.autodarts.account.errors import LoginRequired
 from app.core.storage import write_private_json
 
 TOKENS = {"access_token": "access-secret", "refresh_token": "refresh-secret", "expires_in": 900}
@@ -149,7 +150,7 @@ async def test_slow_down_obeys_increased_interval(tmp_path, monkeypatch):
             return httpx.Response(400, json={"error": "slow_down"})
         return httpx.Response(200, json=TOKENS)
 
-    monkeypatch.setattr("app.core.autodarts.auth.asyncio.sleep", fake_sleep)
+    monkeypatch.setattr("app.core.integrations.autodarts.account.auth.asyncio.sleep", fake_sleep)
     async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http:
         auth = auth_for(http, tmp_path)
         await auth.start_login()

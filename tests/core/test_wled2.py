@@ -7,7 +7,7 @@ import pytest
 from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
-from app.core.autodarts.errors import ConnectionProblem
+from app.core.errors import ConnectionProblem
 from app.core.integrations.wled.service import Matrix, WLEDConfig
 from app.core.integrations.wled.simulator import DEMO_URL
 from app.core.integrations.wled2.service import Connection, Controller, Layout, Light, Rules

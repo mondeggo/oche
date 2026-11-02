@@ -95,7 +95,7 @@ def test_stale_profile_appearance_request_is_rejected(settings):
 
 
 def test_appearance_save_failure_rolls_back_profile_selection(settings, monkeypatch):
-    from app.core.autodarts.errors import ConnectionProblem
+    from app.core.errors import ConnectionProblem
 
     app = create_app(settings)
     with TestClient(app) as client:

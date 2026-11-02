@@ -12,10 +12,10 @@ from fastapi.testclient import TestClient
 from pydantic import ValidationError
 from zeroconf import IPVersion, ServiceStateChange
 
-from app.core.autodarts.auth import DeviceAuth
-from app.core.autodarts.cloud import CloudConnection
-from app.core.autodarts.errors import ConnectionProblem
+from app.core.errors import ConnectionProblem
 from app.core.events import Event, EventBus, EventNormalizer
+from app.core.integrations.autodarts.account.auth import DeviceAuth
+from app.core.integrations.autodarts.account.cloud import CloudConnection
 from app.core.integrations.wled import service as wled
 from app.core.integrations.wled.service import (
     WLED,

@@ -8,10 +8,10 @@ import pytest
 from pydantic import ValidationError
 from websockets.asyncio.server import serve
 
-from app.core.autodarts.detection import LocalDetection
-from app.core.autodarts.errors import ConnectionProblem
-from app.core.autodarts.local import LocalBoardConnection
+from app.core.board.detection import LocalDetection
+from app.core.board.local import LocalBoardConnection
 from app.core.config import Settings
+from app.core.errors import ConnectionProblem
 from app.core.events import EventBus
 from app.core.local import LocalGames, LocalOptions
 
@@ -107,7 +107,7 @@ async def test_local_websocket_feeds_normalized_throws_corrections_and_takeout(t
 
 
 async def test_http_fallback_and_connection_cleanup(monkeypatch):
-    monkeypatch.setattr("app.core.autodarts.local.connect", AsyncMock(side_effect=OSError))
+    monkeypatch.setattr("app.core.board.local.connect", AsyncMock(side_effect=OSError))
     requests = []
 
     def respond(request):
@@ -168,7 +168,7 @@ async def test_initial_websocket_backlog_is_a_silent_baseline(tmp_path, monkeypa
     pending.put_nowait(json.dumps({"type": "state", "data": state((20, 3))}))
     socket = AsyncMock()
     socket.recv.side_effect = pending.get
-    monkeypatch.setattr("app.core.autodarts.local.connect", AsyncMock(return_value=socket))
+    monkeypatch.setattr("app.core.board.local.connect", AsyncMock(return_value=socket))
     async with httpx.AsyncClient(
         transport=httpx.MockTransport(lambda request: httpx.Response(200, json=state()))
     ) as http:

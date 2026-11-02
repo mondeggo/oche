@@ -8,7 +8,7 @@ from typing import Literal
 import httpx
 from pydantic import Field, ValidationError, model_validator
 
-from app.core.autodarts.errors import ConnectionProblem
+from app.core.errors import ConnectionProblem
 from app.core.events import EventBus
 from app.core.integrations.sources import PlaySources
 from app.core.integrations.wled.service import (

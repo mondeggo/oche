@@ -1,8 +1,8 @@
 import asyncio
 import os
-from pathlib import Path
 import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 from app.core.integrations.autodarts.terminal import AutodartsTerminal

@@ -1,11 +1,10 @@
 import asyncio
 import json
 
-import httpx
 import pytest
 from fastapi.testclient import TestClient
 
-from app.core.autodarts.errors import ConnectionProblem
+from app.core.errors import ConnectionProblem
 from app.core.events import EventBus, RawEventRecorder
 from app.main import create_app
 

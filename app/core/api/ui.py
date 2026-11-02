@@ -5,8 +5,8 @@ import asyncio
 from fastapi import APIRouter, Request
 from pydantic import ValidationError
 
-from app.core.autodarts.errors import ConnectionProblem
 from app.core.config import Settings, UIConfig, UIUpdate
+from app.core.errors import ConnectionProblem
 from app.core.storage import write_private_json
 
 

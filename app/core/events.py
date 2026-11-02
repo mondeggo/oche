@@ -12,7 +12,7 @@ from uuid import uuid4
 
 from pydantic import BaseModel, Field, ValidationError, field_validator
 
-from app.core.autodarts.errors import ConnectionProblem
+from app.core.errors import ConnectionProblem
 
 
 class Event(BaseModel):

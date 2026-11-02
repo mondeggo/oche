@@ -4,7 +4,7 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-from app.core.autodarts.errors import ConnectionProblem
+from app.core.errors import ConnectionProblem
 
 
 def write_private_json(path: Path, data: dict[str, Any]) -> None:

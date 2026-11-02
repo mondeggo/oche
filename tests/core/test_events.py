@@ -1,5 +1,5 @@
-from app.core.autodarts.cloud import MatchState
 from app.core.events import Event, EventBus, EventNormalizer, event_name, parse_cloud_message
+from app.core.integrations.autodarts.account.cloud import MatchState
 
 
 def test_board_maintenance_events_emit_once_from_paired_envelopes():

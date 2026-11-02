@@ -8,8 +8,8 @@ from uuid import uuid4
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
 from app.core.api.ui import UISettings
-from app.core.autodarts.errors import ConnectionProblem
 from app.core.config import UIConfig
+from app.core.errors import ConnectionProblem
 from app.core.integrations.caller.service import Caller, CallerConfig
 from app.core.integrations.wled.service import WLED, Identifier, TargetStyle, WLEDConfig
 from app.core.integrations.wled2.service import WLED2

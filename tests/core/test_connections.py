@@ -8,10 +8,10 @@ import pytest
 from conftest import BOARD_ID, MATCH_ID
 from websockets.asyncio.server import serve
 
-from app.core.autodarts.auth import DeviceAuth
-from app.core.autodarts.cloud import CloudConnection
-from app.core.autodarts.errors import ConnectionProblem
+from app.core.errors import ConnectionProblem
 from app.core.events import EventBus
+from app.core.integrations.autodarts.account.auth import DeviceAuth
+from app.core.integrations.autodarts.account.cloud import CloudConnection
 
 
 async def test_cloud_snapshot_and_live_state_produce_separate_streams(tmp_path):

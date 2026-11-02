@@ -16,7 +16,7 @@ from zeroconf import Error as ZeroconfError
 from zeroconf import IPVersion, ServiceStateChange
 from zeroconf.asyncio import AsyncServiceBrowser, AsyncServiceInfo, AsyncZeroconf
 
-from app.core.autodarts.errors import ConnectionProblem
+from app.core.errors import ConnectionProblem
 from app.core.events import Event, EventBus
 from app.core.integrations.sources import PlaySources, event_allowed, integration_view
 from app.core.storage import write_private_json

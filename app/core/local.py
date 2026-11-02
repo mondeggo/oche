@@ -14,9 +14,9 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_valida
 from websockets.exceptions import ConnectionClosed
 
 from app.core import bots
-from app.core.autodarts.detection import BOARD_URL
-from app.core.autodarts.errors import ConnectionProblem
-from app.core.autodarts.local import LocalBoardConnection
+from app.core.board.detection import BOARD_URL
+from app.core.board.local import LocalBoardConnection
+from app.core.errors import ConnectionProblem
 from app.core.events import Coords, Dart, EventBus, EventNormalizer, MatchFrame, Player, Segment, Turn
 from app.core.storage import write_private_json
 

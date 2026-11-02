@@ -1,8 +1,8 @@
 import asyncio
 import json
-from types import SimpleNamespace
-from threading import BoundedSemaphore
 import unittest
+from threading import BoundedSemaphore
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from fastapi.testclient import TestClient

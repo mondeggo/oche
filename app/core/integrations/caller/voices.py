@@ -14,7 +14,7 @@ from pathlib import Path
 
 import httpx
 
-from app.core.autodarts.errors import ConnectionProblem
+from app.core.errors import ConnectionProblem
 from app.core.storage import write_private_json
 
 CATALOGUE = json.loads(Path(__file__).with_name("voices.json").read_text(encoding="utf-8"))

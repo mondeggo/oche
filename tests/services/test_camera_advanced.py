@@ -1,18 +1,19 @@
 import asyncio
 import copy
 import json
-from pathlib import Path
 import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 import cv2
 import numpy as np
 from fastapi.testclient import TestClient
 
+from app.core.integrations.autodarts import camera_controls as controls
+from app.core.integrations.autodarts import camera_vision as vision
+from app.core.integrations.autodarts import cameras
 from app.main import app
-from app.core.integrations.autodarts import camera_controls as controls, camera_vision as vision, cameras
-
 
 RAW = '''
                      brightness 0x00980900 (int)    : min=-64 max=64 step=2 default=0 value=2

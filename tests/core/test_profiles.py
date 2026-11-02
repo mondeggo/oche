@@ -5,12 +5,12 @@ import httpx
 import pytest
 from fastapi.testclient import TestClient
 
-from app.core.autodarts.errors import ConnectionProblem
+from app.core.errors import ConnectionProblem
 from app.core.integrations.caller.service import CallerConfig
 from app.core.integrations.caller.voices import VOICES, VoiceLibrary
-from app.core.integrations.wled.service import WLED, Device, LightingProfile, Target, WLEDConfig
-from app.main import create_app
+from app.core.integrations.wled.service import Device, Target, WLEDConfig
 from app.core.runtime import Runtime
+from app.main import create_app
 
 
 @pytest.fixture

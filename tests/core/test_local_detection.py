@@ -4,9 +4,9 @@ import httpx
 import pytest
 from fastapi.testclient import TestClient
 
-from app.core.autodarts.detection import LocalDetection
-from app.main import create_app
+from app.core.board.detection import LocalDetection
 from app.core.integrations.autodarts import process as autodarts
+from app.main import create_app
 
 
 @pytest.mark.parametrize("status", ["Throw", "Takeout", "Calibrating", "Starting", "Stopped"])

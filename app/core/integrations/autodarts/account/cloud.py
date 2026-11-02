@@ -12,9 +12,10 @@ import httpx
 from websockets.asyncio.client import connect
 from websockets.exceptions import InvalidStatus
 
-from app.core.autodarts.auth import DeviceAuth, safe_error
-from app.core.autodarts.errors import ConnectionProblem, LoginRequired
+from app.core.errors import ConnectionProblem, safe_error
 from app.core.events import EventBus, EventNormalizer, event_name, parse_cloud_message, redact
+from app.core.integrations.autodarts.account.auth import DeviceAuth
+from app.core.integrations.autodarts.account.errors import LoginRequired
 
 
 def board_online(board: dict | None) -> bool | None:

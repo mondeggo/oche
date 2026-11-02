@@ -12,7 +12,7 @@ import pytest
 from conftest import BOARD_ID, MATCH_ID
 from fastapi.testclient import TestClient
 
-from app.core.autodarts.errors import ConnectionProblem
+from app.core.errors import ConnectionProblem
 from app.core.events import Event, EventBus, EventNormalizer
 from app.core.integrations.caller.service import (
     GAME_MODES,

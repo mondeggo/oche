@@ -1,5 +1,6 @@
-class ConnectionProblem(Exception):
-    """Safe, actionable message. Never include upstream bodies or credentials."""
+"""Autodarts sign-in errors, each with a message that is safe to show."""
+
+from app.core.errors import ConnectionProblem
 
 
 class LoginRequired(ConnectionProblem):

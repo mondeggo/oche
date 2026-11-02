@@ -10,8 +10,8 @@ import httpx
 from websockets.asyncio.client import connect
 from websockets.exceptions import InvalidHandshake
 
-from app.core.autodarts.detection import BOARD_URL
-from app.core.autodarts.errors import ConnectionProblem
+from app.core.board.detection import BOARD_URL
+from app.core.errors import ConnectionProblem
 
 
 class LocalBoardConnection:

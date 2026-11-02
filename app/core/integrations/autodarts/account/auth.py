@@ -1,5 +1,4 @@
 import asyncio
-import json
 import time
 from pathlib import Path
 from typing import Any
@@ -7,7 +6,8 @@ from typing import Any
 import httpx
 from pydantic import BaseModel, Field, SecretStr, ValidationError
 
-from app.core.autodarts.errors import ConnectionProblem, LoginRequired, OAuthProblem
+from app.core.errors import ConnectionProblem, safe_error
+from app.core.integrations.autodarts.account.errors import LoginRequired, OAuthProblem
 from app.core.storage import remove_private_file, write_private_json
 
 
@@ -203,15 +203,3 @@ class DeviceAuth:
             remove_private_file(self.path)
             self.state = "disconnected" if self.client_id else "unconfigured"
             self.error = None
-
-
-def safe_error(exc: BaseException) -> str:
-    if isinstance(exc, ConnectionProblem):
-        return str(exc)
-    if isinstance(exc, OSError):
-        return "Network connection failed. Check the network and configured address."
-    if isinstance(exc, httpx.HTTPError):
-        return "HTTP connection failed. Check the network and configured address."
-    if isinstance(exc, json.JSONDecodeError):
-        return "Invalid JSON response."
-    return "Connection interrupted. Retrying automatically."

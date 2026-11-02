@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
 from app.core import bots
-from app.core.autodarts.errors import ConnectionProblem
+from app.core.errors import ConnectionProblem
 from app.core.events import EventBus
 from app.core.integrations.caller.service import CallerConfig, call_parts
 from app.core.local import LocalDart, LocalGames, LocalOptions
@@ -286,7 +286,7 @@ def test_invalid_or_unsupported_detector_never_scores(detected, payload):
 
 
 async def test_polling_only_calls_loopback_and_stops_cleanly(tmp_path, monkeypatch):
-    monkeypatch.setattr("app.core.autodarts.local.connect", AsyncMock(side_effect=OSError))
+    monkeypatch.setattr("app.core.board.local.connect", AsyncMock(side_effect=OSError))
     requests = []
     received = asyncio.Event()
 
@@ -308,7 +308,7 @@ async def test_polling_only_calls_loopback_and_stops_cleanly(tmp_path, monkeypat
 
 
 async def test_inflight_detector_response_cannot_score_the_next_player(tmp_path, monkeypatch):
-    monkeypatch.setattr("app.core.autodarts.local.connect", AsyncMock(side_effect=OSError))
+    monkeypatch.setattr("app.core.board.local.connect", AsyncMock(side_effect=OSError))
     received, release, processed = asyncio.Event(), asyncio.Event(), asyncio.Event()
 
     async def respond(request):

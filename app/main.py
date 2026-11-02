@@ -18,9 +18,8 @@ from app.core.api.ui import UISettings
 from app.core.api.ui import router as ui_router
 from app.core.api.websocket import router as events_router
 from app.core.api.wled2 import router as lighting_router
-from app.core.autodarts.auth import safe_error
-from app.core.autodarts.errors import ConnectionProblem
 from app.core.config import Settings
+from app.core.errors import ConnectionProblem, safe_error
 from app.core.integrations import registry
 from app.core.integrations.wled.simulator import DEMO_URL
 from app.core.integrations.wled.simulator import create_app as create_demo_app

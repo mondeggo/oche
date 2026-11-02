@@ -12,7 +12,7 @@ from typing import Literal
 import httpx
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from app.core.autodarts.errors import ConnectionProblem
+from app.core.errors import ConnectionProblem
 from app.core.events import Event, EventBus
 from app.core.integrations.caller.voices import VoiceLibrary
 from app.core.integrations.sources import PlaySources, event_allowed, source_allowed
