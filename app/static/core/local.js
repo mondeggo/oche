@@ -139,14 +139,16 @@ function prefill(value) {
   addPlayer();
   setRadio("score", options.starting_score);
   setRadio("out", options.double_out ? "double" : "straight");
-  setRadio("input", options.input);
   setRadio("speed", options.bot_speed);
   setRadio("board", options.show_board ? "show" : "hide");
   renderInput();
 }
 
+// Play's vision engine comes from the integrations; any engine that scores speaks the
+// Autodarts-compatible board API, so the game reads it as board input.
+const engineChoice = () => radio("engine") || "manual";
 function renderInput() {
-  $("local-detection").hidden = radio("input") !== "autodarts";
+  $("local-detection").hidden = engineChoice() === "manual";
 }
 
 /* Detection */
@@ -402,7 +404,7 @@ function setupOptions() {
     }),
     starting_score: Number(radio("score")),
     double_out: radio("out") === "double",
-    input: radio("input"),
+    input: engineChoice() === "manual" ? "manual" : "autodarts",
     bot_speed: radio("speed"),
     show_board: radio("board") === "show",
     random_names: randomNames(),
@@ -423,7 +425,22 @@ $("local-bot-auto-open").addEventListener("click", () => {
   $("local-bot-auto").querySelector("button[value=auto-medium]").focus();
 });
 $("local-history-open").addEventListener("click", () => $("local-history-dialog").showModal());
-document.querySelectorAll('input[name="input"]').forEach(input => input.addEventListener("change", renderInput));
+let engineSaved = engineChoice();
+document.querySelectorAll('input[name="engine"]').forEach(input => input.addEventListener("change", async () => {
+  const error = $("game-engine-error");
+  error.hidden = true;
+  renderInput();
+  try {
+    // Choosing an engine starts it and stops the other one, which shares the cameras.
+    await api(`/api/engines/${engineChoice()}/use`, "POST");
+    engineSaved = engineChoice();
+  } catch (cause) {
+    setRadio("engine", engineSaved);
+    renderInput();
+    error.textContent = cause.message;
+    error.hidden = false;
+  }
+}));
 document.querySelectorAll('input[name="names"]').forEach(input => input.addEventListener("change", renameGenerated));
 $("local-setup").addEventListener("submit", event => {
   event.preventDefault();

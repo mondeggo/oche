@@ -1,8 +1,10 @@
-"""Autodarts and OcheCore share the cameras, so only the active engine runs."""
+"""Integrations register engines; Play chooses one, and only one reads the cameras."""
 
+import dataclasses
 import hashlib
 import io
 import json
+import re
 import tarfile
 from unittest.mock import patch
 
@@ -11,12 +13,13 @@ from fastapi.testclient import TestClient
 
 import oche_runtime as store
 from app import config as settings
-from app.services import engines
-from app.services.updates import UpdateManager
-from app.services.upstream_releases import discover_ochecore
+from app.core.config import Settings
+from app.core.integrations import registry
+from app.core.integrations.ochecore.release import discover_ochecore
+from app.services import engines, updates
 
 
-class FakeEngine:
+class FakeProcess:
     def __init__(self, installed=True):
         self.installed, self.running = installed, False
 
@@ -31,58 +34,104 @@ class FakeEngine:
         self.running = False
 
 
+def fake(name, scores=True, enabled=True):
+    return registry.Integration(
+        id=name, name=name.title(), description="", enabled_by_default=enabled,
+        process=FakeProcess(), port=1, engine=registry.Engine(label=name.title(), scores=scores, note="Not yet."),
+    )
+
+
 @pytest.fixture
-def fakes(tmp_path, monkeypatch):
+def engines_registry(tmp_path, monkeypatch):
     monkeypatch.setattr(settings, "CONFIG_FILE", tmp_path / "settings.json")
-    fakes = {"autodarts": FakeEngine(), "ochecore": FakeEngine()}
-    monkeypatch.setattr(engines, "ENGINES", fakes)
+    fakes = {"first": fake("first"), "second": fake("second", scores=False, enabled=False)}
+    monkeypatch.setattr(registry, "REGISTRY", fakes)
+    monkeypatch.setattr(registry, "load", lambda: fakes)
     return fakes
 
 
-def test_autodarts_is_the_default_engine(fakes):
-    assert engines.active() == "autodarts"
-    assert [e["name"] for e in engines.status()["engines"] if e["active"]] == ["autodarts"]
+def test_the_first_engine_that_scores_is_chosen_by_default(engines_registry):
+    assert engines.chosen() == "first"
+    registry.set_enabled("first", False)
+    assert engines.chosen() == engines.MANUAL
 
 
-def test_using_an_engine_stops_the_other_and_is_saved(fakes):
-    fakes["autodarts"].running = True
-    engines.use("ochecore")
-    assert fakes["ochecore"].running and not fakes["autodarts"].running
-    assert json.loads(settings.CONFIG_FILE.read_text())["detection_engine"] == "ochecore"
-    engines.use("autodarts")
-    assert fakes["autodarts"].running and not fakes["ochecore"].running
+def test_choosing_an_engine_stops_the_other_and_is_saved(engines_registry):
+    registry.set_enabled("second", True)
+    first, second = engines_registry["first"].process, engines_registry["second"].process
+    first.running = True
+    engines.use("second")
+    assert second.running and not first.running
+    assert json.loads(settings.CONFIG_FILE.read_text())["detection_engine"] == "second"
+    # Manual darts stop nothing: Play on Autodarts may still need its engine.
+    engines.use("first")
+    engines.use(engines.MANUAL)
+    assert first.running and engines.chosen() == engines.MANUAL
 
 
-def test_a_missing_engine_can_be_chosen_but_does_not_start(fakes):
-    fakes["ochecore"].installed = False
-    fakes["autodarts"].running = True
-    engines.use("ochecore")
-    assert engines.active() == "ochecore"
-    assert not fakes["ochecore"].running and not fakes["autodarts"].running
+def test_switched_off_engines_cannot_be_chosen_and_give_up_the_choice(engines_registry):
+    with pytest.raises(ValueError):
+        engines.use("second")
+    engines.use("first")
+    registry.set_enabled("first", False)
+    engines.switch_off("first")
+    assert not engines_registry["first"].process.running
+    assert "detection_engine" not in json.loads(settings.CONFIG_FILE.read_text())
 
 
 @pytest.mark.parametrize("autostart", [True, False])
-def test_boot_starts_only_the_active_engine(fakes, autostart):
+def test_boot_starts_only_the_chosen_engine(engines_registry, autostart):
+    registry.set_enabled("second", True)
     config = settings.load_config()
-    config.update(detection_engine="ochecore", autostart_autodarts=autostart)
+    config.update(detection_engine="second", autostart_autodarts=autostart)
     settings.save_config(config)
     engines.start_on_boot()
-    assert fakes["ochecore"].running is autostart and not fakes["autodarts"].running
+    assert engines_registry["second"].process.running is autostart
+    assert not engines_registry["first"].process.running
 
 
-def test_engine_api_switches_and_rejects_unknown_names(fakes, tmp_path):
-    from app.core.config import Settings
+def test_switches_persist_per_integration(engines_registry):
+    assert registry.enabled("first") and not registry.enabled("second")
+    registry.set_enabled("second", True)
+    assert registry.enabled("second")
+    assert json.loads(settings.CONFIG_FILE.read_text())["integrations"]["second"] == {"enabled": True}
+    with pytest.raises(ValueError):
+        registry.set_enabled("unknown", True)
+
+
+def test_updates_list_only_switched_on_integrations(tmp_path, monkeypatch):
+    monkeypatch.setattr(settings, "CONFIG_FILE", tmp_path / "settings.json")
+    assert updates.module_names() == ("oche", "autodarts")
+    registry.set_enabled("ochecore", True)
+    assert updates.module_names() == ("oche", "autodarts", "ochecore")
+    registry.set_enabled("autodarts", False)
+    assert updates.module_names() == ("oche", "ochecore")
+
+
+def app_settings(tmp_path):
+    return Settings(_env_file=None, data_dir=tmp_path, client_id="", board_id="", ui_theme="dark")
+
+
+def test_switching_integrations_changes_the_sidebar_and_play(tmp_path, monkeypatch):
     from app.main import create_app
 
-    app_settings = Settings(_env_file=None, data_dir=tmp_path, client_id="", board_id="", ui_theme="dark")
-    with TestClient(create_app(app_settings)) as client:
-        assert client.get("/api/engines").json()["active"] == "autodarts"
-        response = client.post("/api/engines/ochecore/use", json={})
-        assert response.status_code == 200 and response.json()["active"] == "ochecore"
-        assert fakes["ochecore"].running
-        assert client.post("/api/engines/ochecore/stop", json={}).json()["active"] == "ochecore"
-        assert not fakes["ochecore"].running
-        assert client.post("/api/engines/glow/use", json={}).status_code == 404
+    monkeypatch.setattr(settings, "CONFIG_FILE", tmp_path / "settings.json")
+    with TestClient(create_app(app_settings(tmp_path))) as client:
+        page = client.get("/local").text
+        # Play comes first; the Autodarts integration adds its button below it.
+        assert page.index('href="/local"') < page.index('id="nav-link-play"')
+        assert not re.search(r'id="nav-link-play"[^>]*\shidden', page)
+        assert re.search(r'id="nav-link-ochecore"[^>]*\shidden', page)
+        assert re.search(r'value="ochecore"[^>]*disabled', page)
+        assert client.put("/api/integrations/autodarts", json={"enabled": False}).status_code == 200
+        page = client.get("/local").text
+        assert re.search(r'id="nav-link-play"[^>]*\shidden', page)
+        assert re.search(r'id="nav-link-autodarts"[^>]*\shidden', page)
+        assert re.search(r'value="autodarts"[^>]*disabled', page) and 'value="manual" checked' in page
+        assert "Only manual darts are available" in page
+        assert client.put("/api/integrations/glow", json={"enabled": True}).status_code == 404
+        assert client.post("/api/engines/autodarts/use", json={}).status_code == 404
+        assert client.post("/api/engines/manual/use", json={}).json()["active"] == "manual"
 
 
 def ochecore_feed(version="0.1.5", architecture="amd64", **changes):
@@ -145,9 +194,22 @@ def test_ochecore_installs_into_the_module_store(tmp_path, monkeypatch):
         destination.write_bytes(blob)
         return digest
 
+    ochecore = registry.get("ochecore")
+    offline = dataclasses.replace(ochecore, release=dataclasses.replace(ochecore.release, discover=lambda *_: release))
     with patch("app.services.updates.download", side_effect=download), \
-            patch.dict("app.services.updates.UPSTREAM", {"ochecore": lambda *_: release}):
-        assert UpdateManager().install_missing("ochecore") == "0.1.5"
+            patch.dict(registry.REGISTRY, {"ochecore": offline}):
+        assert updates.UpdateManager().install_missing("ochecore") == "0.1.5"
     installed = store.location("ochecore", "unused")
     assert (installed / "oche-core").is_file() and (installed / "LICENSE").is_file()
     assert (installed / "VERSION").read_text() == "0.1.5"
+
+
+def test_settings_accept_only_known_integration_sidebar_keys(tmp_path, monkeypatch):
+    from app.main import create_app
+
+    monkeypatch.setattr(settings, "CONFIG_FILE", tmp_path / "settings.json")
+    with TestClient(create_app(app_settings(tmp_path))) as client:
+        assert client.post("/config/data", json={"autohide_navbar_on_ochecore": True}).status_code == 200
+        assert client.post("/config/data", json={"show_page_cameras": False}).status_code == 200
+        assert client.post("/config/data", json={"autohide_navbar_on_glow": True}).status_code == 422
+        assert client.post("/config/data", json={"show_page_cameras": "no"}).status_code == 422

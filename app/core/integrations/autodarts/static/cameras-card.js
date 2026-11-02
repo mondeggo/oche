@@ -1,5 +1,5 @@
-import { tr } from "../js/i18n.mjs";
-import { $, api, poll } from "./client.mjs";
+import { tr } from "/static/js/i18n.mjs";
+import { $, api, poll } from "/static/core/client.mjs";
 
 // This switch shares Settings' visibility preference; detection stays independent.
 const toggle = $("cameras-toggle");

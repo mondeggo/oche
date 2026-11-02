@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from app.services.autodarts_terminal import AutodartsTerminal
+from app.core.integrations.autodarts.terminal import AutodartsTerminal
 
 
 @unittest.skipUnless(os.name == 'posix', 'PTYs require Linux/macOS')
@@ -23,7 +23,7 @@ while True:
     print('SIZE=' + repr(termios.tcgetwinsize(0)) + ' INPUT=' + repr(data), flush=True)
 ''')
             client.chmod(0o700)
-            with patch('app.services.autodarts_terminal.AUTODARTS_BIN', client):
+            with patch('app.core.integrations.autodarts.terminal.AUTODARTS_BIN', client):
                 terminal = AutodartsTerminal()
             try:
                 output = await asyncio.wait_for(terminal.read(), timeout=3)

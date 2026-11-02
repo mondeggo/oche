@@ -9,7 +9,7 @@ from unittest.mock import patch
 import aiohttp
 from aiohttp import web
 
-from app.services import cameras
+from app.core.integrations.autodarts import cameras
 
 
 class CameraPortTests(unittest.TestCase):

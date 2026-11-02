@@ -20,8 +20,12 @@ class OriginTests(unittest.TestCase):
     def test_browser_cannot_clear_logs_from_another_origin(self):
         client = TestClient(app)
         self.addCleanup(client.close)
-        for service in ('autodarts',):
-            with patch('app.routers.' + service + '.' + service + '.clear_logs') as clear:
+        targets = {
+            'autodarts': 'app.core.integrations.autodarts.routes.autodarts.clear_logs',
+            'ochecore': 'app.core.integrations.ochecore.routes.process.clear_logs',
+        }
+        for service, target in targets.items():
+            with patch(target) as clear:
                 for headers in ({'origin': 'https://other.example'}, {'origin': 'null'},
                                 {'sec-fetch-site': 'cross-site'}, {'origin': 'http://['}):
                     response = client.post('/' + service + '/logs/clear', headers=headers)

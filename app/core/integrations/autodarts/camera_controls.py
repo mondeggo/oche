@@ -15,8 +15,8 @@ import time
 import uuid
 
 from app import config
-from app.services import cameras, camera_vision
-from app.services.cameras import CameraError
+from app.core.integrations.autodarts import camera_vision, cameras
+from app.core.integrations.autodarts.cameras import CameraError
 
 ALLOWED = frozenset('brightness contrast saturation hue gamma gain sharpness backlight_compensation '
                     'white_balance_temperature_auto white_balance_automatic white_balance_temperature '

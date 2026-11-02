@@ -30,6 +30,9 @@ def check() -> list[str]:
         *ROOT.glob("app/templates/*.html"),
         *ROOT.glob("app/static/js/*"),
         *ROOT.glob("app/static/core/*"),
+        # Integrations keep their own pages and scripts.
+        *ROOT.glob("app/core/integrations/*/templates/*.html"),
+        *ROOT.glob("app/core/integrations/*/static/*"),
     ]
     for path in paths:
         if path.suffix not in {".html", ".js", ".mjs"}:

@@ -4,11 +4,6 @@
   const check = document.getElementById('check-updates');
   const updateAll = document.getElementById('update-all');
   const installationNotice = document.getElementById('update-installation-notice');
-  const labels = {
-    autodarts: ['Autodarts', tr("Board detection & calibration")],
-    oche: ['Oche', tr("Application, caller & lighting")],
-    ochecore: ['OcheCore', tr("Offline board detection")]
-  };
   const needsUpdate = item => item.has_update ?? Boolean(item.available && item.available !== (item.active || item.bundled_revision || item.bundled));
   const rows = new Map();
   let submitting = false;
@@ -56,7 +51,7 @@
     let row = rows.get(item.name);
     if (!row) {
       const article = element(modules, 'article', '', 'update-row');
-      article.setAttribute('aria-label', labels[item.name]?.[0] || item.name);
+      article.setAttribute('aria-label', item.label || item.name);
       row = {article, signature: ''};
       rows.set(item.name, row);
     }
@@ -68,7 +63,9 @@
     row.article.replaceChildren();
     const article = row.article;
     const service = element(article, 'div', '', 'update-service');
-    const [name, description] = labels[item.name] || [item.name, ''];
+    // Integrations name and describe their own rows.
+    const name = item.label || item.name;
+    const description = item.description ? tr(item.description) : '';
     element(service, 'h2', name);
     element(service, 'p', description);
     const active = item.active || item.bundled_revision || item.bundled;

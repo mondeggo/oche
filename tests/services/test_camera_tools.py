@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, patch
 from fastapi.testclient import TestClient
 
 from app.main import app
-from app.services import camera_modes, cameras
+from app.core.integrations.autodarts import camera_modes, cameras
 
 
 class CameraModesTests(unittest.TestCase):

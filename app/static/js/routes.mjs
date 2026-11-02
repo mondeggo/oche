@@ -18,7 +18,8 @@ export function canonicalUrl(href, base) {
   }
   return url;
 }
-export const persistent = path => isHome(path) || path === "/supervisor" || path === "/integrations/cameras";
+// Integration pages keep their setup terminals and camera previews while hidden.
+export const persistent = path => isHome(path) || path === "/supervisor" || path.startsWith("/integrations/");
 export const viewKey = url => isHome(url.pathname) ? "home"
   : url.pathname === "/supervisor" ? "/supervisor?service=" +
     (["system", "updates"].includes(url.searchParams.get("service")) ? url.searchParams.get("service") : "autodarts")

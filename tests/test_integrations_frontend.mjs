@@ -276,7 +276,7 @@ for (const name of ["wled", "caller"]) {
 test("camera activation persists sidebar visibility and a rejected save preserves its state", async () => {
   let saved = true, reject = false;
   const changes = [];
-  const { context, $ } = scriptContext("cameras.js", async (path, method, body) => {
+  const { context, $ } = scriptContext("../../core/integrations/autodarts/static/cameras-card.js", async (path, method, body) => {
     assert.equal(path, "/config/data");
     if (method === "POST") {
       if (reject) throw new Error("Save failed");
@@ -306,7 +306,7 @@ test("camera activation persists sidebar visibility and a rejected save preserve
 
 test("a delayed camera visibility poll cannot overwrite a newer activation change", async () => {
   let release, delayed = false;
-  const { context, $ } = scriptContext("cameras.js", async (path, method) => {
+  const { context, $ } = scriptContext("../../core/integrations/autodarts/static/cameras-card.js", async (path, method) => {
     if (method === "POST") return { show_page_cameras: false };
     if (delayed) return new Promise(resolve => { release = resolve; });
     return { show_page_cameras: true };

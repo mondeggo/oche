@@ -58,7 +58,7 @@ def test_workspace_assets_and_ids_are_valid_and_core_has_no_second_application(a
 
 def test_sidebar_reaches_every_page_and_marks_the_current_one(application, tmp_path):
     pages = {
-        "/supervisor": "Autodarts",
+        "/integrations/autodarts/board": "Autodarts",
         "/integrations/cameras": "Camera Enhancer",
         "/supervisor?service=system": "Status",
         "/supervisor?service=updates": "Updates",
@@ -82,9 +82,10 @@ def test_sidebar_reaches_every_page_and_marks_the_current_one(application, tmp_p
             assert 'href="/integrations"' in sidebar
             assert 'id="sidebar-board"' not in sidebar
             integrations = sidebar[sidebar.index('href="/integrations"') : sidebar.index('href="/profiles"')]
-            assert 'id="nav-link-cameras"' in integrations
+            # Integrations add their pages under Integrations, not System.
+            assert 'id="nav-link-cameras"' in integrations and 'id="nav-link-autodarts"' in integrations
             system = sidebar[sidebar.index('id="sidebar-system"') :]
-            assert 'id="nav-link-autodarts"' in system
+            assert 'id="nav-link-autodarts"' not in system
             assert '<option value="default" selected>Default</option>' in sidebar
             for status in ("autodarts", "cloud"):
                 assert f'data-health="{status}"' in sidebar
@@ -93,10 +94,10 @@ def test_sidebar_reaches_every_page_and_marks_the_current_one(application, tmp_p
         assert client.post("/config/data", json={"autohide_navbar_on_cameras": True}).status_code == 200
         collapsed = {
             path: 'data-sidebar-default="1"' in client.get(path).text
-            for path in ("/supervisor", "/integrations/cameras", "/supervisor?service=system")
+            for path in ("/integrations/autodarts/board", "/integrations/cameras", "/supervisor?service=system")
         }
         assert collapsed == {
-            "/supervisor": False,
+            "/integrations/autodarts/board": False,
             "/integrations/cameras": True,
             "/supervisor?service=system": False,
         }
@@ -106,9 +107,6 @@ def test_sidebar_reaches_every_page_and_marks_the_current_one(application, tmp_p
         assert re.search(r'id="nav-link-cameras"[^>]*\shidden', page)
         assert 'href="/integrations"' in page
         assert not re.search(r'id="sidebar-system"[^>]*\shidden', page)
-        assert client.post("/config/data", json={"show_page_autodarts": False}).status_code == 200
-        page = client.get("/config").text
-        assert not re.search(r'id="sidebar-system"[^>]*\shidden', page)
         assert (
             client.post(
                 "/config/data", json={"show_page_system": False, "show_page_updates": False}
@@ -116,8 +114,6 @@ def test_sidebar_reaches_every_page_and_marks_the_current_one(application, tmp_p
             == 200
         )
         assert re.search(r'id="sidebar-system"[^>]*\shidden', client.get("/config").text)
-        assert client.post("/config/data", json={"show_page_autodarts": True}).status_code == 200
-        assert not re.search(r'id="sidebar-system"[^>]*\shidden', client.get("/config").text)
         moved = client.get("/autodarts/cameras", follow_redirects=False)
         assert moved.status_code == 307
         assert moved.headers["location"] == "/integrations/cameras"
@@ -186,7 +182,6 @@ def test_restart_requires_launcher_and_serializes_with_updates(application, tmp_
             assert [m["name"] for m in client.get("/updates/status").json()["modules"]] == [
                 "oche",
                 "autodarts",
-                "ochecore",
             ]
 
 

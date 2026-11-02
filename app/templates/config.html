@@ -34,7 +34,7 @@
     </div>
   </header>
   <nav class="section-nav" aria-label="{{ _('Settings sections') }}">
-    <a href="#sidebar">{{ _("Sidebar") }}</a><a href="#autodarts">Autodarts</a><a href="#local-https">HTTPS</a><a href="#panels">{{ _("Panels") }}</a><a href="#application">{{ _("Application") }}</a>
+    <a href="#sidebar">{{ _("Sidebar") }}</a><a href="#engine">{{ _("Vision engine") }}</a><a href="#local-https">HTTPS</a><a href="#panels">{{ _("Panels") }}</a><a href="#application">{{ _("Application") }}</a>
   </nav>
   <section class="card" id="sidebar">
     <h2>{{ _("Sidebar") }}</h2>
@@ -42,17 +42,23 @@
     <div class="sidebar-matrix" role="table" aria-label="{{ _('Sidebar pages') }}">
       <div class="matrix-row matrix-head" role="row"><span role="columnheader">{{ _("Page") }}</span><span role="columnheader">{{ _("Show") }}</span><span role="columnheader">{{ _("Start collapsed") }}</span></div>
       {{ page_row('Home', 'Overview, integrations and profiles', None, 'autohide_navbar_on_home') }}
-      {{ page_row('Play on Autodarts', 'Autodarts Play inside Oche', 'show_play_in_navbar', 'autohide_navbar_on_play') }}
       {{ page_row('Panels', 'Your website panels', 'show_panels_in_navbar', 'autohide_navbar_on_panels') }}
-      {{ page_row('Camera Enhancer', 'Optional camera tools in Integrations', 'show_page_cameras', 'autohide_navbar_on_cameras') }}
-      {{ section_row('System', 'Autodarts, status and updates', 'system', ['autodarts', 'system', 'updates']) }}
-      {{ page_row('Autodarts', '', 'show_page_autodarts', 'autohide_navbar_on_autodarts', child=True, group='system') }}
+      {#- Switched-on integrations add rows for their buttons and pages. #}
+      {%- for entry in nav_registry if entry.enabled %}
+      {%- for button, shown in entry.play %}
+      {{ page_row(button.label, '', 'show_play_in_navbar', 'autohide_navbar_on_' ~ button.page) }}
+      {%- endfor %}
+      {%- for link, shown in entry.pages %}
+      {{ page_row(link.label, 'In Integrations', link.setting, 'autohide_navbar_on_' ~ link.page) }}
+      {%- endfor %}
+      {%- endfor %}
+      {{ section_row('System', 'Status and updates', 'system', ['system', 'updates']) }}
       {{ page_row('Status', '', 'show_page_system', 'autohide_navbar_on_system', child=True, group='system') }}
       {{ page_row('Updates', '', 'show_page_updates', 'autohide_navbar_on_updates', child=True, group='system') }}
     </div>
   </section>
-  <section class="card" id="autodarts">
-    <h2>Autodarts</h2>
+  <section class="card" id="engine">
+    <h2>{{ _("Vision engine") }}</h2>
     {{ toggle('autostart_autodarts','Start the detection engine on boot','Launch the active detection engine when Oche starts.') }}
   </section>
   <section class="card" id="local-https">

@@ -6,7 +6,7 @@ import os
 import signal
 import subprocess
 
-from app.services.autodarts import AUTODARTS_BIN
+from app.core.integrations.autodarts.process import AUTODARTS_BIN
 from app.services.module_paths import source
 
 

@@ -19,10 +19,10 @@ def test_all_catalogues_cover_marked_messages_and_preserve_placeholders():
 @pytest.mark.parametrize(
     "language,label",
     [
-        ("en", "Play on Oche"),
-        ("fr", "Jouer sur Oche"),
-        ("de", "Auf Oche spielen"),
-        ("pt-PT", "Jogar no Oche"),
+        ("en", ">Play<"),
+        ("fr", ">Jouer<"),
+        ("de", ">Spielen<"),
+        ("pt-PT", ">Jogar<"),
     ],
 )
 def test_language_selection_renders_local_pages(settings, language, label):

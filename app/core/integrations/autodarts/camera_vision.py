@@ -3,14 +3,14 @@
 import json
 import math
 
-from app.services import cameras
-from app.services.cameras import CameraError
+from app.core.integrations.autodarts import cameras
+from app.core.integrations.autodarts.cameras import CameraError
 
 
 def require_dependencies():
     try:
-        import cv2
-        import numpy
+        import cv2  # noqa: F401 - only checks that the image libraries are installed
+        import numpy  # noqa: F401
     except ImportError:
         raise CameraError(503, 'Image analysis needs the updated Oche dependencies. Rebuild the image before using targeting or calibration.') from None
 

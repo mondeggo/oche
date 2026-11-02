@@ -1,15 +1,13 @@
 """Oche's camera tools use only the managed Autodarts instance."""
 
-from fastapi import APIRouter, HTTPException
-from fastapi.responses import RedirectResponse, Response
 import asyncio
 from typing import Annotated, Literal
 
-from fastapi import Path
+from fastapi import APIRouter, HTTPException, Path
+from fastapi.responses import RedirectResponse, Response
 from pydantic import BaseModel, ConfigDict, Field, StrictInt, model_validator
 
-from app.services import cameras
-from app.services import camera_controls, camera_vision
+from app.core.integrations.autodarts import camera_controls, camera_vision, cameras
 
 router = APIRouter(prefix='/autodarts/cameras', tags=['cameras'])
 

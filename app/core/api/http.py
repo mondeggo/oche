@@ -20,7 +20,7 @@ from app.core.integrations.wled.service import (
     WLEDConfig,
 )
 from app.core.profiles import ProfileImport
-from app.services import autodarts as detection
+from app.services import engines
 
 
 class DeviceEnabled(BaseModel):
@@ -76,7 +76,8 @@ def create_router() -> APIRouter:
     @router.get("/api/status")
     async def status(request: Request):
         runtime = request.app.state.runtime
-        await runtime.detection.check(detection.get_status())
+        # Local readiness follows the vision engine Play uses.
+        await runtime.detection.check(engines.process_status())
         return runtime.status()
 
     @router.get("/api/config")

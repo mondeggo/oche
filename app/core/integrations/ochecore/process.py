@@ -68,3 +68,7 @@ def restart() -> bool:
 
 def logs(lines: int = 200) -> str:
     return _process.tail_log(lines)
+
+
+def clear_logs() -> None:
+    _process.clear_log()

@@ -11,7 +11,7 @@ import numpy as np
 from fastapi.testclient import TestClient
 
 from app.main import app
-from app.services import camera_controls as controls, camera_vision as vision, cameras
+from app.core.integrations.autodarts import camera_controls as controls, camera_vision as vision, cameras
 
 
 RAW = '''

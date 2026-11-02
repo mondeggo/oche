@@ -1,8 +1,10 @@
 """Read application versions without importing or executing module code."""
 
-from pathlib import Path
 import re
+import shutil
 import tomllib
+import uuid
+from pathlib import Path
 
 
 def is_revision(value):
@@ -37,3 +39,19 @@ def metadata(source, identifier=None):
         or (identifier if identifier and not is_revision(identifier) else None),
         "revision": read_text(source / "REVISION") or (identifier if is_revision(identifier) else None),
     }
+
+
+def flatten_single_folder(content, executable, label):
+    """Move the archive's single top folder up, so the executable sits in content."""
+    if (content / executable).is_file():
+        return
+    roots = list(content.iterdir())
+    if len(roots) != 1 or not roots[0].is_dir() or not (roots[0] / executable).is_file():
+        raise ValueError(f"{label} archive is missing its executable")
+    # The wrapper directory may itself have the executable's name. Move it
+    # aside before flattening.
+    root = content.parent / ("unpacked-" + uuid.uuid4().hex)
+    roots[0].rename(root)
+    for child in root.iterdir():
+        shutil.move(str(child), str(content / child.name))
+    root.rmdir()

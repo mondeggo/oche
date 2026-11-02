@@ -10,7 +10,7 @@
 {%- macro choice(name, value, label, checked=False) -%}
 <label class="game-choice"><input type="radio" name="{{ name }}" value="{{ value }}"{{ ' checked' if checked }}><span>{{ label }}</span></label>
 {%- endmacro -%}
-{% block title %}{{ _("Oche - Play on Oche") }}{% endblock %}
+{% block title %}{{ _("Oche - Play") }}{% endblock %}
 {% block content %}
 <link rel="stylesheet" href="/static/css/local.css">
 <div id="game-page" class="game-page" data-view="modes">
@@ -18,9 +18,35 @@
 
 <section id="game-modes" class="game-view" aria-labelledby="game-modes-title">
   <header class="page-head">
-    <div><p class="eyebrow">{{ _("Play on Oche") }}</p><h1 id="game-modes-title">{{ _("Choose a game") }}</h1>
+    <div><p class="eyebrow">{{ _("Play") }}</p><h1 id="game-modes-title">{{ _("Choose a game") }}</h1>
     <p class="subtitle">{{ _("Games run on this device. Manual darts work without internet.") }}</p></div>
   </header>
+  {#- Vision engines come from the integrations that register one; manual darts always work. #}
+  <section class="card game-engines" aria-labelledby="game-engine-title">
+    <h2 id="game-engine-title" class="game-group">{{ _("Choose vision engine") }}</h2>
+    <div class="game-choices game-engine-choices" role="radiogroup" aria-labelledby="game-engine-title">
+      {%- for engine in vision_engines.engines %}
+      {%- set usable = engine.enabled and engine.scores and engine.installed %}
+      {%- set reason = '' if usable else _('Switch it on in Integrations.') if not engine.enabled else _(engine.note) if not engine.scores else _('Install it from its page in Integrations.') %}
+      <label class="game-choice" title="{{ reason }}"><input type="radio" name="engine" value="{{ engine.name }}"{{ ' checked' if usable and engine.active }}{{ ' disabled' if not usable }}><span>{{ engine.label }}</span></label>
+      {%- endfor %}
+      {%- set usable_engines = vision_engines.engines | selectattr('enabled') | selectattr('scores') | selectattr('installed') | list %}
+      <label class="game-choice"><input type="radio" name="engine" value="manual"{{ ' checked' if not usable_engines | selectattr('active') | list }}><span>{{ _("Manual") }}</span></label>
+    </div>
+    <ul class="game-engine-notes hint">
+      {%- for engine in vision_engines.engines if engine.enabled and not (engine.scores and engine.installed) %}
+      <li>{{ engine.label }}: {{ _(engine.note) if not engine.scores else _("Install it from its page in Integrations.") }}</li>
+      {%- endfor %}
+      {%- if not usable_engines %}
+      <li>{{ _("Only manual darts are available. Switch on a vision engine in Integrations to score darts automatically.") }} <a href="/integrations">{{ _("Open Integrations →") }}</a></li>
+      {%- endif %}
+    </ul>
+    <p id="game-engine-error" class="error" role="alert" hidden></p>
+    <div id="local-detection" class="game-detection">
+      <div class="card-head"><span>{{ _("Local detection") }}</span><span id="local-setup-detector" class="badge">{{ _("Waiting") }}</span></div>
+      <p class="hint">{{ _("Starting a local game pauses cloud game events. Clear the board before starting detection.") }}</p>
+    </div>
+  </section>
   <h2 class="game-group">{{ _("Match") }}</h2>
   <div class="game-modes">
     {{ mode("X01", "x01", _("Match"), _("Race from 501 or 301 down to exactly zero"), True) }}
@@ -65,13 +91,6 @@
         <fieldset class="game-option"><legend>{{ _("Dartboard") }}</legend>
           <div class="game-choices">{{ choice("board", "show", _("Show"), True) }}{{ choice("board", "hide", _("Hide")) }}</div>
           <p class="hint">{{ _("Shows where each dart of the visit lands.") }}</p></fieldset>
-        <fieldset class="game-option"><legend>{{ _("Input") }}</legend>
-          <div class="game-choices">{{ choice("input", "autodarts", _("Local Autodarts"), True) }}{{ choice("input", "manual", _("Manual darts")) }}</div>
-          <p class="hint">{{ _("Starting a local game pauses cloud game events. Clear the board before starting detection.") }}</p>
-          <div id="local-detection" class="game-detection">
-            <div class="card-head"><span>{{ _("Local detection") }}</span><span id="local-setup-detector" class="badge">{{ _("Waiting") }}</span></div>
-            <p class="hint">{{ _("Automatic scoring requires a local Autodarts API that exposes scored throws. Offline scoring with the bundled v2 detector is not verified. Manual input works without internet.") }}</p>
-          </div></fieldset>
       </div>
     </div>
   </section>

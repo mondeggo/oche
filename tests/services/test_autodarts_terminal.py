@@ -37,10 +37,10 @@ class TerminalSocketTests(unittest.TestCase):
         self.addCleanup(self.client.close)
         self.terminal = FakeTerminal()
         for patcher in (
-            patch('app.routers.autodarts.os', SimpleNamespace(name='posix')),
-            patch('app.routers.autodarts.autodarts.get_status', return_value={'status': 'running'}),
-            patch('app.routers.autodarts.AutodartsTerminal', return_value=self.terminal),
-            patch('app.routers.autodarts.terminal_slots', BoundedSemaphore(4)),
+            patch('app.core.integrations.autodarts.routes.os', SimpleNamespace(name='posix')),
+            patch('app.core.integrations.autodarts.routes.autodarts.get_status', return_value={'status': 'running'}),
+            patch('app.core.integrations.autodarts.routes.AutodartsTerminal', return_value=self.terminal),
+            patch('app.core.integrations.autodarts.routes.terminal_slots', BoundedSemaphore(4)),
         ):
             patcher.start()
             self.addCleanup(patcher.stop)
@@ -64,8 +64,8 @@ class TerminalSocketTests(unittest.TestCase):
                     pass
 
     def test_session_limit_does_not_spawn_another_process(self):
-        with patch('app.routers.autodarts.terminal_slots', BoundedSemaphore(0)), \
-             patch('app.routers.autodarts.AutodartsTerminal') as terminal:
+        with patch('app.core.integrations.autodarts.routes.terminal_slots', BoundedSemaphore(0)), \
+             patch('app.core.integrations.autodarts.routes.AutodartsTerminal') as terminal:
             with self.connect() as socket:
                 self.assertIn('sessions are in use', socket.receive_json()['error'])
             terminal.assert_not_called()
@@ -79,15 +79,15 @@ class TerminalSocketTests(unittest.TestCase):
 
     def test_failed_start_releases_session_slot(self):
         slots = BoundedSemaphore(1)
-        with patch('app.routers.autodarts.terminal_slots', slots), \
-             patch('app.routers.autodarts.AutodartsTerminal', side_effect=OSError):
+        with patch('app.core.integrations.autodarts.routes.terminal_slots', slots), \
+             patch('app.core.integrations.autodarts.routes.AutodartsTerminal', side_effect=OSError):
             with self.connect() as socket:
                 self.assertIn('error', socket.receive_json())
         self.assertTrue(slots.acquire(blocking=False))
 
     def test_stopped_daemon_does_not_start_a_terminal(self):
-        with patch('app.routers.autodarts.autodarts.get_status', return_value={'status': 'stopped'}), \
-             patch('app.routers.autodarts.AutodartsTerminal') as terminal:
+        with patch('app.core.integrations.autodarts.routes.autodarts.get_status', return_value={'status': 'stopped'}), \
+             patch('app.core.integrations.autodarts.routes.AutodartsTerminal') as terminal:
             with self.connect() as socket:
                 self.assertIn('Start Autodarts', socket.receive_json()['error'])
             terminal.assert_not_called()
@@ -95,7 +95,7 @@ class TerminalSocketTests(unittest.TestCase):
     def test_invalid_input_closes_client(self):
         for message in ('not json', json.dumps({'type': 'resize', 'rows': -1, 'cols': 80})):
             self.terminal = FakeTerminal()
-            with self.subTest(message=message), patch('app.routers.autodarts.AutodartsTerminal', return_value=self.terminal):
+            with self.subTest(message=message), patch('app.core.integrations.autodarts.routes.AutodartsTerminal', return_value=self.terminal):
                 with self.connect() as socket:
                     # Consume queued startup output before checking the error.
                     socket.send_text(message)

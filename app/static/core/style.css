@@ -1376,3 +1376,5 @@
 .core-workspace .engine-card.is-active { box-shadow: var(--pop), inset 0 5px 0 var(--lime); }
 .core-workspace .engine-card .actions { margin-top: 14px; }
 .core-workspace .engine-card [data-engine-detail]:empty { display: none; }
+/* Cards an integration adds sit in the grid like the built-in ones. */
+.core-workspace .integration-slot { display: contents; }

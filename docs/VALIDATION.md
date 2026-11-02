@@ -500,3 +500,25 @@ Browser acceptance (headless Microsoft Edge, dark and light): Integrations shows
 the Detection engines section; the active card has the lime lip with
 "Active · Running", Stop and "Open OcheCore ↗", and the other offers "Use this
 engine".
+
+## Integration registry, Play and vision engines (2026-11-02)
+
+Automated: registered integrations load in a fixed order; switches persist per
+integration; Updates list only switched-on integrations; the chosen engine falls
+back to the first one that scores, else manual; choosing one stops the others, manual
+stops nothing, and a switched-off integration gives up the choice and stops; boot
+starts only the chosen engine; Settings accept only the sidebar keys integrations
+register. The Python suite also passed in a Linux Python 3.12 container.
+
+Docker acceptance (image built locally, fresh named volume): Autodarts installed
+through `install_module` and ran as the chosen engine. Integration pages, Play on
+Autodarts, the setup terminal and the integrations' static files answered HTTP 200.
+Play offered Autodarts, OcheCore (disabled) and Manual. Switching OcheCore on added
+it to Updates; switching Autodarts off stopped it, removed it from Updates, hid Play
+on Autodarts and left only manual darts; switching it back on showed it again
+without starting it.
+
+Browser acceptance (headless Microsoft Edge, dark and light): Play first with Play
+on Autodarts below it, the vision engine choice above the games, the Vision engines
+cards with switches, and the OcheCore page. Not verified: the Autodarts setup
+terminal, Camera Enhancer and both engines on the board's cameras.

@@ -4,15 +4,15 @@ export function autodartsHealth(process) {
   if (!process) return ["bad", tr("Status unavailable"), tr("Cannot read Autodarts status. Check that the Oche host is reachable.")];
   if (process.status === "running") return ["good", tr("Running"), tr("The local Autodarts process is running.")];
   if (process.status === "nofile") return ["bad", tr("Not installed"), tr(process.unavailable_reason) || tr("Autodarts is not installed. Install it from System → Updates, or run ./oche.sh autodarts in the Oche folder.")];
-  if (process.status === "stopped") return ["bad", tr("Stopped"), tr("The Autodarts process is stopped. Start it under System → Autodarts; check its logs if it stops again.")];
-  return ["bad", tr("Status unknown"), tr("Autodarts has not reported a recognized process state. Check System → Autodarts.")];
+  if (process.status === "stopped") return ["bad", tr("Stopped"), tr("The Autodarts process is stopped. Start it under Integrations → Autodarts; check its logs if it stops again.")];
+  return ["bad", tr("Status unknown"), tr("Autodarts has not reported a recognized process state. Check Integrations → Autodarts.")];
 }
 
 export function localHealth(detector) {
   const tone = detector?.detecting ? "good"
     : ["starting", "calibrating", "waiting"].includes(detector?.state) ? "warn" : "bad";
   return [tone, detector?.detecting ? tr("Detecting") : tr("Not detecting"),
-    tr(detector?.reason) || tr("Cannot read local detector readiness. Check System → Autodarts.")];
+    tr(detector?.reason) || tr("Cannot read local detector readiness. Check Integrations → Autodarts.")];
 }
 
 export function cloudHealth(status) {

@@ -1,5 +1,6 @@
 """Release validation must finish before the launcher switches the application."""
 
+import dataclasses
 import hashlib
 import io
 import tarfile
@@ -8,6 +9,7 @@ from unittest.mock import patch
 import pytest
 
 import oche_runtime as store
+from app.core.integrations import registry
 from app.services.updates import UpdateManager, extract
 
 
@@ -104,6 +106,13 @@ def test_archive_cannot_escape_its_staging_directory(tmp_path, name, kind):
         extract(path, tmp_path / "content")
 
 
+def offline_autodarts(entry):
+    """The Autodarts integration, with release discovery answered by the test."""
+    autodarts = registry.get("autodarts")
+    release = dataclasses.replace(autodarts.release, discover=lambda *_: entry)
+    return patch.dict(registry.REGISTRY, {"autodarts": dataclasses.replace(autodarts, release=release)})
+
+
 def autodarts_release(version="2.1.0"):
     stream = io.BytesIO()
     with tarfile.open(fileobj=stream, mode="w:gz") as archive:
@@ -134,8 +143,8 @@ def test_missing_autodarts_installs_without_starting_and_offers_install(manager)
     module = next(m for m in manager.status()["modules"] if m["name"] == "autodarts")
     # A skipped install is offered on its row but never counted as an update.
     assert not module["present"] and module["installable"] and not module["has_update"]
-    with downloads, patch.dict("app.services.updates.UPSTREAM", {"autodarts": lambda *_: entry}), \
-            patch("app.services.autodarts.start") as start:
+    with downloads, offline_autodarts(entry), \
+            patch("app.core.integrations.autodarts.process.start") as start:
         assert manager.install_missing("autodarts") == "2.1.0"
         assert manager.install_missing("autodarts") is None
     start.assert_not_called()
@@ -147,7 +156,7 @@ def test_missing_autodarts_installs_without_starting_and_offers_install(manager)
 
 def test_native_module_releases_survive_an_image_upgrade(manager, monkeypatch):
     entry, downloads = autodarts_release()
-    with downloads, patch.dict("app.services.updates.UPSTREAM", {"autodarts": lambda *_: entry}):
+    with downloads, offline_autodarts(entry):
         manager.install_missing("autodarts")
     monkeypatch.setattr(store, "RUNTIME", "next-runtime")
     store.initialize()
@@ -211,8 +220,8 @@ def test_first_autodarts_install_keeps_running(manager, installed, autostart, ex
     statuses = iter(["stopped"] + ["running"] * 10)
     response = patch("urllib.request.urlopen")
     with response as urlopen, \
-            patch("app.services.autodarts.get_status", side_effect=lambda: {"status": next(statuses)}), \
-            patch("app.services.autodarts.start"), patch("app.services.autodarts.stop") as stop, \
+            patch("app.core.integrations.autodarts.process.get_status", side_effect=lambda: {"status": next(statuses)}), \
+            patch("app.core.integrations.autodarts.process.start"), patch("app.core.integrations.autodarts.process.stop") as stop, \
             patch("app.config.load_config", return_value={"autostart_autodarts": autostart}), \
             patch("app.services.updates.time.sleep"):
         urlopen.return_value.__enter__.return_value.status = 200
@@ -229,6 +238,6 @@ def test_active_release_with_missing_files_can_be_installed_again(manager):
     manager.available = {"autodarts": entry}
     module = next(m for m in manager.status()["modules"] if m["name"] == "autodarts")
     assert not module["present"] and module["installable"]
-    with downloads, patch.dict("app.services.updates.UPSTREAM", {"autodarts": lambda *_: entry}):
+    with downloads, offline_autodarts(entry):
         assert manager.install_missing("autodarts") == "2.1.0"
     assert (store.location("autodarts", "unused") / "autodarts").is_file()

@@ -284,3 +284,12 @@ button.game-mode .game-tag { border-color: var(--outline); background: var(--lim
   #local-start { width: 100%; }
   .game-add { grid-template-columns: 1fr; }
 }
+
+/* Vision engine: which registered engine reads the board, or manual darts. */
+.game-engines { margin: 0 0 8px; }
+.game-engines .game-group { margin-top: 0; }
+.game-engine-choices { max-width: 560px; }
+.game-engine-notes { margin: 10px 0 0; padding-left: 18px; }
+.game-engine-notes:empty { display: none; }
+.game-choice input:disabled + span { opacity: .45; cursor: not-allowed; }
+.game-choice:has(input:disabled):hover span { color: var(--fg-dim); }

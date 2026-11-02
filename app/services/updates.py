@@ -20,20 +20,20 @@ from urllib.request import HTTPRedirectHandler, HTTPSHandler, build_opener
 import oche_runtime as store
 from app import __version__
 from app.services.release_metadata import is_revision, metadata
-from app.services.upstream_releases import (
-    discover_autodarts,
-    discover_ochecore,
-    prepare_autodarts,
-    prepare_ochecore,
-)
+from app.core.integrations import registry
 
 FEED = os.environ.get("OCHE_UPDATE_FEED", "")
-# Modules Oche manages, in the order the updates table lists them.
-MODULES = ("oche", "autodarts", "ochecore")
-# Native modules that come from their publisher's own releases.
-UPSTREAM = {"autodarts": discover_autodarts, "ochecore": discover_ochecore}
-# Supervised native modules: their process and the port its health check reads.
-PORTS = {"autodarts": 3180, "ochecore": 5180}
+OCHE = ("Oche", "Application, caller & lighting")
+
+
+def releases() -> dict:
+    """Integrations that ship a release of their own, switched on or not."""
+    return {item.id: item for item in registry.integrations() if item.release}
+
+
+def module_names() -> tuple:
+    """Oche first, then the integrations that are switched on and ship a release."""
+    return ("oche",) + tuple(item.id for item in registry.active() if item.release)
 MAX_DOWNLOAD = 1024 * 1024 * 1024
 MAX_EXPANDED = 3 * MAX_DOWNLOAD
 
@@ -99,7 +99,7 @@ class UpdateManager:
 
     def status(self):
         modules = []
-        for name in MODULES:
+        for name in module_names():
             state = store.read_state(name)
             bundled = store.BUNDLES / name / "VERSION"
             versions = store.ROOT / name / "versions"
@@ -130,9 +130,12 @@ class UpdateManager:
                     )
             # A module the image does not include stays absent until it is installed.
             present = installed(name, state) or bundled.exists()
+            integration = releases().get(name)
             modules.append(
                 {
                     "name": name,
+                    "label": integration.name if integration else OCHE[0],
+                    "description": integration.release.description if integration else OCHE[1],
                     **state,
                     "has_update": has_update and present,
                     "installable": bool(release) and not present,
@@ -174,12 +177,12 @@ class UpdateManager:
         if action != "check" and os.environ.get("OCHE_LAUNCHER") != "1":
             raise ValueError("Updates require the Docker runtime with the stable launcher")
         if action not in ("check", "update", "rollback", "update-all") or (
-            action in ("update", "rollback") and name not in MODULES
+            action in ("update", "rollback") and name not in module_names()
         ):
             raise ValueError("Unknown update action or module")
         if not self.lock.acquire(blocking=False):
             raise ValueError("Another update operation is running")
-        if any(store.read_state(n).get("pending") for n in MODULES):
+        if any(store.read_state(n).get("pending") for n in ("oche", *releases())):
             self.lock.release()
             raise ValueError("Waiting for an activation health check")
         self.job = {
@@ -232,14 +235,16 @@ class UpdateManager:
             platform.machine().lower(), platform.machine().lower()
         )
         # An unavailable Oche feed must not hide independent upstream releases.
-        with ThreadPoolExecutor(max_workers=1 + len(UPSTREAM)) as pool:
+        # Only integrations that are switched on are checked.
+        upstream = {name: releases()[name].release.discover for name in module_names() if name != "oche"}
+        with ThreadPoolExecutor(max_workers=1 + len(upstream)) as pool:
             jobs = [(pool.submit(self._check_bundle_feed), ("oche",))] + [
-                (pool.submit(UPSTREAM[name], download, architecture), (name,)) for name in UPSTREAM
+                (pool.submit(discover, download, architecture), (name,)) for name, discover in upstream.items()
             ]
             for future, names in jobs:
                 try:
                     result = future.result()
-                    if names[0] in UPSTREAM:
+                    if names[0] in upstream:
                         discovered[names[0]] = result
                     else:
                         discovered.update(result)
@@ -327,10 +332,10 @@ class UpdateManager:
         architecture = {"x86_64": "amd64", "amd64": "amd64", "aarch64": "arm64", "arm64": "arm64"}.get(
             platform.machine().lower(), platform.machine().lower()
         )
-        discover = UPSTREAM.get(name)
-        if not discover:
+        integration = releases().get(name)
+        if not integration:
             raise ValueError("This module cannot be installed on its own")
-        release = discover(download, architecture)
+        release = integration.release.discover(download, architecture)
         self._stage(name, release)
         store.write_state(name, {"active": release["version"], "previous": None, "pending": False})
         return release["version"]
@@ -351,10 +356,9 @@ class UpdateManager:
                     raise ValueError("Release SHA-256 verification failed")
                 content = stage / "content"
                 content.mkdir()
-                if release.get("format") == "autodarts-archive":
-                    prepare_autodarts(archive, content, version, extract)
-                elif release.get("format") == "ochecore-archive":
-                    prepare_ochecore(archive, content, version, extract)
+                integration = releases().get(name)
+                if integration and release.get("format") == integration.release.format:
+                    integration.release.prepare(archive, content, version, extract)
                 else:
                     extract(archive, content)
                 identity = content / "REVISION" if (content / "REVISION").is_file() else content / "VERSION"
@@ -367,11 +371,7 @@ class UpdateManager:
                     raise ValueError("Application version does not match release metadata")
                 if name in store.RUNTIME_BOUND and (content / "RUNTIME").read_text().strip() != store.RUNTIME:
                     raise ValueError("Bundle requires a different Docker runtime")
-                required = {
-                    "oche": "app/server.py",
-                    "autodarts": "autodarts",
-                    "ochecore": "oche-core",
-                }[name]
+                required = integration.release.entry if integration else "app/server.py"
                 if not (content / required).is_file():
                     raise ValueError("Bundle is missing its application entry point")
                 if name == "oche" and not (content / "app/core/runtime.py").is_file():
@@ -398,17 +398,18 @@ class UpdateManager:
         from app.config import load_config
         from app.services import engines
 
-        service = engines.ENGINES[name]
+        integration = releases()[name]
+        service = integration.process
         running = service.get_status()["status"] == "running"
-        # A first install starts the active engine when Oche would start it on boot.
+        # A first install starts the chosen engine when Oche would start it on boot.
         keep_running = running or (
-            not old.get("active") and engines.active() == name and load_config().get("autostart_autodarts")
+            not old.get("active") and engines.chosen() == name and load_config().get("autostart_autodarts")
         )
         service.stop()
         try:
             store.write_state(name, state)
             service.start()
-            port = PORTS[name]
+            port = integration.port
             from urllib.request import urlopen
 
             deadline = time.monotonic() + 60

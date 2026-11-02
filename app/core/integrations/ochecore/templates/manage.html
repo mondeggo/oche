@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% block title %}{{ _("Oche - OcheCore") }}{% endblock %}
+{% block content %}
+{% set labels = {'running': 'Running', 'stopped': 'Stopped', 'nofile': 'Not installed'} %}
+{% set tones = {'running': 'badge-green', 'stopped': 'badge-yellow'} %}
+<section class="supervisor-page detection-page">
+  <header class="page-head">
+    <div>
+      <p class="eyebrow">{{ _("Integrations") }}</p>
+      <h1>OcheCore</h1>
+      <p class="subtitle">{{ _("Offline board detection with two to four cameras. Its own page sets up the cameras and calibration.") }}</p>
+    </div>
+    <div class="page-actions">
+      <a id="oc-open" class="btn-link" target="_blank" rel="noopener noreferrer" {{ 'hidden' if status.status != 'running' }}>{{ _("Open OcheCore ↗") }}</a>
+    </div>
+  </header>
+  <p id="oc-unavailable" class="card" role="status" {{ 'hidden' if status.installed }}>{{ _(status.unavailable_reason) if status.unavailable_reason else '' }}</p>
+
+  <div class="service-card">
+    <div class="service-state">
+      <span id="oc-status" class="badge {{ tones.get(status.status, 'badge-red') }}">{{ _(labels.get(status.status, 'Stopped')) }}</span>
+      <div class="service-meta">
+        <span>{{ _("Version") }} <strong id="oc-version">{{ status.version or '—' }}</strong></span>
+        <span>{{ _("Port") }} <strong>{{ status.port }}</strong></span>
+        <span>PID <strong id="oc-pid">{{ status.pid or '—' }}</strong></span>
+        <div class="service-update-status" data-service-update="{{ service }}">
+          <span class="service-update-dot" data-service-update-dot hidden aria-hidden="true"></span>
+          <span data-service-update-message role="status" aria-live="polite">{{ _("Loading update status…") }}</span>
+          <a href="/supervisor?service=updates">{{ _("Manage") }}</a>
+        </div>
+      </div>
+    </div>
+    <div class="service-controls">
+      <div class="btn-row">
+        <button id="oc-install" type="button" {{ 'hidden' if status.installed }}>{{ _("Install") }}</button>
+        <button id="oc-start" type="button" data-action="start" {{ 'hidden' if not status.installed }}>{{ _("Start") }}</button>
+        <button id="oc-restart" class="btn-neutral" type="button" data-action="restart" {{ 'hidden' if not status.installed }}>{{ _("Restart") }}</button>
+        <button id="oc-stop" class="btn-danger" type="button" data-action="stop" {{ 'hidden' if not status.installed }}>{{ _("Stop") }}</button>
+      </div>
+    </div>
+  </div>
+  <p class="hint">{{ _("Starting OcheCore stops Autodarts, because only one engine reads the cameras at a time. Its page opens over HTTP on port 5180, from devices on your network.") }}</p>
+  <p id="oc-error" class="hint" role="alert" hidden></p>
+
+  <div class="embed-panel">
+    <div class="embed-toggle">
+      <span class="view-toggle-btn active">{{ _("Logs") }}</span>
+      <div id="log-actions">
+        <div class="btn-row">
+          <button id="oc-clear" type="button" class="btn-neutral" title="{{ _('Clear the saved log for this service') }}">{{ _("Clear logs") }}</button>
+          <a class="btn-link btn-neutral" href="/ochecore/logs/export" download>{{ _("Export logs") }}</a>
+        </div>
+      </div>
+    </div>
+    <div class="embed-body">
+      <pre id="oc-log" class="log-box board-log-view" aria-live="off"></pre>
+    </div>
+  </div>
+</section>
+{% endblock %}
+{% block scripts %}
+<script type="module">
+  import { tr } from "/static/js/i18n.mjs";
+  const $ = id => document.getElementById(id);
+  const labels = { running: "Running", stopped: "Stopped", nofile: "Not installed" };
+  const tones = { running: "badge-green", stopped: "badge-yellow" };
+  let busy = false;
+
+  function show(message = "") {
+    $("oc-error").textContent = message;
+    $("oc-error").hidden = !message;
+  }
+  function render(state) {
+    const badge = $("oc-status");
+    badge.textContent = tr(labels[state.status] || "Stopped");
+    badge.className = "badge " + (tones[state.status] || "badge-red");
+    $("oc-version").textContent = state.version || "—";
+    $("oc-pid").textContent = state.pid || "—";
+    $("oc-unavailable").hidden = state.installed;
+    $("oc-unavailable").textContent = state.installed ? "" : tr(state.unavailable_reason || "");
+    $("oc-install").hidden = state.installed;
+    for (const id of ["oc-start", "oc-restart", "oc-stop"]) $(id).hidden = !state.installed;
+    $("oc-start").disabled = busy || state.status === "running";
+    $("oc-stop").disabled = busy || state.status !== "running";
+    $("oc-restart").disabled = busy || state.status !== "running";
+    $("oc-install").disabled = busy;
+    $("oc-open").href = `http://${location.hostname}:${state.port}/`;
+    $("oc-open").hidden = state.status !== "running";
+  }
+  async function refresh() {
+    const response = await fetch("/ochecore/status", { cache: "no-store" }).catch(() => null);
+    if (response?.ok) render(await response.json());
+  }
+  async function refreshLogs() {
+    const response = await fetch("/ochecore/logs", { cache: "no-store" }).catch(() => null);
+    if (!response?.ok) return;
+    const log = $("oc-log");
+    const follow = log.scrollTop + log.clientHeight >= log.scrollHeight - 8;
+    log.textContent = await response.text() || tr("No log output yet.");
+    if (follow) log.scrollTop = log.scrollHeight;
+  }
+  async function post(url) {
+    const response = await fetch(url, { method: "POST" });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.detail || tr("The request failed."));
+    return data;
+  }
+  async function run(task) {
+    if (busy) return;
+    busy = true;
+    show();
+    try { await task(); } catch (error) { show(error.message); }
+    finally { busy = false; await refresh(); await refreshLogs(); }
+  }
+  for (const button of document.querySelectorAll("[data-action]")) {
+    button.addEventListener("click", () => run(async () => render(await post(`/ochecore/${button.dataset.action}`))));
+  }
+  // Installing runs as an update job; follow it until it finishes.
+  $("oc-install").addEventListener("click", () => run(async () => {
+    await post("/updates/ochecore/update");
+    for (;;) {
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      const job = (await (await fetch("/updates/status", { cache: "no-store" })).json()).job;
+      if (job.status === "error") throw new Error(job.message);
+      if (job.status !== "running") break;
+    }
+  }));
+  $("oc-clear").addEventListener("click", () => run(() => post("/ochecore/logs/clear")));
+  refresh();
+  refreshLogs();
+  setInterval(refresh, 5000);
+  setInterval(refreshLogs, 5000);
+</script>
+{% endblock %}

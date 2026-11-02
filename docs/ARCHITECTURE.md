@@ -11,16 +11,29 @@ Stable launcher
     │   ├── Profiles
     │   └── REST and WebSocket routes
     ├── HTTPS, persistent settings, panels and updates
-    └── Detection engine supervisor (one active engine)
-        ├── Autodarts, port 3180
-        └── OcheCore, port 5180
+    └── app/core/integrations/registry.py
+        ├── autodarts/  board software, setup terminal, Camera Enhancer, Play on Autodarts
+        └── ochecore/   offline board service and its management page
 ```
 
-Detection engines are external programs installed into `data/modules/<name>` from
-their publishers' releases and updated from System › Updates. They share the
-cameras, so `app/services/engines.py` keeps one active (`detection_engine` in
-`data/settings.json`, Autodarts by default): choosing one stops the other, and boot
-starts the active one when **Start on boot** is on. OcheCore keeps its settings in
+Integrations that install and run a program live in their own package under
+`app/core/integrations/<id>/`, with their routes, templates (`<id>/<name>.html`)
+and static files (`/static/integrations/<id>/`). Each one registers an
+`Integration` in `registry.py`: buttons below Play, pages under Integrations,
+its Updates entry (how to find, check and unpack a release), its process and port,
+a vision engine, and shutdown hooks. The rest of Oche reads only the registry:
+`main.py` mounts what is registered, the sidebar and Settings list it, Updates
+checks it, and Play offers its engines. A switch on the Integrations page turns an
+integration on or off (`integrations.<id>.enabled` in `data/settings.json`);
+switching it off hides what it adds and stops its engine, and keeps its files and
+settings. Registration order is fixed by `order`, then id.
+
+Vision engines share the cameras, so `app/services/engines.py` keeps one chosen
+(`detection_engine`, or `manual`): choosing one stops the others, and boot starts
+it when **Start on boot** is on. An engine that scores speaks the
+Autodarts-compatible board API (`GET /api/state`, `WS /api/events?type=state`),
+which core reads through `app/core/autodarts/local.py`. Engine releases are
+installed into `data/modules/<id>`. OcheCore keeps its settings in
 `data/ochecore/board.toml` and listens on the LAN, like Autodarts.
 
 `app/main.py` owns the shared HTTP client, runtime startup and shutdown. All darts

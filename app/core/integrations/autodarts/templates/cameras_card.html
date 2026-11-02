@@ -1,0 +1,14 @@
+{#- Camera Enhancer on the Integrations page. Its tools use Autodarts' camera API. -#}
+          <article class="panel integration-card">
+            <div class="integration-card-head">
+              <h3>{{ _("Camera Enhancer") }}</h3>
+              <button id="cameras-toggle" class="switch" type="button" role="switch" aria-checked="{{ 'true' if nav_visibility.pages.cameras else 'false' }}" aria-label="{{ _('Show {name} in the sidebar', name=_('Camera Enhancer')) }}" disabled>
+                <span id="cameras-toggle-label">{{ _("On") if nav_visibility.pages.cameras else _("Off") }}</span>
+                <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
+              </button>
+            </div>
+            <p class="muted">{{ _("Optional tools to preview cameras and adjust focus and exposure.") }}</p>
+            <p class="hint">{{ _("Show camera tools in the sidebar. Autodarts detection runs independently.") }}</p>
+            <p id="cameras-integration-error" class="error" role="status" hidden></p>
+            <a id="cameras-settings" class="integration-card-link" href="/integrations/cameras" {{ 'hidden' if not nav_visibility.pages.cameras }}>{{ _("Open Camera Enhancer →") }}</a>
+          </article>

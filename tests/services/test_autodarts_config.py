@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from app.services import autodarts
+from app.core.integrations.autodarts import process as autodarts
 
 
 class AutodartsConfigTests(unittest.TestCase):

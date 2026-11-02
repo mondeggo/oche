@@ -8,16 +8,14 @@ import asyncio
 import hashlib
 import json
 import math
-import os
 import re
 import tomllib
 from urllib.parse import parse_qs, urlsplit
 
 import aiohttp
 
-from app.services import autodarts
-from app.services.camera_modes import enumerate_modes
-
+from app.core.integrations.autodarts import process as autodarts
+from app.core.integrations.autodarts.camera_modes import enumerate_modes
 
 DEFAULT_PORT = 3180
 MAX_JSON_BYTES = 2 * 1024 * 1024
@@ -82,7 +80,7 @@ async def _json_request(session, base: str, path: str, *, method="GET", payload=
                 raise CameraError(502, "Autodarts returned an unexpected camera response.")
             raw = await _read_limited(response, MAX_JSON_BYTES)
         return json.loads(raw)
-    except (aiohttp.ClientError, asyncio.TimeoutError, OSError):
+    except (TimeoutError, aiohttp.ClientError, OSError):
         message = ("The save could not be confirmed. Reload the camera settings before trying again."
                    if method == "PATCH" else "The Autodarts camera API is unavailable. Try again shortly.")
         raise CameraError(503, message) from None
@@ -277,7 +275,7 @@ def _validate_payload(payload: dict) -> dict:
 
 
 async def apply_settings(payload: dict) -> dict:
-    from app.services import camera_controls
+    from app.core.integrations.autodarts import camera_controls
     camera_controls.idle()
     desired = _validate_payload(payload)
     async with _settings_lock:
@@ -333,5 +331,5 @@ async def get_frame(index: int) -> tuple[bytes, str]:
         if not data.startswith(signature):
             raise CameraError(502, "Autodarts did not return a camera image.")
         return data, content_type
-    except (aiohttp.ClientError, asyncio.TimeoutError, OSError):
+    except (TimeoutError, aiohttp.ClientError, OSError):
         raise CameraError(503, "The camera image is temporarily unavailable. Try again shortly.") from None

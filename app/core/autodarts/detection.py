@@ -77,7 +77,7 @@ class LocalDetection:
                     False,
                     "Autodarts is running, but its local detection state is unavailable."
                     if self.managed
-                    else "Cannot read local detector readiness. Check System → Autodarts.",
+                    else "Cannot read local detector readiness. Check Integrations → Autodarts.",
                 )
             self.checked_at = time.monotonic()
 

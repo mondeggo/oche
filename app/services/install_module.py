@@ -7,12 +7,12 @@ release is verified by the updater and saved in data/modules as the container us
 import argparse
 import sys
 
-from app.services.updates import MODULES, manager
+from app.services.updates import manager, releases
 
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description="Install a module that Oche manages.")
-    parser.add_argument("module", choices=[name for name in MODULES if name != "oche"])
+    parser.add_argument("module", choices=sorted(releases()))
     args = parser.parse_args(argv)
     try:
         version = manager.install_missing(args.module)

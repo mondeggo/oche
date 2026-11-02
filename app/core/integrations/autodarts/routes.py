@@ -1,27 +1,30 @@
 import asyncio
-from contextlib import suppress
 import json
 import os
+from contextlib import suppress
 from threading import BoundedSemaphore
 
 import anyio
 from fastapi import APIRouter, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import PlainTextResponse
-from app.templating import templates
 
 from app.config import LOG_DIR, load_config
-from app.services import autodarts, engines
-from app.services.autodarts_terminal import AutodartsTerminal
-from app.security import same_origin
+from app.core.integrations.autodarts import process as autodarts
+from app.core.integrations.autodarts.terminal import AutodartsTerminal
 from app.log_download import log_download
+from app.security import same_origin
+from app.services import engines
+from app.templating import templates
 
 router = APIRouter(prefix="/autodarts", tags=["autodarts"])
+# Pages the integration adds outside its /autodarts API.
+pages = APIRouter(include_in_schema=False)
 terminal_slots = BoundedSemaphore(4)
 
 
 @router.get("/terminal")
 async def terminal_page(request: Request):
-    return templates.TemplateResponse(request=request, name="terminal.html", context={"request": request})
+    return templates.TemplateResponse(request=request, name="autodarts/terminal.html", context={"request": request})
 
 
 @router.websocket("/terminal/ws")
@@ -97,16 +100,31 @@ async def terminal_socket(websocket: WebSocket):
                 await websocket.close()
 
 
+@pages.get("/integrations/autodarts/board")
 async def page(request: Request):
     service = "autodarts"
     config = load_config()
-    return templates.TemplateResponse(request=request, name="autodarts.html", context={
+    return templates.TemplateResponse(request=request, name="autodarts/board.html", context={
             "request": request,
             "service": service,
             "status": autodarts.get_status(),
             "config": config,
             "active_nav": "autodarts",
         },
+    )
+
+
+@pages.get("/integrations/cameras")
+async def camera_enhancer(request: Request):
+    return templates.TemplateResponse(
+        request=request, name="autodarts/cameras.html", context={"active_nav": "cameras", "service": "cameras"},
+    )
+
+
+@pages.get("/play")
+async def play(request: Request):
+    return templates.TemplateResponse(
+        request=request, name="autodarts/play.html", context={"request": request, "active_nav": "play", "full_width": True},
     )
 
 
@@ -121,8 +139,8 @@ def start():
     try:
         engines.use("autodarts")
         ok = autodarts.get_status()["status"] == "running"
-    except RuntimeError as e:
-        raise HTTPException(status_code=409, detail=str(e))
+    except (RuntimeError, ValueError) as e:
+        raise HTTPException(status_code=409, detail=str(e)) from e
     return {"ok": ok, **autodarts.get_status()}
 
 
@@ -138,8 +156,8 @@ def restart():
         autodarts.stop()
         engines.use("autodarts")
         ok = autodarts.get_status()["status"] == "running"
-    except RuntimeError as e:
-        raise HTTPException(status_code=409, detail=str(e))
+    except (RuntimeError, ValueError) as e:
+        raise HTTPException(status_code=409, detail=str(e)) from e
     return {"ok": ok, **autodarts.get_status()}
 
 

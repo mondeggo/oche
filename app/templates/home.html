@@ -104,7 +104,7 @@
         <div class="panel connection-card">
           <div class="panel-heading">
             <div class="connection-title">
-              <span class="connection-logo"><img src="/static/img/autodarts_logo.svg" alt=""></span>
+              <span class="connection-logo"><img src="/static/integrations/autodarts/logo.svg" alt=""></span>
               <div><h2>{{ _("Autodarts account") }}</h2><p class="hint">{{ _("Cloud sign-in and board for game events") }}</p></div>
             </div>
             <span id="account-state" class="badge">—</span>
@@ -140,27 +140,24 @@
           </div>
           <span class="integration-card-link">{{ _("View events →") }}</span>
         </a>
-        <h2 class="section-heading">{{ _("Detection engines") }}</h2>
-        <p class="hint engines-hint">{{ _("One engine reads the cameras at a time. Choosing an engine stops the other one.") }}</p>
+        <h2 class="section-heading">{{ _("Vision engines") }}</h2>
+        <p class="hint engines-hint">{{ _("Switch on the engines you use. Play chooses which one reads the cameras.") }}</p>
         <div class="integration-grid">
-          {%- for engine, title, text, link, link_label in [
-            ("autodarts", "Autodarts", _("Board detection and calibration from Autodarts. Play on Autodarts needs it."), "/supervisor", _("Board setup →")),
-            ("ochecore", "OcheCore", _("Offline board detection with two to four cameras. Play on Oche scores with it once its Autodarts-compatible API is ready."), "", _("Open OcheCore ↗")),
-          ] %}
-          <article class="panel integration-card engine-card" data-engine="{{ engine }}">
+          {%- for item in integrations_registry if item.engine %}
+          <article class="panel integration-card engine-card" data-integration-card="{{ item.id }}">
             <div class="integration-card-head">
-              <h3>{{ title }}</h3>
-              <span class="badge" data-engine-state>{{ _("Loading…") }}</span>
+              <h3>{{ item.name }}</h3>
+              <button class="switch" type="button" role="switch" aria-checked="{{ 'true' if item.enabled else 'false' }}" aria-label="{{ _('Enable {name}', name=item.name) }}" data-integration-switch="{{ item.id }}">
+                <span data-switch-label>{{ _("On") if item.enabled else _("Off") }}</span>
+                <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
+              </button>
             </div>
-            <p class="muted">{{ text }}</p>
+            <p class="muted">{{ _(item.description) }}</p>
             <p class="hint" data-engine-detail></p>
-            <div class="actions">
-              <button class="primary" type="button" data-engine-action="install" hidden>{{ _("Install") }}</button>
-              <button class="primary" type="button" data-engine-action="use" hidden>{{ _("Use this engine") }}</button>
-              <button type="button" data-engine-action="stop" hidden>{{ _("Stop") }}</button>
-            </div>
-            <p class="error" role="status" data-engine-error hidden></p>
-            <a class="integration-card-link" data-engine-link href="{{ link or '#' }}"{% if not link %} target="_blank" rel="noopener noreferrer"{% endif %} hidden>{{ link_label }}</a>
+            <p class="error" role="status" data-integration-error hidden></p>
+            {%- if item.pages %}
+            <a class="integration-card-link" href="{{ item.pages[0].href }}" data-integration-link {{ 'hidden' if not item.enabled }}>{{ _("Manage {name} →", name=item.name) }}</a>
+            {%- endif %}
           </article>
           {%- endfor %}
         </div>
@@ -205,19 +202,9 @@
             <p id="caller-integration-error" class="error" role="status" hidden></p>
             <a class="integration-card-link" id="caller-settings" href="/integrations/caller" hidden>{{ _("Settings →") }}</a>
           </article>
-          <article class="panel integration-card">
-            <div class="integration-card-head">
-              <h3>{{ _("Camera Enhancer") }}</h3>
-              <button id="cameras-toggle" class="switch" type="button" role="switch" aria-checked="{{ 'true' if nav_visibility.pages.cameras else 'false' }}" aria-label="{{ _('Show {name} in the sidebar', name=_('Camera Enhancer')) }}" disabled>
-                <span id="cameras-toggle-label">{{ _("On") if nav_visibility.pages.cameras else _("Off") }}</span>
-                <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
-              </button>
-            </div>
-            <p class="muted">{{ _("Optional tools to preview cameras and adjust focus and exposure.") }}</p>
-            <p class="hint">{{ _("Show camera tools in the sidebar. Autodarts detection runs independently.") }}</p>
-            <p id="cameras-integration-error" class="error" role="status" hidden></p>
-            <a id="cameras-settings" class="integration-card-link" href="/integrations/cameras" {{ 'hidden' if not nav_visibility.pages.cameras }}>{{ _("Open Camera Enhancer →") }}</a>
-          </article>
+          {%- for item in integrations_registry %}{% for card in item.cards %}
+          <div class="integration-slot" data-integration-tools="{{ item.id }}" {{ 'hidden' if not item.enabled }}>{% include card %}</div>
+          {%- endfor %}{% endfor %}
         </div>
         <p class="hint">
           {{ _("Changes apply immediately. Turning an integration off keeps its saved settings.") }}
@@ -989,6 +976,8 @@
 <script type="module" src="/static/core/wled.js"></script>
 <script type="module" src="/static/core/wled2.js"></script>
 <script type="module" src="/static/core/caller.js"></script>
-<script type="module" src="/static/core/cameras.js"></script>
-<script type="module" src="/static/core/engines.js"></script>
+<script type="module" src="/static/core/integrations.js"></script>
+{%- for item in integrations_registry %}{% for script in item.scripts %}
+<script type="module" src="{{ script }}"></script>
+{%- endfor %}{% endfor %}
 {% endblock %}

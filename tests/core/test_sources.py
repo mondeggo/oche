@@ -134,8 +134,9 @@ def test_local_screen_has_no_integration_controls_and_nav_shows_source_status(se
         page = client.get("/local").text
         content = page.split('<main id="main"', 1)[1].split("</main>", 1)[0]
         assert "caller" not in content.lower()
-        assert "integrations" not in content.lower()
-        assert "Play on Autodarts" in page and "Play on Oche" in page
+        # Play only offers the vision engines integrations add, never their controls.
+        assert "data-integration" not in content
+        assert "Play on Autodarts" in page and ">Play<" in page
         assert (
             page.index('data-health="autodarts"')
             < page.index('data-health="local"')
@@ -146,7 +147,7 @@ def test_local_screen_has_no_integration_controls_and_nav_shows_source_status(se
 
 
 def test_missing_native_detector_explains_windows_development(monkeypatch, tmp_path):
-    from app.services import autodarts
+    from app.core.integrations.autodarts import process as autodarts
 
     monkeypatch.setattr(autodarts, "AUTODARTS_BIN", tmp_path / "autodarts")
     monkeypatch.setattr(autodarts, "refresh_source", lambda: None)

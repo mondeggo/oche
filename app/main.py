@@ -21,14 +21,15 @@ from app.core.api.wled2 import router as lighting_router
 from app.core.autodarts.auth import safe_error
 from app.core.autodarts.errors import ConnectionProblem
 from app.core.config import Settings
+from app.core.integrations import registry
 from app.core.integrations.wled.simulator import DEMO_URL
 from app.core.integrations.wled.simulator import create_app as create_demo_app
 from app.core.runtime import Runtime
 from app.navigation import HOME_ROUTES
-from app.routers import autodarts, cameras, config, engines, panels, system, updates
+from app.routers import config, engines, panels, system, updates
 from app.security import same_origin
-from app.services import camera_controls, system_metrics
 from app.services import engines as detection_engines
+from app.services import system_metrics
 from app.services.local_https import LocalHTTPS
 from app.services.metrics_history import HistoryConfig, MetricsHistory
 from app.services.updates import manager as update_manager
@@ -78,7 +79,10 @@ def create_app(
                 finally:
                     if manage_services:
                         try:
-                            await camera_controls.shutdown()
+                            # Integrations release what they hold, such as camera controls.
+                            for integration in registry.integrations():
+                                for shutdown in integration.shutdown:
+                                    await shutdown()
                         finally:
                             try:
                                 await application.state.local_https.close()
@@ -115,6 +119,14 @@ def create_app(
             response.headers["Cache-Control"] = "no-cache"
         return response
 
+    # Integration files first: the general /static mount would otherwise answer them.
+    for integration in registry.integrations():
+        if integration.static:
+            application.mount(
+                f"/static/integrations/{integration.id}",
+                StaticFiles(directory=integration.static),
+                name=f"static-{integration.id}",
+            )
     application.mount("/static", StaticFiles(directory=STATIC), name="static")
     application.mount("/demo-wled", demo)
     core_router = create_core_router()
@@ -124,13 +136,12 @@ def create_app(
         events_router,
         lighting_router,
         ui_router,
-        autodarts.router,
         engines.router,
-        cameras.router,
         config.router,
         panels.router,
         system.router,
         updates.router,
+        *(router for integration in registry.integrations() for router in integration.routers),
     ):
         application.include_router(router)
 
@@ -158,20 +169,12 @@ def create_app(
     for path in HOME_ROUTES:
         application.add_api_route(path, index, methods=["GET"], include_in_schema=False)
 
-    @application.get("/integrations/cameras", include_in_schema=False)
-    async def camera_enhancer(request: Request):
-        return templates.TemplateResponse(
-            request=request,
-            name="supervisor_cameras.html",
-            context={"active_nav": "cameras", "service": "cameras"},
-        )
-
     @application.get("/local")
     async def local_game(request: Request):
         return templates.TemplateResponse(
             request=request,
             name="local.html",
-            context={"active_nav": "local"},
+            context={"active_nav": "local", "vision_engines": detection_engines.status()},
         )
 
     @application.get("/supervisor")
@@ -185,7 +188,7 @@ def create_app(
             )
         if service == "cameras":
             return RedirectResponse("/integrations/cameras", status_code=307)
-        if service == "system":
+        if service == "system" or service is None:
             return templates.TemplateResponse(
                 request=request,
                 name="system.html",
@@ -196,15 +199,8 @@ def create_app(
                     "system": system_metrics.get_status(),
                 },
             )
-        return await autodarts.page(request)
-
-    @application.get("/play")
-    async def play(request: Request):
-        return templates.TemplateResponse(
-            request=request,
-            name="play.html",
-            context={"request": request, "active_nav": "play", "full_width": True},
-        )
+        # The detection engine pages moved under Integrations.
+        return RedirectResponse("/supervisor?service=system", status_code=307)
 
     @application.get("/healthz")
     async def healthz():

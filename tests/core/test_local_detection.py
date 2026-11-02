@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 
 from app.core.autodarts.detection import LocalDetection
 from app.main import create_app
-from app.services import autodarts
+from app.core.integrations.autodarts import process as autodarts
 
 
 @pytest.mark.parametrize("status", ["Throw", "Takeout", "Calibrating", "Starting", "Stopped"])

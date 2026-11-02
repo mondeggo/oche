@@ -5,16 +5,16 @@ structures on both supported Linux architectures. Only enumeration ioctls are
 issued; an already running Autodarts capture keeps ownership of its stream.
 """
 
-from copy import deepcopy
-from fractions import Fraction
 import os
-from pathlib import Path
 import re
 import stat
 import struct
 import sys
 import threading
 import time
+from copy import deepcopy
+from fractions import Fraction
+from pathlib import Path
 
 ENUM_FMT = 0xC0405602
 ENUM_SIZES = 0xC02C564A

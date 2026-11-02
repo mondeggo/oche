@@ -6,31 +6,48 @@ import socket
 
 from fastapi import APIRouter, HTTPException, Request
 from app.templating import templates
-from pydantic import BaseModel, Field, ValidationError, field_validator
+from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
 from fastapi.responses import JSONResponse
 import psutil
 
 from app.config import load_config, save_config
+from app.core.integrations import registry
 from app.services.local_https import https_port
 from app.services.dns_certificate import certificate_info
 
 router = APIRouter(prefix="/config", tags=["config"])
 
 
+def integration_sidebar_keys() -> set[str]:
+    """Settings keys for the sidebar entries that integrations add."""
+    keys = set()
+    for item in registry.integrations():
+        for entry in (*item.play, *item.pages):
+            keys.add(f"autohide_navbar_on_{entry.page}")
+            if getattr(entry, "setting", None):
+                keys.add(entry.setting)
+    return keys
+
+
 class ConfigUpdate(BaseModel):
-    model_config = {"extra": "forbid"}
+    # Integrations add sidebar entries; only their show and collapse switches are accepted.
+    model_config = {"extra": "allow"}
+
+    @model_validator(mode="after")
+    def known_integration_keys(self):
+        allowed = integration_sidebar_keys()
+        for key, value in (self.model_extra or {}).items():
+            if key not in allowed or not isinstance(value, bool):
+                raise ValueError(f"Unknown setting: {key}")
+        return self
+
     autostart_autodarts: Optional[bool] = None
     autohide_navbar_on_home: Optional[bool] = None
-    autohide_navbar_on_play: Optional[bool] = None
-    autohide_navbar_on_autodarts: Optional[bool] = None
-    autohide_navbar_on_cameras: Optional[bool] = None
     autohide_navbar_on_system: Optional[bool] = None
     autohide_navbar_on_updates: Optional[bool] = None
     autohide_navbar_on_panels: Optional[bool] = None
     show_play_in_navbar: Optional[bool] = None
     show_panels_in_navbar: Optional[bool] = None
-    show_page_autodarts: Optional[bool] = None
-    show_page_cameras: Optional[bool] = None
     show_page_system: Optional[bool] = None
     show_page_updates: Optional[bool] = None
 
