@@ -114,6 +114,7 @@ export -f docker
         output = self.run_bash(source, cwd=ROOT)
         self.assertIn("status", output)
         self.assertIn("cameras", output)
+        self.assertIn("autodarts", output)
 
     def test_install_mode_default_detailed_and_invalid_retry(self):
         helpers = SCRIPT[:SCRIPT.index('install_docker() (')]
@@ -191,6 +192,29 @@ getent() { :; }
 if configure_cameras <<< all; then exit 1; fi
 ''', cwd=folder)
             self.assertEqual(target.read_text(), '# Custom settings\nservices: {}\n')
+
+    def test_autodarts_installs_by_default_and_can_be_skipped(self):
+        block = SCRIPT[SCRIPT.index('section "Autodarts board detection"'):SCRIPT.index('section "Starting Oche"')]
+        cases = (
+            # Easy installation never asks, so even a "no" on input installs it.
+            ('easy', 'n', 'ok', 'INSTALLED'),
+            ('detailed', '', 'ok', 'INSTALLED'),
+            ('detailed', 'n', 'ok', 'Skipped.'),
+            ('detailed', 'maybe\\nyes', 'ok', 'INSTALLED'),
+            # A failed download keeps the installation going.
+            ('detailed', 'y', 'fail', 'could not be installed now'),
+        )
+        for mode, answer, result, expected in cases:
+            with self.subTest(mode=mode, answer=answer, result=result):
+                install = 'echo INSTALLED' if result == 'ok' else 'return 1'
+                source = (
+                    'section() { :; }\ninstall_dir=/srv/oche\n'
+                    f'install_mode={mode}\ninstall_autodarts() {{ {install}; }}\n'
+                    + '{\n' + block + f"\n}} <<< $'{answer}'\necho DONE\n"
+                )
+                output = self.run_bash(source)
+                self.assertIn(expected, output)
+                self.assertTrue(output.rstrip().endswith('DONE'), output)
 
     def test_sourcing_installer_does_not_start_installation(self):
         output = self.run_bash('source scripts/install.sh\necho SOURCED', cwd=ROOT)

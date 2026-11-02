@@ -37,23 +37,8 @@ jobs:
     if: needs.version.outputs.changed == 'true'
     uses: ./.github/workflows/checks.yml
 
-  autodarts:
-    needs: [version, checks]
-    runs-on: ubuntu-latest
-    outputs:
-      version: ${{ steps.autodarts.outputs.version }}
-    steps:
-      - name: Pin one Autodarts release for both architectures
-        id: autodarts
-        run: |
-          set -euo pipefail
-          releases=$(curl -fsSL --retry 3 https://releases.autodarts.com/headless/downloads/latest.stable.json)
-          version=$(jq -er '.platforms["linux-amd64"].version' <<< "$releases")
-          test "$version" = "$(jq -er '.platforms["linux-arm64"].version' <<< "$releases")"
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-
   packages:
-    needs: [version, autodarts]
+    needs: [version, checks]
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -65,11 +50,10 @@ jobs:
         env:
           TAG: ${{ needs.version.outputs.tag }}
           ARCH: ${{ matrix.arch }}
-          AUTODARTS_VERSION: ${{ needs.autodarts.outputs.version }}
         run: |
           set -euo pipefail
           [[ "$TAG" =~ ^v[0-9][A-Za-z0-9._-]*$ ]]
-          docker build --platform "linux/$ARCH" --build-arg "OCHE_VERSION=${TAG#v}" --build-arg AUTODARTS_VERSION -t oche-packages .
+          docker build --platform "linux/$ARCH" --build-arg "OCHE_VERSION=${TAG#v}" -t oche-packages .
           mkdir -p output
           docker run --rm --platform "linux/$ARCH" --user root -v "$PWD/output:/output" --entrypoint python oche-packages \
             /opt/oche-tools/package_updates.py --base-url "https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG"

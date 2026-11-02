@@ -11,7 +11,7 @@ cd "$SCRIPT_DIR"
 
 usage() {
     cat <<EOF
-Usage: $0 {start|stop|restart|update|pull|status|logs|cameras}
+Usage: $0 {start|stop|restart|update|pull|status|logs|cameras|autodarts}
        $0 -h | --help
 
 Manage Oche using the Compose files and .env in the project directory.
@@ -24,6 +24,8 @@ Manage Oche using the Compose files and .env in the project directory.
   status   Show the container state.
   logs     Follow the Oche logs (Ctrl+C to stop).
   cameras  Select individual cameras, all /dev devices, or none; recreate Oche.
+  autodarts  Install Autodarts board detection into data/modules if it is missing.
+             Later Autodarts updates come from System > Updates in Oche.
   -h, --help  Show this help without requiring Docker.
 
 If pulling fails, start/restart/update/pull reuse an existing local image
@@ -32,7 +34,7 @@ EOF
 }
 [[ $# -eq 1 ]] || { usage >&2; exit 1; }
 case "$1" in
-    start|restart|update|pull|stop|status|logs|cameras) ;;
+    start|restart|update|pull|stop|status|logs|cameras|autodarts) ;;
     -h|--help) usage; exit 0 ;;
     *) usage >&2; exit 1 ;;
 esac
@@ -80,5 +82,10 @@ case "$1" in
     cameras)
         compose config --quiet
         compose up -d --no-build --pull never --force-recreate oche
+        ;;
+    autodarts)
+        ensure_image
+        # The image's updater verifies the release and saves it as the container user.
+        compose run --rm --entrypoint python oche -m app.services.install_module autodarts
         ;;
 esac

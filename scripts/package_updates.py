@@ -18,12 +18,14 @@ def main():
     runtime_file = Path("/opt/oche-runtime-id")
     if args.runtime_only:
         # The merged application shares one fingerprinted dependency environment.
+        # Bump the contract tag when oche_runtime.py or launcher.py change, so
+        # application releases built for the new store are refused on old images.
         packages = sorted(
             f"{d.metadata['Name'].lower()}=={d.version}"
             for d in importlib.metadata.distributions()
             if d.metadata["Name"].lower() != "oche"
         )
-        contract = "oche-runtime-1\n" + platform.python_version() + "\n" + "\n".join(packages)
+        contract = "oche-runtime-2\n" + platform.python_version() + "\n" + "\n".join(packages)
         runtime_file.write_text(hashlib.sha256(contract.encode()).hexdigest())
         for source in Path("/opt/oche-bundles").iterdir():
             (source / "RUNTIME").write_text(runtime_file.read_text())
@@ -34,7 +36,7 @@ def main():
     output.mkdir(parents=True, exist_ok=True)
     arch = {"x86_64": "amd64", "aarch64": "arm64"}[platform.machine()]
     entries = {}
-    # Oche includes its darts runtime. AutoDarts detection remains upstream.
+    # Oche includes its darts runtime. AutoDarts comes from its own releases.
     for source in sorted(p for p in Path("/opt/oche-bundles").iterdir() if p.name == "oche"):
         display_version = (source / "VERSION").read_text().strip()
         revision_file = source / "REVISION"

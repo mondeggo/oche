@@ -433,3 +433,37 @@ Hardware acceptance:
 - Not performed: interactive use in a native desktop or touch browser, Docker
   acceptance, hardware acceptance of a bot visit with Local Autodarts input, and
   confirmation of the detector's `coords` orientation and scale on a live board.
+
+## Autodarts in the data folder and runtime 2 (2026-11-02)
+
+Automated:
+
+- The store accepts any valid module name, keeps native releases outside the
+  per-runtime folders across image upgrades, flattens the folders older images
+  created, and rolls back an interrupted native update without a bundle.
+- A first install verifies and stores Autodarts without starting it, repeats as a
+  no-op, and is offered as installable without counting as an update. From
+  Updates, a first install keeps Autodarts running when it starts on boot.
+- Downloads identify as `Oche/<version>`; the installer installs Autodarts in
+  Easy mode, defaults to Yes in Detailed mode, honours No, and continues if the
+  download fails.
+
+Docker acceptance (Docker Desktop 28.5.1 on Windows, new image built locally,
+named volumes, official Autodarts releases over the Internet):
+
+- The image contains only the Oche bundle, with no `/opt/autodarts`.
+- The installer's one-off command installed Autodarts 2.1.0 into
+  `data/modules/autodarts/versions/2.1.0`, owned by UID 1000; a second run made no
+  change. The launcher then started Oche with Autodarts running.
+- Python's default User-Agent got HTTP 403 from the Autodarts release server, while
+  curl got 200; the `Oche/<version>` User-Agent fixed it. Earlier images had the
+  same failure in their in-app Autodarts update check.
+- A volume in the older per-runtime layout was flattened on first start, and
+  Autodarts ran from it.
+- Without Autodarts, Oche started and explained how to install it. After a check,
+  Updates offered Install; installing from the app left Autodarts running.
+- Not verified: the full `install.sh` run on a Linux board computer, ARM64,
+  cameras and calibration with the new layout, or upgrading a real board.
+
+Browser acceptance (headless Microsoft Edge): the Updates row shows a neutral
+"Not installed" chip with Install, then "Up to date" after installing.

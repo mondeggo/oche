@@ -272,6 +272,12 @@ reconfigure_cameras() (
     configure_cameras
 )
 
+# Download Autodarts into data/modules with the image's own verified updater.
+# A one-off container writes it as the image's oche user, before or beside Oche.
+install_autodarts() {
+    "${sudo_cmd[@]}" docker compose run --rm --entrypoint python oche -m app.services.install_module autodarts
+}
+
 # Keep terminal input and installer state isolated from the Bash process reading
 # a piped script. Otherwise it reads /dev/tty as more shell code after main ends.
 main() (
@@ -477,6 +483,32 @@ fi
 if [[ ! -e data/autodarts ]]; then
     "${sudo_cmd[@]}" install -d -o 1000 -g 1000 -m 0755 data/autodarts
 fi
+section "Autodarts board detection"
+autodarts_choice=y
+if [[ "$install_mode" == detailed ]]; then
+    while true; do
+        autodarts_choice=""
+        if ! read -r -p "Install Autodarts board detection? [Y/n] (recommended: Yes): " autodarts_choice; then
+            echo "No input received; using recommended option: Yes."
+            autodarts_choice=y
+        fi
+        case "$autodarts_choice" in
+            [yY]|[yY][eE][sS]|"") autodarts_choice=y; break ;;
+            [nN]|[nN][oO]) autodarts_choice=n; break ;;
+            *) echo "Please enter yes or no." ;;
+        esac
+    done
+fi
+if [[ "$autodarts_choice" == y ]]; then
+    echo "Downloading the official Autodarts release into $install_dir/data/modules..."
+    if ! install_autodarts; then
+        echo "Autodarts could not be installed now. Oche still starts; install it later from"
+        echo "System > Updates, or run ./oche.sh autodarts."
+    fi
+else
+    echo "Skipped. Install it later from System > Updates, or run ./oche.sh autodarts."
+fi
+
 section "Starting Oche"
 "${sudo_cmd[@]}" docker compose up -d --no-build
 "${sudo_cmd[@]}" docker compose ps
@@ -497,7 +529,7 @@ echo "  Integrations: connect your Autodarts account."
 echo "  Board > Autodarts: set up the board and its cameras."
 echo "Camera choices are saved in docker-compose.override.yml."
 printf '\n'
-echo "Manage Oche from $install_dir with: ./oche.sh {start|stop|restart|update|pull|status|logs|cameras}"
+echo "Manage Oche from $install_dir with: ./oche.sh {start|stop|restart|update|pull|status|logs|cameras|autodarts}"
 echo "Show all commands with: ./oche.sh -h"
 )
 

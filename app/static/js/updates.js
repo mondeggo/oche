@@ -71,17 +71,18 @@
     element(service, 'h2', name);
     element(service, 'p', description);
     const active = item.active || item.bundled_revision || item.bundled;
-    const available = needsUpdate(item);
+    const missing = item.present === false;
+    const available = needsUpdate(item) || Boolean(item.installable);
     const incompatible = available && item.runtime_compatible === false;
     const working = item.pending || (data.job.status === 'running' && data.job.module === item.name);
-    const badge = element(service, 'span', working ? tr("Updating…") : item.error || item.discovery_error ? tr("Needs attention") : incompatible ? tr("Docker image upgrade required") : available ? tr("Update available") : item.available ? tr("Up to date") : tr("Not checked"), 'update-badge');
-    badge.dataset.state = working || incompatible ? 'pending' : item.error || item.discovery_error ? 'error' : available ? 'available' : '';
+    const badge = element(service, 'span', working ? tr("Updating…") : item.error || item.discovery_error ? tr("Needs attention") : incompatible ? tr("Docker image upgrade required") : missing ? tr("Not installed") : available ? tr("Update available") : item.available ? tr("Up to date") : tr("Not checked"), 'update-badge');
+    badge.dataset.state = working || incompatible ? 'pending' : item.error || item.discovery_error ? 'error' : available && !missing ? 'available' : '';
     const readable = value => value && !/^[a-f0-9]{40,64}$/i.test(value) ? value : null;
-    version(article, tr("Installed"), item.active_version || readable(active), tr("Version unavailable"));
+    version(article, tr("Installed"), item.active_version || readable(active), missing ? tr("Not installed") : tr("Version unavailable"));
     version(article, tr("Available"), item.available_version || readable(item.available), item.discovery_error ? tr("Check failed") : item.available ? tr("Version unavailable") : tr("Not checked"));
     const actions = element(article, 'div', '', 'update-actions');
     for (const [verb, label, enabled, explanation] of [
-      ['update', tr("Update"), available && !incompatible, incompatible ? tr("Upgrade the Docker image before installing this package.") : item.available ? tr("This release is already installed.") : tr("Check for an available release first.")],
+      ['update', missing ? tr("Install") : tr("Update"), available && !incompatible, incompatible ? tr("Upgrade the Docker image before installing this package.") : item.available ? tr("This release is already installed.") : tr("Check for an available release first.")],
       ['rollback', tr("Roll back"), item.previous, tr("No previous version is installed.")]
     ]) {
       const button = element(actions, 'button', label, 'update-' + verb);
@@ -95,7 +96,7 @@
     const details = element(article, 'details', '', 'update-details');
     details.open = open;
     element(details, 'summary', tr("Version history"));
-    element(details, 'p', tr("Bundled: {0}", {"0": (item.bundled_version || readable(item.bundled) || tr("Version unavailable"))}));
+    if (item.bundled_version || item.bundled) element(details, 'p', tr("Bundled: {0}", {"0": (item.bundled_version || readable(item.bundled) || tr("Version unavailable"))}));
     element(details, 'p', tr("Previous: {0}", {"0": (item.previous_version || readable(item.previous) || (item.previous ? tr("Version unavailable") : tr("No previous version")))}));
     for (const [label, revision] of [[tr("Installed"), item.active_revision], [tr("Bundled"), item.bundled_revision], [tr("Available"), item.available_revision], [tr("Previous"), item.previous_revision]]) {
       if (revision) element(details, 'p', `${label} revision: ${revision}`);

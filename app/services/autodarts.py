@@ -5,8 +5,14 @@ from app.config import AUTODARTS_DIR
 from app.services.module_paths import source
 from app.services.process_manager import ManagedProcess, registry
 
-# The v2 headless binary, installed into the image at build time.
+# The v2 headless binary lives in the module store (data/modules/autodarts). The
+# installer adds it, and Updates installs and updates it. This path is only a
+# fallback for development machines that provide their own copy.
 AUTODARTS_BIN = Path("/opt/autodarts/autodarts")
+NOT_INSTALLED = (
+    "Autodarts is not installed. Install it from System → Updates, "
+    "or run ./oche.sh autodarts in the Oche folder."
+)
 
 
 _process = registry.register(
@@ -27,8 +33,7 @@ def get_status() -> dict:
         unavailable_reason = (
             "Native Windows development does not include Autodarts. "
             "Use the Linux Docker image for local detection and camera setup."
-            if os.name == "nt" else
-            "The Autodarts binary is missing. Use an Oche container image that includes detection."
+            if os.name == "nt" else NOT_INSTALLED
         )
     return {
         "version": version_file.read_text().strip() if version_file.is_file() else None,

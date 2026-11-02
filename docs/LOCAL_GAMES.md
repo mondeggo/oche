@@ -159,7 +159,7 @@ accepts that visit after clearing the board; throws missed during the outage
 are not inferred. An in-flight response from the previous turn cannot score
 for the next player.
 
-The image currently bundles Autodarts v2.0.2. A live v2.0.2 LAN board was reachable
+These notes were recorded with Autodarts v2.0.2. A live v2.0.2 LAN board was reachable
 at port 3180 and accepted both HTTP state reads and a local WebSocket subscription.
 After detection was started with the user's authorization, its WebSocket supplied
 a scored T20; a later HTTP takeout snapshot contained T20 and S19. Empty snapshots

@@ -3,7 +3,7 @@ import { tr } from "./i18n.mjs";
 export function autodartsHealth(process) {
   if (!process) return ["bad", tr("Status unavailable"), tr("Cannot read Autodarts status. Check that the Oche host is reachable.")];
   if (process.status === "running") return ["good", tr("Running"), tr("The local Autodarts process is running.")];
-  if (process.status === "nofile") return ["bad", tr("Not installed"), tr(process.unavailable_reason) || tr("The Autodarts binary is missing. Use the Oche Linux container image.")];
+  if (process.status === "nofile") return ["bad", tr("Not installed"), tr(process.unavailable_reason) || tr("Autodarts is not installed. Install it from System → Updates, or run ./oche.sh autodarts in the Oche folder.")];
   if (process.status === "stopped") return ["bad", tr("Stopped"), tr("The Autodarts process is stopped. Start it under System → Autodarts; check its logs if it stops again.")];
   return ["bad", tr("Status unknown"), tr("Autodarts has not reported a recognized process state. Check System → Autodarts.")];
 }

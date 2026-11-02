@@ -2,8 +2,6 @@
 FROM ghcr.io/astral-sh/uv:0.12.12 AS uv
 FROM python:3.12-slim
 
-ARG TARGETARCH
-ARG AUTODARTS_VERSION
 ARG OCHE_VERSION=0.2.0
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -11,21 +9,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libasound2 libpulse0 udev libcap2-bin v4l-utils \
     && rm -rf /var/lib/apt/lists/*
 
-# AutoDarts detection remains an external binary managed by Oche.
-RUN set -eu; \
-    case "${TARGETARCH:-amd64}" in amd64) arch=amd64;; arm64) arch=arm64;; *) exit 1;; esac; \
-    version="${AUTODARTS_VERSION:-}"; \
-    if [ -z "$version" ]; then \
-      version=$(curl -fsSL --retry 3 https://releases.autodarts.com/headless/downloads/latest.stable.json \
-        | python -c 'import json,sys; print(json.load(sys.stdin)["platforms"]["linux-"+sys.argv[1]]["version"])' "$arch"); \
-    fi; \
-    echo "$version" | grep -Eq '^2\.[0-9]+\.[0-9]+$'; \
-    mkdir -p /opt/autodarts; \
-    curl -fsSL --retry 3 "https://releases.autodarts.com/headless/downloads/autodarts_${version}_linux-${arch}.tar.gz" -o /tmp/autodarts.tar.gz; \
-    tar -xzf /tmp/autodarts.tar.gz --strip-components=1 -C /opt/autodarts; \
-    rm /tmp/autodarts.tar.gz; \
-    chmod +x /opt/autodarts/autodarts; \
-    echo "$version" > /opt/autodarts/VERSION
+# AutoDarts detection is not part of the image. The installer and Updates put
+# its official release in data/modules/autodarts, where Oche supervises it.
 
 COPY --from=uv /uv /usr/local/bin/uv
 WORKDIR /app
@@ -38,10 +23,9 @@ ENV PATH="/app/.venv/bin:$PATH"
 COPY scripts/package_updates.py /opt/oche-tools/package_updates.py
 
 # All application code, including app/core, is released and rolled back together.
-RUN mkdir -p /opt/oche-bundles/oche /opt/oche-bundles/autodarts \
+RUN mkdir -p /opt/oche-bundles/oche \
     && cp -a app /opt/oche-bundles/oche/app \
     && printf '%s\n' "$OCHE_VERSION" > /opt/oche-bundles/oche/VERSION \
-    && cp -a /opt/autodarts/. /opt/oche-bundles/autodarts/ \
     && python /opt/oche-tools/package_updates.py --runtime-only
 
 ENV OCHE_DATA_DIR=/app/data OCHE_PORT=8180

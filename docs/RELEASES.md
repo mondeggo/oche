@@ -7,8 +7,9 @@ The workflows in `.github/workflows/` publish from `main` of `mondeggo/oche`:
 - **Checks** runs the Python and frontend tests, lint and shell syntax on pull requests
   and other branches. Both publish workflows run it first and stop if it fails.
 - **Publish Docker image** builds AMD64 and ARM64 images on every push to `main` and
-  pushes `mondeggo/oche:latest` plus `mondeggo/oche:v<version>_<run>_AD<autodarts>`.
-  Both architectures get the same Autodarts release, the latest stable one at build time.
+  pushes `mondeggo/oche:latest` plus `mondeggo/oche:v<version>_<run>`. The image does
+  not contain Autodarts; the installer and Updates fetch it from the official
+  Autodarts releases into `data/modules/autodarts`.
 - **Publish application updates** runs when the `pyproject.toml` version changes (or on
   manual dispatch). It exports both architecture bundles, combines `updates.json`,
   builds the wheel and attaches them to the GitHub release `v<version>`.
@@ -26,8 +27,7 @@ Build the container for the target architecture:
 docker build --platform linux/amd64 --build-arg OCHE_VERSION=0.2.0 -t oche:local .
 ```
 
-Use `linux/arm64` for ARM64. Pin `AUTODARTS_VERSION` when building both architectures
-for one release. The dependency environment is locked by `uv.lock`.
+Use `linux/arm64` for ARM64. The dependency environment is locked by `uv.lock`.
 
 Export the application bundle and manifest from the prepared image:
 
@@ -45,8 +45,15 @@ no release host or remote repository is configured automatically.
 
 The release contains all of `app/`, including its internal darts runtime and UI.
 `launcher.py` and `oche_runtime.py` stay outside the bundle. The runtime fingerprint
-covers Python and installed dependencies; application version changes do not alter
-that fingerprint. Generate compatible application releases from the same runtime
+covers Python, installed dependencies and a contract tag in `package_updates.py`;
+bump that tag when `oche_runtime.py` or `launcher.py` change, so new application
+releases are refused on older images. Application version changes do not alter
+that fingerprint.
+
+Only Oche's releases are stored per runtime. Other modules, such as Autodarts, are
+native programs: their releases stay in `data/modules/<name>/versions/<version>`
+across image upgrades. The first start on a runtime-2 image moves Autodarts out of
+the per-runtime folders that earlier images created. Generate compatible application releases from the same runtime
 image, or ship an image upgrade when dependencies change.
 
 Before activation, the updater checks HTTPS, archive size and paths, checksum,

@@ -23,6 +23,8 @@ from app.services.release_metadata import is_revision, metadata
 from app.services.upstream_releases import discover_autodarts, prepare_autodarts
 
 FEED = os.environ.get("OCHE_UPDATE_FEED", "")
+# Modules Oche manages, in the order the updates table lists them.
+MODULES = ("oche", "autodarts")
 MAX_DOWNLOAD = 1024 * 1024 * 1024
 MAX_EXPANDED = 3 * MAX_DOWNLOAD
 
@@ -42,6 +44,8 @@ class HTTPSRedirect(HTTPRedirectHandler):
 
 def download(url, destination, limit):
     opener = build_opener(HTTPSHandler(), HTTPSRedirect())
+    # The Autodarts release server refuses Python's default User-Agent (HTTP 403).
+    opener.addheaders = [("User-Agent", f"Oche/{__version__}")]
     digest = hashlib.sha256()
     total = 0
     with opener.open(https_url(url), timeout=30) as response, destination.open("wb") as output:
@@ -81,8 +85,7 @@ class UpdateManager:
 
     def status(self):
         modules = []
-        # Oche heads the list; the runtime's module order stays as it is.
-        for name in sorted(store.MODULES, key=lambda module: module != "oche"):
+        for name in MODULES:
             state = store.read_state(name)
             bundled = store.BUNDLES / name / "VERSION"
             versions = store.ROOT / name / "versions"
@@ -111,11 +114,14 @@ class UpdateManager:
                     has_update = tuple(map(int, available_version.split("."))) > tuple(
                         map(int, current.split("."))
                     )
+            # A module the image does not include stays absent until it is installed.
+            present = bool(state.get("active")) or bundled.exists()
             modules.append(
                 {
                     "name": name,
                     **state,
-                    "has_update": has_update,
+                    "has_update": has_update and present,
+                    "installable": bool(release) and not present,
                     "source": release.get("source", "Oche releases"),
                     "discovery_error": self.check_errors.get(name),
                     "verification": release.get("verification", "Publisher SHA-256"),
@@ -130,10 +136,11 @@ class UpdateManager:
                     "available_revision": release.get("revision")
                     or (release.get("version") if is_revision(release.get("version")) else None),
                     "bundled": bundled.read_text().strip() if bundled.exists() else None,
+                    "present": present,
                     "installed": sorted(
                         p.name
                         for p in versions.iterdir()
-                        if (p / store.RUNTIME).is_dir() and not p.name.startswith(".")
+                        if not p.name.startswith(".") and store.release_path(name, p.name).is_dir()
                     )
                     if versions.exists()
                     else [],
@@ -153,12 +160,12 @@ class UpdateManager:
         if action != "check" and os.environ.get("OCHE_LAUNCHER") != "1":
             raise ValueError("Updates require the Docker runtime with the stable launcher")
         if action not in ("check", "update", "rollback", "update-all") or (
-            action in ("update", "rollback") and name not in store.MODULES
+            action in ("update", "rollback") and name not in MODULES
         ):
             raise ValueError("Unknown update action or module")
         if not self.lock.acquire(blocking=False):
             raise ValueError("Another update operation is running")
-        if any(store.read_state(n).get("pending") for n in store.MODULES):
+        if any(store.read_state(n).get("pending") for n in MODULES):
             self.lock.release()
             raise ValueError("Waiting for an activation health check")
         self.job = {
@@ -182,7 +189,8 @@ class UpdateManager:
                 candidates = [
                     m["name"] for m in self.status()["modules"] if m["has_update"] and m["runtime_compatible"]
                 ]
-                # MODULES keeps Oche last: its restart must not interrupt others.
+                # Oche installs last: its restart must not interrupt the others.
+                candidates.sort(key=lambda module: module == "oche")
                 for index, module in enumerate(candidates, 1):
                     self.job.update(module=module, current=index, total=len(candidates))
                     self.install(module, refresh=False)
@@ -285,11 +293,37 @@ class UpdateManager:
         version = release["version"]
         if (
             release.get("format")
-            and not next(m for m in self.status()["modules"] if m["name"] == name)["has_update"]
+            and not any(
+                m["has_update"] or m["installable"] for m in self.status()["modules"] if m["name"] == name
+            )
         ):
             return
         if store.read_state(name).get("active") == version:
             return
+        self._stage(name, release)
+        self.activate(name, version)
+
+    def install_missing(self, name):
+        """Install a module that has no release yet, without starting it.
+
+        The installer runs this in a one-off container before Oche starts, so the
+        release lands in the module store with the container's ownership.
+        """
+        if store.read_state(name).get("active"):
+            return None
+        architecture = {"x86_64": "amd64", "amd64": "amd64", "aarch64": "arm64", "arm64": "arm64"}.get(
+            platform.machine().lower(), platform.machine().lower()
+        )
+        discover = {"autodarts": discover_autodarts}.get(name)
+        if not discover:
+            raise ValueError("This module cannot be installed on its own")
+        release = discover(download, architecture)
+        self._stage(name, release)
+        store.write_state(name, {"active": release["version"], "previous": None, "pending": False})
+        return release["version"]
+
+    def _stage(self, name, release):
+        version = release["version"]
         versions = store.ROOT / name / "versions"
         versions.mkdir(parents=True, exist_ok=True)
         target = store.release_path(name, version)
@@ -306,7 +340,6 @@ class UpdateManager:
                 content.mkdir()
                 if release.get("format") == "autodarts-archive":
                     prepare_autodarts(archive, content, version, extract)
-                    (content / "RUNTIME").write_text(store.RUNTIME)
                 else:
                     extract(archive, content)
                 identity = content / "REVISION" if (content / "REVISION").is_file() else content / "VERSION"
@@ -317,7 +350,7 @@ class UpdateManager:
                     and (content / "VERSION").read_text().strip() != release["display_version"]
                 ):
                     raise ValueError("Application version does not match release metadata")
-                if (content / "RUNTIME").read_text().strip() != store.RUNTIME:
+                if name in store.RUNTIME_BOUND and (content / "RUNTIME").read_text().strip() != store.RUNTIME:
                     raise ValueError("Bundle requires a different Docker runtime")
                 required = {
                     "oche": "app/server.py",
@@ -330,7 +363,6 @@ class UpdateManager:
                 os.replace(content, target)
             finally:
                 shutil.rmtree(stage, ignore_errors=True)
-        self.activate(name, version)
 
     def activate(self, name, version):
         version = store.valid_version(version)
@@ -347,10 +379,13 @@ class UpdateManager:
             request.parent.mkdir(parents=True, exist_ok=True)
             request.touch()
             return
+        from app.config import load_config
         from app.services import autodarts
 
         service = {"autodarts": autodarts}[name]
         running = service.get_status()["status"] == "running"
+        # A first install starts the engine when Oche would start it on boot.
+        keep_running = running or (not old.get("active") and load_config().get("autostart_autodarts"))
         service.stop()
         try:
             store.write_state(name, state)
@@ -374,7 +409,7 @@ class UpdateManager:
                 time.sleep(1)
             else:
                 raise RuntimeError("Updated process did not pass its HTTP health check")
-            if not running:
+            if not keep_running:
                 service.stop()
             state["pending"] = False
             store.write_state(name, state)

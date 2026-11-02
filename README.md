@@ -1,7 +1,7 @@
 # Oche
 
-Oche runs your darts board from one web app. It ships the local Autodarts board
-software, opens Autodarts Play, and connects your Autodarts account so game events
+Oche runs your darts board from one web app. It installs and runs the local
+Autodarts board software as its detection engine, opens Autodarts Play, and connects your Autodarts account so game events
 can drive lighting and a caller.
 
 - **Play on Autodarts**: Autodarts Play inside Oche, over local HTTPS.
@@ -44,8 +44,11 @@ The installer asks for one choice:
 2. **Detailed**: choose the folder and startup behaviour, and pick individual
    cameras.
 
-It installs Docker if it is missing, pulls `mondeggo/oche:latest` and starts the
-container. Linux with systemd, `curl` and `sudo` are required.
+It installs Docker if it is missing, pulls `mondeggo/oche:latest`, downloads the
+official Autodarts release into `data/modules/autodarts` and starts the container.
+Easy installation always includes Autodarts; Detailed asks, with Yes as the default.
+Without it, Oche still runs: install it later from **System › Updates** or with
+`./oche.sh autodarts`. Linux with systemd, `curl` and `sudo` are required.
 
 ## First steps
 
@@ -73,6 +76,7 @@ cd ~/oche
 ./oche.sh status    # container state
 ./oche.sh logs      # follow the logs
 ./oche.sh cameras   # choose cameras, all of /dev, or none
+./oche.sh autodarts # install Autodarts if it is missing
 ```
 
 Camera choices are written to `docker-compose.override.yml`. The helper leaves an
@@ -83,10 +87,11 @@ override that you wrote yourself untouched.
 - **Application updates** appear on **System › Updates**. They replace the app code
   in place and roll back if the new version fails to start. They are published as
   GitHub releases of this repository.
-- **Image updates** (`./oche.sh update`) bring a newer Python runtime, dependencies,
-  launcher and the bundled Autodarts release.
-
-Autodarts updates also have their own control on System › Autodarts.
+- **Autodarts updates** also appear on **System › Updates**, from the official
+  Autodarts stable releases. Autodarts is not part of the image, so image updates
+  keep the installed version.
+- **Image updates** (`./oche.sh update`) bring a newer Python runtime, dependencies
+  and launcher.
 
 ## Data and backup
 
@@ -98,7 +103,7 @@ data/
 ├── autodarts/     # board configuration
 ├── https/         # certificates and renewal credentials
 ├── logs/
-├── modules/       # installed application releases
+├── modules/       # installed releases of Oche and Autodarts
 ├── state/         # launcher requests
 └── settings.json
 ```
@@ -145,8 +150,14 @@ To run the container from source with reload:
 docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
 ```
 
-It builds `oche:dev` with the latest stable Autodarts and serves port 8180. To try a
-local image the normal way, build it and point the installer or `.env` at it:
+It builds `oche:dev` and serves port 8180. The image has no Autodarts; install it
+into `./data` once with:
+
+```sh
+docker compose -f docker-compose.yml -f docker-compose.dev.yml run --rm   --entrypoint python oche -m app.services.install_module autodarts
+```
+
+To try a local image the normal way, build it and point the installer or `.env` at it:
 
 ```sh
 docker build -t oche:local .
