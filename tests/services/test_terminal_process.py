@@ -12,7 +12,8 @@ from app.services.autodarts_terminal import AutodartsTerminal
 class TerminalProcessTests(unittest.IsolatedAsyncioTestCase):
     async def test_interactive_client_resize_and_cleanup(self):
         with tempfile.TemporaryDirectory() as folder:
-            client = Path(folder) / 'client'
+            # The terminal runs the executable named autodarts beside AUTODARTS_BIN.
+            client = Path(folder) / 'autodarts'
             client.write_text('''#!/usr/bin/env python3
 import os, sys, termios, tty
 tty.setraw(0)
