@@ -140,6 +140,30 @@
           </div>
           <span class="integration-card-link">{{ _("View events →") }}</span>
         </a>
+        <h2 class="section-heading">{{ _("Detection engines") }}</h2>
+        <p class="hint engines-hint">{{ _("One engine reads the cameras at a time. Choosing an engine stops the other one.") }}</p>
+        <div class="integration-grid">
+          {%- for engine, title, text, link, link_label in [
+            ("autodarts", "Autodarts", _("Board detection and calibration from Autodarts. Play on Autodarts needs it."), "/supervisor", _("Board setup →")),
+            ("ochecore", "OcheCore", _("Offline board detection with two to four cameras. Play on Oche scores with it once its Autodarts-compatible API is ready."), "", _("Open OcheCore ↗")),
+          ] %}
+          <article class="panel integration-card engine-card" data-engine="{{ engine }}">
+            <div class="integration-card-head">
+              <h3>{{ title }}</h3>
+              <span class="badge" data-engine-state>{{ _("Loading…") }}</span>
+            </div>
+            <p class="muted">{{ text }}</p>
+            <p class="hint" data-engine-detail></p>
+            <div class="actions">
+              <button class="primary" type="button" data-engine-action="install" hidden>{{ _("Install") }}</button>
+              <button class="primary" type="button" data-engine-action="use" hidden>{{ _("Use this engine") }}</button>
+              <button type="button" data-engine-action="stop" hidden>{{ _("Stop") }}</button>
+            </div>
+            <p class="error" role="status" data-engine-error hidden></p>
+            <a class="integration-card-link" data-engine-link href="{{ link or '#' }}"{% if not link %} target="_blank" rel="noopener noreferrer"{% endif %} hidden>{{ link_label }}</a>
+          </article>
+          {%- endfor %}
+        </div>
         <h2 class="section-heading">{{ _("Tools and integrations") }}</h2>
         <div class="integration-grid">
           <article class="panel integration-card">
@@ -966,4 +990,5 @@
 <script type="module" src="/static/core/wled2.js"></script>
 <script type="module" src="/static/core/caller.js"></script>
 <script type="module" src="/static/core/cameras.js"></script>
+<script type="module" src="/static/core/engines.js"></script>
 {% endblock %}

@@ -4,10 +4,16 @@ Oche runs your darts board from one web app. It installs and runs the local
 Autodarts board software as its detection engine, opens Autodarts Play, and connects your Autodarts account so game events
 can drive lighting and a caller.
 
-- **Play on Autodarts**: Autodarts Play inside Oche, over local HTTPS.
+- **Play on Autodarts**: Autodarts Play inside Oche, over local HTTPS. It appears
+  once the Autodarts engine is installed.
 - **Play on Oche**: choose a game mode and play X01 (301/501) on this device with
   manual darts or a compatible local Autodarts scored-throw API. Automatic offline scoring with the bundled v2 detector is not
   verified; see [local games](docs/LOCAL_GAMES.md).
+- **Detection engines** (Integrations): Autodarts, the default, and OcheCore, an
+  offline Rust detector for two to four cameras. Install either from its card or
+  System › Updates; one engine reads the cameras at a time, and choosing one stops
+  the other. OcheCore's own page opens in a new tab on port 5180. It does not score
+  Play on Oche until its Autodarts-compatible API exists.
 - **Integrations**: connect your Autodarts account and turn on Visual WLED, WLED
   and Caller. Each integration can follow Autodarts Play, local play,
   or both. Camera Enhancer provides optional previews, focus and exposure controls.
@@ -101,6 +107,7 @@ Everything you configure lives in `~/oche/data`:
 data/
 ├── core/          # account, tokens, profiles, lighting, voices and theme
 ├── autodarts/     # board configuration
+├── ochecore/      # OcheCore settings and calibration (board.toml)
 ├── https/         # certificates and renewal credentials
 ├── logs/
 ├── modules/       # installed releases of Oche and Autodarts

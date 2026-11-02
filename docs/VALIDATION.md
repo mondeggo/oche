@@ -467,3 +467,36 @@ named volumes, official Autodarts releases over the Internet):
 
 Browser acceptance (headless Microsoft Edge): the Updates row shows a neutral
 "Not installed" chip with Install, then "Up to date" after installing.
+
+## Detection engines: Autodarts and OcheCore (2026-11-02)
+
+Automated:
+
+- Autodarts is the default engine; choosing an engine saves it, stops the other
+  and starts it when installed; boot starts only the active engine, and only when
+  Start on boot is on. The engine API rejects unknown names.
+- OcheCore releases are accepted only as stable GitHub releases of
+  `mondeggo/ochecore`, with the archive and its `.sha256` from that release page;
+  the archive installs flattened into `data/modules/ochecore/versions/<version>`.
+- Play on Autodarts is hidden until Autodarts is installed.
+
+Docker acceptance (Docker Desktop 28.5.1 on Windows, image built locally, fresh
+named volume, official releases over the Internet):
+
+- Autodarts 2.1.0 installed through `install_module`, and the launcher started it as
+  the active engine.
+- Installing OcheCore from Updates downloaded v0.1.5 from GitHub, verified it,
+  passed the health check on port 5180 and left it stopped while Autodarts stayed
+  active.
+- Use OcheCore stopped Autodarts and started OcheCore; its page answered HTTP 200
+  through the container's published port. It saved `data/ochecore/board.toml`
+  (UID 1000) with `bind = "0.0.0.0"` and `port = 5180`, and logged events to
+  `data/logs/ochecore.log`.
+- Use Autodarts reversed it, and the choice survived a container restart.
+- Not verified: cameras, calibration or detection with either engine on the board,
+  ARM64, or both engines contending for real cameras.
+
+Browser acceptance (headless Microsoft Edge, dark and light): Integrations shows
+the Detection engines section; the active card has the lime lip with
+"Active · Running", Stop and "Open OcheCore ↗", and the other offers "Use this
+engine".

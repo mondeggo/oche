@@ -25,10 +25,10 @@ from app.core.integrations.wled.simulator import DEMO_URL
 from app.core.integrations.wled.simulator import create_app as create_demo_app
 from app.core.runtime import Runtime
 from app.navigation import HOME_ROUTES
-from app.routers import autodarts, cameras, config, panels, system, updates
+from app.routers import autodarts, cameras, config, engines, panels, system, updates
 from app.security import same_origin
-from app.services import autodarts as detection
 from app.services import camera_controls, system_metrics
+from app.services import engines as detection_engines
 from app.services.local_https import LocalHTTPS
 from app.services.metrics_history import HistoryConfig, MetricsHistory
 from app.services.updates import manager as update_manager
@@ -63,9 +63,7 @@ def create_app(
             history.start()
             try:
                 if manage_services:
-                    saved = load_config()
-                    if saved.get("autostart_autodarts") and detection.get_status()["installed"]:
-                        await run_in_threadpool(detection.start)
+                    await run_in_threadpool(detection_engines.start_on_boot)
                     await application.state.local_https.restore(application)
                     if os.environ.get("OCHE_LAUNCHER") == "1" and os.environ.get("OCHE_UPDATE_FEED"):
                         try:
@@ -85,7 +83,7 @@ def create_app(
                             try:
                                 await application.state.local_https.close()
                             finally:
-                                await run_in_threadpool(detection.stop)
+                                await run_in_threadpool(detection_engines.stop_all)
 
     application = FastAPI(title="Oche", version=__version__, lifespan=lifespan, redoc_url=None)
     application.state.ui = UISettings(settings)
@@ -127,6 +125,7 @@ def create_app(
         lighting_router,
         ui_router,
         autodarts.router,
+        engines.router,
         cameras.router,
         config.router,
         panels.router,

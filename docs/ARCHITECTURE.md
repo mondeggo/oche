@@ -11,9 +11,17 @@ Stable launcher
     │   ├── Profiles
     │   └── REST and WebSocket routes
     ├── HTTPS, persistent settings, panels and updates
-    └── AutoDarts detection supervisor
-        └── External detection binary
+    └── Detection engine supervisor (one active engine)
+        ├── Autodarts, port 3180
+        └── OcheCore, port 5180
 ```
+
+Detection engines are external programs installed into `data/modules/<name>` from
+their publishers' releases and updated from System › Updates. They share the
+cameras, so `app/services/engines.py` keeps one active (`detection_engine` in
+`data/settings.json`, Autodarts by default): choosing one stops the other, and boot
+starts the active one when **Start on boot** is on. OcheCore keeps its settings in
+`data/ochecore/board.toml` and listens on the LAN, like Autodarts.
 
 `app/main.py` owns the shared HTTP client, runtime startup and shutdown. All darts
 routes access the in-process runtime directly. The application's health check

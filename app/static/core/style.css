@@ -1370,3 +1370,9 @@
 .core-workspace .events-card h3 { margin: 0; font-family: var(--font-display); font-size: 16px; font-weight: 400; }
 .core-workspace .events-card .muted { margin-top: 2px; font-size: 13px; }
 .core-workspace .events-card .integration-card-link { margin: 0; color: var(--link); text-decoration: underline; text-underline-offset: 3px; white-space: nowrap; }
+
+/* Detection engines: the active one gets a lime lip in place of the card's colour. */
+.core-workspace .engines-hint { margin: -4px 0 12px; }
+.core-workspace .engine-card.is-active { box-shadow: var(--pop), inset 0 5px 0 var(--lime); }
+.core-workspace .engine-card .actions { margin-top: 14px; }
+.core-workspace .engine-card [data-engine-detail]:empty { display: none; }

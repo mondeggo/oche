@@ -20,11 +20,20 @@ from urllib.request import HTTPRedirectHandler, HTTPSHandler, build_opener
 import oche_runtime as store
 from app import __version__
 from app.services.release_metadata import is_revision, metadata
-from app.services.upstream_releases import discover_autodarts, prepare_autodarts
+from app.services.upstream_releases import (
+    discover_autodarts,
+    discover_ochecore,
+    prepare_autodarts,
+    prepare_ochecore,
+)
 
 FEED = os.environ.get("OCHE_UPDATE_FEED", "")
 # Modules Oche manages, in the order the updates table lists them.
-MODULES = ("oche", "autodarts")
+MODULES = ("oche", "autodarts", "ochecore")
+# Native modules that come from their publisher's own releases.
+UPSTREAM = {"autodarts": discover_autodarts, "ochecore": discover_ochecore}
+# Supervised native modules: their process and the port its health check reads.
+PORTS = {"autodarts": 3180, "ochecore": 5180}
 MAX_DOWNLOAD = 1024 * 1024 * 1024
 MAX_EXPANDED = 3 * MAX_DOWNLOAD
 
@@ -223,15 +232,14 @@ class UpdateManager:
             platform.machine().lower(), platform.machine().lower()
         )
         # An unavailable Oche feed must not hide independent upstream releases.
-        with ThreadPoolExecutor(max_workers=2) as pool:
-            jobs = [
-                (pool.submit(self._check_bundle_feed), ("oche",)),
-                (pool.submit(discover_autodarts, download, architecture), ("autodarts",)),
+        with ThreadPoolExecutor(max_workers=1 + len(UPSTREAM)) as pool:
+            jobs = [(pool.submit(self._check_bundle_feed), ("oche",))] + [
+                (pool.submit(UPSTREAM[name], download, architecture), (name,)) for name in UPSTREAM
             ]
             for future, names in jobs:
                 try:
                     result = future.result()
-                    if names == ("autodarts",):
+                    if names[0] in UPSTREAM:
                         discovered[names[0]] = result
                     else:
                         discovered.update(result)
@@ -319,7 +327,7 @@ class UpdateManager:
         architecture = {"x86_64": "amd64", "amd64": "amd64", "aarch64": "arm64", "arm64": "arm64"}.get(
             platform.machine().lower(), platform.machine().lower()
         )
-        discover = {"autodarts": discover_autodarts}.get(name)
+        discover = UPSTREAM.get(name)
         if not discover:
             raise ValueError("This module cannot be installed on its own")
         release = discover(download, architecture)
@@ -345,6 +353,8 @@ class UpdateManager:
                 content.mkdir()
                 if release.get("format") == "autodarts-archive":
                     prepare_autodarts(archive, content, version, extract)
+                elif release.get("format") == "ochecore-archive":
+                    prepare_ochecore(archive, content, version, extract)
                 else:
                     extract(archive, content)
                 identity = content / "REVISION" if (content / "REVISION").is_file() else content / "VERSION"
@@ -360,6 +370,7 @@ class UpdateManager:
                 required = {
                     "oche": "app/server.py",
                     "autodarts": "autodarts",
+                    "ochecore": "oche-core",
                 }[name]
                 if not (content / required).is_file():
                     raise ValueError("Bundle is missing its application entry point")
@@ -385,17 +396,19 @@ class UpdateManager:
             request.touch()
             return
         from app.config import load_config
-        from app.services import autodarts
+        from app.services import engines
 
-        service = {"autodarts": autodarts}[name]
+        service = engines.ENGINES[name]
         running = service.get_status()["status"] == "running"
-        # A first install starts the engine when Oche would start it on boot.
-        keep_running = running or (not old.get("active") and load_config().get("autostart_autodarts"))
+        # A first install starts the active engine when Oche would start it on boot.
+        keep_running = running or (
+            not old.get("active") and engines.active() == name and load_config().get("autostart_autodarts")
+        )
         service.stop()
         try:
             store.write_state(name, state)
             service.start()
-            port = {"autodarts": 3180}[name]
+            port = PORTS[name]
             from urllib.request import urlopen
 
             deadline = time.monotonic() + 60

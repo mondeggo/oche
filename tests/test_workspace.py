@@ -186,6 +186,7 @@ def test_restart_requires_launcher_and_serializes_with_updates(application, tmp_
             assert [m["name"] for m in client.get("/updates/status").json()["modules"]] == [
                 "oche",
                 "autodarts",
+                "ochecore",
             ]
 
 

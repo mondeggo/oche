@@ -43,7 +43,7 @@ class LocalHTTPSTests(unittest.TestCase):
         for patcher in (
             patch.dict(os.environ, {"OCHE_HTTPS_PORT": str(self.port)}),
             patch("app.services.local_https.shutil.which", return_value=OPENSSL),
-            patch("app.main.detection.stop"),
+            patch("app.main.detection_engines.stop_all"),
         ):
             patcher.start()
             self.addCleanup(patcher.stop)

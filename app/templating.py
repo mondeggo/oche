@@ -6,6 +6,7 @@ from app import __version__
 from app.config import load_config
 from app.i18n import LANGUAGES, catalogue, translate
 from app.navigation import HOME_ROUTES
+from app.services import autodarts
 
 
 def _integration_enabled(runtime, name):
@@ -55,7 +56,8 @@ def navigation_context(request):
         "app_version": __version__,
         "nav_panels": config.get("panels", []),
         "nav_visibility": {
-            "play": config.get("show_play_in_navbar", True),
+            # Autodarts Play needs the Autodarts integration installed.
+            "play": config.get("show_play_in_navbar", True) and autodarts.get_status()["installed"],
             "system": pages["autodarts"] or pages["system"] or pages["updates"],
             "pages": pages,
             "panels": config.get("show_panels_in_navbar", True),

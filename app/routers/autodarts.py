@@ -10,7 +10,7 @@ from fastapi.responses import PlainTextResponse
 from app.templating import templates
 
 from app.config import LOG_DIR, load_config
-from app.services import autodarts
+from app.services import autodarts, engines
 from app.services.autodarts_terminal import AutodartsTerminal
 from app.security import same_origin
 from app.log_download import log_download
@@ -117,8 +117,10 @@ def status():
 
 @router.post("/start")
 def start():
+    # Starting Autodarts makes it the active engine and stops OcheCore.
     try:
-        ok = autodarts.start()
+        engines.use("autodarts")
+        ok = autodarts.get_status()["status"] == "running"
     except RuntimeError as e:
         raise HTTPException(status_code=409, detail=str(e))
     return {"ok": ok, **autodarts.get_status()}
@@ -133,7 +135,9 @@ def stop():
 @router.post("/restart")
 def restart():
     try:
-        ok = autodarts.restart()
+        autodarts.stop()
+        engines.use("autodarts")
+        ok = autodarts.get_status()["status"] == "running"
     except RuntimeError as e:
         raise HTTPException(status_code=409, detail=str(e))
     return {"ok": ok, **autodarts.get_status()}

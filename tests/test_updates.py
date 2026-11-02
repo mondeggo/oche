@@ -134,7 +134,7 @@ def test_missing_autodarts_installs_without_starting_and_offers_install(manager)
     module = next(m for m in manager.status()["modules"] if m["name"] == "autodarts")
     # A skipped install is offered on its row but never counted as an update.
     assert not module["present"] and module["installable"] and not module["has_update"]
-    with downloads, patch("app.services.updates.discover_autodarts", return_value=entry), \
+    with downloads, patch.dict("app.services.updates.UPSTREAM", {"autodarts": lambda *_: entry}), \
             patch("app.services.autodarts.start") as start:
         assert manager.install_missing("autodarts") == "2.1.0"
         assert manager.install_missing("autodarts") is None
@@ -147,7 +147,7 @@ def test_missing_autodarts_installs_without_starting_and_offers_install(manager)
 
 def test_native_module_releases_survive_an_image_upgrade(manager, monkeypatch):
     entry, downloads = autodarts_release()
-    with downloads, patch("app.services.updates.discover_autodarts", return_value=entry):
+    with downloads, patch.dict("app.services.updates.UPSTREAM", {"autodarts": lambda *_: entry}):
         manager.install_missing("autodarts")
     monkeypatch.setattr(store, "RUNTIME", "next-runtime")
     store.initialize()
@@ -229,6 +229,6 @@ def test_active_release_with_missing_files_can_be_installed_again(manager):
     manager.available = {"autodarts": entry}
     module = next(m for m in manager.status()["modules"] if m["name"] == "autodarts")
     assert not module["present"] and module["installable"]
-    with downloads, patch("app.services.updates.discover_autodarts", return_value=entry):
+    with downloads, patch.dict("app.services.updates.UPSTREAM", {"autodarts": lambda *_: entry}):
         assert manager.install_missing("autodarts") == "2.1.0"
     assert (store.location("autodarts", "unused") / "autodarts").is_file()

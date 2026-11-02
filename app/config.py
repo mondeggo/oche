@@ -14,7 +14,9 @@ AUTODARTS_DIR.mkdir(exist_ok=True)
 
 DEFAULTS = {
     "https_enabled": False,
+    # Starts the active detection engine on boot (originally named for Autodarts).
     "autostart_autodarts": True,
+    "detection_engine": "autodarts",
     "panels": [],
     "autohide_navbar_on_home": False,
     "autohide_navbar_on_play": True,
