@@ -88,11 +88,6 @@
             <dd id="overview-caller">{{ _("Loading…") }}</dd>
             <a href="/integrations/caller">{{ _("Voice settings →") }}</a>
           </div>
-          <div class="panel">
-            <dt>{{ _("Scoreboard") }}</dt>
-            <dd id="overview-scoreboard">{{ _("Loading…") }}</dd>
-            <a href="/integrations/scoreboard">{{ _("Display settings →") }}</a>
-          </div>
         </dl>
         <div id="setup-integrations" class="panel compact-panel">
           <div>
@@ -185,19 +180,6 @@
             {{ source_options('caller', 'Caller') }}
             <p id="caller-integration-error" class="error" role="status" hidden></p>
             <a class="integration-card-link" id="caller-settings" href="/integrations/caller" hidden>{{ _("Settings →") }}</a>
-          </article>
-          <article class="panel integration-card">
-            <div class="integration-card-head">
-              <h3>{{ _("Scoreboard") }}</h3>
-              <button id="scoreboard-toggle" class="switch" type="button" role="switch" aria-checked="false" aria-label="{{ _('Enable Scoreboard') }}" disabled>
-                <span id="scoreboard-toggle-label">{{ _("Loading…") }}</span>
-                <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
-              </button>
-            </div>
-            <p class="muted">{{ _("A personalized, full-screen live score display for a second screen or kiosk browser.") }}</p>
-            {{ source_options('scoreboard', 'Scoreboard') }}
-            <p id="scoreboard-integration-error" class="error" role="status" hidden></p>
-            <a class="integration-card-link" id="scoreboard-settings" href="/integrations/scoreboard" hidden>{{ _("Settings →") }}</a>
           </article>
           <article class="panel integration-card">
             <div class="integration-card-head">
@@ -893,60 +875,6 @@
         </div>
       </section>
 
-      <section data-view="scoreboard" aria-label="{{ _('Scoreboard settings') }}" hidden>
-        <form id="scoreboard-form" class="panel" inert>
-          <div class="panel-heading">
-            <h2>{{ _("Scoreboard display") }}</h2>
-            <a id="scoreboard-open" target="_blank" rel="noopener noreferrer"
-              >{{ _("Open scoreboard display ↗") }}</a
-            >
-          </div>
-          <p id="scoreboard-error" class="error" role="status" hidden></p>
-          {{ source_options('scoreboard', 'Scoreboard') }}
-          <div class="form-grid">
-            <label
-              >{{ _("Title") }}<input
-                id="scoreboard-title"
-                maxlength="60"
-                placeholder="{{ _('Optional, e.g. Pub Night') }}"
-            /></label>
-            <label
-              >{{ _("Theme") }}<select id="scoreboard-theme">
-                <option value="auto">{{ _("Match site theme") }}</option>
-                <option value="dark">{{ _("Always dark") }}</option>
-                <option value="light">{{ _("Always light") }}</option>
-              </select></label
-            >
-          </div>
-          <label class="checkbox"
-            ><input id="scoreboard-show_last_dart" type="checkbox" checked />
-            {{ _("Show last dart") }}</label
-          >
-          <label class="checkbox"
-            ><input id="scoreboard-show_checkout" type="checkbox" checked />
-            {{ _("Show checkout available") }}</label
-          >
-          <label class="checkbox"
-            ><input id="scoreboard-show_sets_legs" type="checkbox" checked />
-            {{ _("Show set and leg") }}</label
-          >
-          <label class="checkbox"
-            ><input id="scoreboard-show_bots" type="checkbox" checked /> {{ _("Show bot players") }}</label
-          >
-          <p class="hint">
-            {{ _("Open the display on a second screen or kiosk browser near the board. It updates on its own — no admin sidebar.") }}
-          </p>
-          <div class="actions">
-            <span id="scoreboard-autosave" class="hint" role="status"
-              >{{ _("Settings save automatically.") }}</span
-            >
-            <button id="scoreboard-settings-retry" type="button" hidden>
-              {{ _("Retry saving") }}
-            </button>
-          </div>
-        </form>
-      </section>
-
       <section data-view="events" aria-label="{{ _('Events') }}" hidden>
         <div class="panel">
           <div class="panel-heading">
@@ -1037,6 +965,5 @@
 <script type="module" src="/static/core/wled.js"></script>
 <script type="module" src="/static/core/wled2.js"></script>
 <script type="module" src="/static/core/caller.js"></script>
-<script type="module" src="/static/core/scoreboard.js"></script>
 <script type="module" src="/static/core/cameras.js"></script>
 {% endblock %}

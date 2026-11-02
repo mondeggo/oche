@@ -8,7 +8,7 @@ Stable launcher
     │   ├── AutoDarts cloud login and event processing
     │   ├── WLED lighting and visual layouts
     │   ├── Caller and voice library
-    │   ├── Profiles and scoreboard
+    │   ├── Profiles
     │   └── REST and WebSocket routes
     ├── HTTPS, persistent settings, panels and updates
     └── AutoDarts detection supervisor
@@ -58,7 +58,7 @@ Autodarts v2 offline-scoring limitation.
 Normalized events identify their play source (`cloud` or `local`). Each integration
 persists independent `run_on_cloud` and `run_on_local` settings. Caller and lighting
 filter both events and current snapshots, including queued events from the previous
-source; Scoreboard checks the same selection before displaying a game. The sidebar
+source. The sidebar
 reports the Autodarts process, local detector readiness and cloud status in that
 order on a single row. Local readiness reads the configured detector state separately
 from game scoring, whether or not a local game is active. It does not depend on

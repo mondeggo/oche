@@ -1,7 +1,7 @@
 export const homeRoutes = {
   overview: "/", integrations: "/integrations", autodarts: "/integrations/autodarts",
   wled: "/integrations/wled", wled2: "/integrations/visual-wled",
-  caller: "/integrations/caller", scoreboard: "/integrations/scoreboard",
+  caller: "/integrations/caller",
   profiles: "/profiles", events: "/events",
 };
 export const isHome = path => Object.values(homeRoutes).includes(path);

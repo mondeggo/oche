@@ -14,7 +14,7 @@ from app import __version__
 from app.config import DATA_DIR, load_config
 from app.core.api.http import create_router as create_core_router
 from app.core.api.local import router as local_router
-from app.core.api.ui import UISettings, render_scoreboard_display
+from app.core.api.ui import UISettings
 from app.core.api.ui import router as ui_router
 from app.core.api.websocket import router as events_router
 from app.core.api.wled2 import router as lighting_router
@@ -113,7 +113,7 @@ def create_app(
         )
         if request.url.path.startswith(("/api/", "/updates/", "/system/")):
             response.headers["Cache-Control"] = "no-store"
-        elif request.url.path in HOME_ROUTES or request.url.path.startswith(("/static/", "/scoreboard")):
+        elif request.url.path in HOME_ROUTES or request.url.path.startswith("/static/"):
             response.headers["Cache-Control"] = "no-cache"
         return response
 
@@ -165,15 +165,6 @@ def create_app(
             request=request,
             name="supervisor_cameras.html",
             context={"active_nav": "cameras", "service": "cameras"},
-        )
-
-    @application.get("/scoreboard", include_in_schema=False)
-    async def scoreboard(request: Request):
-        return render_scoreboard_display(
-            STATIC / "core/scoreboard-display.html",
-            application.state.ui.config.theme,
-            application.state.runtime.scoreboard.config.theme,
-            application.state.ui.config.language,
         )
 
     @application.get("/local")

@@ -2,14 +2,14 @@
 
 Oche runs your darts board from one web app. It ships the local Autodarts board
 software, opens Autodarts Play, and connects your Autodarts account so game events
-can drive lighting, a caller and a scoreboard.
+can drive lighting and a caller.
 
 - **Play on Autodarts**: Autodarts Play inside Oche, over local HTTPS.
 - **Play on Oche**: choose a game mode and play X01 (301/501) on this device with
   manual darts or a compatible local Autodarts scored-throw API. Automatic offline scoring with the bundled v2 detector is not
   verified; see [local games](docs/LOCAL_GAMES.md).
-- **Integrations**: connect your Autodarts account and turn on Visual WLED, WLED,
-  Caller and Scoreboard. Each integration can follow Autodarts Play, local play,
+- **Integrations**: connect your Autodarts account and turn on Visual WLED, WLED
+  and Caller. Each integration can follow Autodarts Play, local play,
   or both. Camera Enhancer provides optional previews, focus and exposure controls.
   The Camera Enhancer switch controls sidebar visibility independently of detection.
 - **Profiles**: save integration settings, theme and language as profiles and

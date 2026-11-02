@@ -194,7 +194,7 @@ remain separate acceptance items.
 Local games produce the same `MatchFrame` structure as cloud play and pass it
 through `EventNormalizer`. Throws, corrections, removals, busts, visit totals,
 player changes, takeout, checkouts and wins reach the existing event bus. WLED,
-Visual WLED, Caller and Scoreboard use the selected local game snapshot through
+Visual WLED and Caller use the selected local game snapshot through
 `Runtime.game_state()` and `/api/game`. Source switching is exclusive.
 
 Each event integration has **Game sources** switches for **Autodarts Play** and
@@ -204,8 +204,7 @@ with existing settings. The choices persist with the integration configuration;
 Caller choices follow the active profile. Source selection is independent of
 whether a cloud game's player uses the local physical board.
 
-Disabled sources do not generate caller calls, lighting game effects or a
-scoreboard display. Lighting retains its waiting state when the selected source
+Disabled sources do not generate caller calls or lighting game effects. Lighting retains its waiting state when the selected source
 is excluded. Queued events from the previous source are ignored after switching.
 Manual integration tests remain available regardless of source selection.
 

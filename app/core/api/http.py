@@ -9,7 +9,6 @@ from pydantic import BaseModel, ConfigDict, ValidationError
 from app.core.config import ConnectionConfig
 from app.core.events import DebugRecording, Event
 from app.core.integrations.caller.service import CallerConfig, CallerTest
-from app.core.integrations.scoreboard.service import ScoreboardConfig
 from app.core.integrations.wled.service import (
     Device,
     DeviceAddress,
@@ -340,14 +339,6 @@ def create_router() -> APIRouter:
     async def caller_audio(voice_id: str, clip: str, request: Request):
         library = request.app.state.runtime.caller.library
         return FileResponse(library.clip_path(voice_id, clip))
-
-    @router.get("/api/scoreboard")
-    async def scoreboard_config(request: Request):
-        return request.app.state.runtime.scoreboard.status()
-
-    @router.patch("/api/scoreboard")
-    async def configure_scoreboard(config: ScoreboardConfig, request: Request):
-        return await request.app.state.runtime.scoreboard.configure(config)
 
     @router.put("/api/config")
     async def configure(config: ConnectionConfig, request: Request):

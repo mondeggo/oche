@@ -1,7 +1,7 @@
 # Validation
 
 The automated suite covers authentication, reconnect, event normalization, caller
-and voice handling, lighting and simulation, profiles, scoreboard, camera tools,
+and voice handling, lighting and simulation, profiles, camera tools,
 terminal boundaries, browser origin checks, HTTPS, release validation, activation
 and rollback state.
 

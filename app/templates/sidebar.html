@@ -33,7 +33,6 @@
         <a class="nav-child" href="/integrations/visual-wled" data-page="wled2" {% if home_page|default('') == 'wled2' %}aria-current="page"{% endif %} data-integration="wled2">Visual WLED</a>
         <a id="nav-integration-wled" class="nav-child" href="/integrations/wled" data-page="wled" {% if home_page|default('') == 'wled' %}aria-current="page"{% endif %} data-integration="wled" data-nav-sync {{ 'hidden' if not nav_integrations.wled }}>WLED</a>
         <a id="nav-integration-caller" class="nav-child" href="/integrations/caller" data-page="caller" {% if home_page|default('') == 'caller' %}aria-current="page"{% endif %} data-integration="caller" data-nav-sync {{ 'hidden' if not nav_integrations.caller }}>{{ _("Caller") }}</a>
-        <a id="nav-integration-scoreboard" class="nav-child" href="/integrations/scoreboard" data-page="scoreboard" {% if home_page|default('') == 'scoreboard' %}aria-current="page"{% endif %} data-integration="scoreboard" data-nav-sync {{ 'hidden' if not nav_integrations.scoreboard }}>{{ _("Scoreboard") }}</a>
         <a id="nav-link-cameras" class="nav-child" href="/integrations/cameras" data-label="{{ _('Camera Enhancer') }}" data-nav-sync {{ 'hidden' if not nav_visibility.pages.cameras }} {{ 'aria-current=page' if active_nav == 'cameras' }}>{{ _("Camera Enhancer") }}</a>
       </div>
       {{ item('/profiles', 'Profiles', 'profiles', False, 'profiles') }}

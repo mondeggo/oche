@@ -25,7 +25,7 @@ def test_all_catalogues_cover_marked_messages_and_preserve_placeholders():
         ("pt-PT", "Jogar no Oche"),
     ],
 )
-def test_language_selection_renders_local_pages_and_scoreboard(settings, language, label):
+def test_language_selection_renders_local_pages(settings, language, label):
     with TestClient(create_app(settings)) as client:
         response = client.patch("/api/ui", json={"language": language, "profile_id": "default"})
         assert response.status_code == 200
@@ -38,7 +38,6 @@ def test_language_selection_renders_local_pages_and_scoreboard(settings, languag
             if path != "/autodarts/terminal":
                 assert label in page.text
                 assert 'id="language-select"' in page.text
-        assert f'lang="{language}"' in client.get("/scoreboard").text
     with TestClient(create_app(settings)) as client:
         assert client.get("/api/ui").json()["language"] == language
 

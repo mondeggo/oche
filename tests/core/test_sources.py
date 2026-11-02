@@ -7,7 +7,6 @@ from test_caller import VOICE, install_fixture
 
 from app.core.events import Event, EventBus
 from app.core.integrations.caller.service import Caller, CallerConfig, call_parts
-from app.core.integrations.scoreboard.service import ScoreboardConfig
 from app.core.integrations.sources import PlaySources, event_allowed, integration_view, source_allowed
 from app.core.integrations.wled.service import WLED, Device, Target, WLEDConfig
 from app.core.integrations.wled2.service import Layout
@@ -24,7 +23,7 @@ def turn(source):
     )
 
 
-@pytest.mark.parametrize("model", [CallerConfig, WLEDConfig, Layout, ScoreboardConfig])
+@pytest.mark.parametrize("model", [CallerConfig, WLEDConfig, Layout])
 def test_source_defaults_preserve_existing_configs(model):
     config = model.model_validate({})
     assert config.run_on_cloud and config.run_on_local
@@ -56,7 +55,6 @@ def test_source_choices_persist_for_every_integration(settings):
         "wled": "/api/wled",
         "wled2": "/api/wled2",
         "caller": "/api/caller",
-        "scoreboard": "/api/scoreboard",
     }
     with TestClient(create_app(settings)) as client:
         for name, path in endpoints.items():
@@ -137,7 +135,6 @@ def test_local_screen_has_no_integration_controls_and_nav_shows_source_status(se
         content = page.split('<main id="main"', 1)[1].split("</main>", 1)[0]
         assert "caller" not in content.lower()
         assert "integrations" not in content.lower()
-        assert "/scoreboard" not in content
         assert "Play on Autodarts" in page and "Play on Oche" in page
         assert (
             page.index('data-health="autodarts"')

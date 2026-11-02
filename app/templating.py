@@ -61,7 +61,7 @@ def navigation_context(request):
             "panels": config.get("show_panels_in_navbar", True),
         },
         "nav_integrations": {
-            name: _integration_enabled(runtime, name) for name in ("wled", "caller", "scoreboard")
+            name: _integration_enabled(runtime, name) for name in ("wled", "caller")
         },
         "nav_profiles": _profiles(runtime),
         "ui_theme": ui.config.theme if ui else "dark",

@@ -1,18 +1,13 @@
 """Persistent appearance settings for the Oche workspace."""
 
 import asyncio
-import json
-import re
-from pathlib import Path
 
 from fastapi import APIRouter, Request
-from fastapi.responses import HTMLResponse
 from pydantic import ValidationError
 
 from app.core.autodarts.errors import ConnectionProblem
 from app.core.config import Settings, UIConfig, UIUpdate
 from app.core.storage import write_private_json
-from app.i18n import catalogue, translate
 
 
 class UISettings:
@@ -43,26 +38,6 @@ class UISettings:
             write_private_json(self.path, config.model_dump())
             self.config, self.error = config, None
             return self.status()
-
-
-def render_scoreboard_display(
-    path: Path, ui_theme: str, scoreboard_theme: str, language: str = "en"
-) -> HTMLResponse:
-    source = path.read_text(encoding="utf-8")
-    theme = ui_theme if scoreboard_theme == "auto" else scoreboard_theme
-
-    def attributes(match: re.Match) -> str:
-        opening = re.sub(r'\sdata-theme="[^"]*"', "", match.group())
-        opening = re.sub(r'\slang="[^"]*"', "", opening)
-        return opening[:-1] + f' data-theme="{theme}" lang="{language}">'
-
-    payload = json.dumps(catalogue(language), ensure_ascii=True).replace("<", "\\u003c")
-    source = source.replace(
-        "</head>",
-        f'<script id="oche-translations" type="application/json">{payload}</script><script src="/static/js/i18n.js"></script></head>',
-    )
-    source = source.replace("Scoreboard · Oche", translate("Scoreboard · Oche", language))
-    return HTMLResponse(re.sub(r"<html\b[^>]*>", attributes, source, count=1, flags=re.IGNORECASE))
 
 
 router = APIRouter()

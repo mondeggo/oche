@@ -6,17 +6,16 @@ const pages = {
   overview: [tr("Overview"), tr("Your board and connection at a glance.")],
   integrations: [
     tr("Integrations"),
-    tr("Connect Autodarts and choose the lights, sound and display to use."),
+    tr("Connect Autodarts and choose the lights and sound to use."),
   ],
   autodarts: [tr("Autodarts account"), tr("Choose your board and review the cloud connection.")],
   profiles: [tr("Profiles"), tr("Create, switch between and manage app profiles.")],
   wled: ["WLED", tr("Lighting effects for your game.")],
   wled2: ["Visual WLED", tr("Build your lighting setup around the board.")],
   caller: [tr("Caller"), tr("Choose a voice and where to hear your game.")],
-  scoreboard: [tr("Scoreboard"), tr("Personalize the live score display.")],
   events: [tr("Events"), tr("See what Oche receives from your board.")],
 };
-const integrations = { wled: null, wled2: null, caller: null, scoreboard: null };
+const integrations = { wled: null, wled2: null, caller: null };
 const labels = {
   unconfigured: tr("Not configured"),
   disconnected: tr("Disconnected"),

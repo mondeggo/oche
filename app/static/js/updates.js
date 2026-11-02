@@ -6,7 +6,7 @@
   const installationNotice = document.getElementById('update-installation-notice');
   const labels = {
     autodarts: ['Autodarts', tr("Board detection & calibration")],
-    oche: ['Oche', tr("Application, caller, lighting & scoreboard")]
+    oche: ['Oche', tr("Application, caller & lighting")]
   };
   const needsUpdate = item => item.has_update ?? Boolean(item.available && item.available !== (item.active || item.bundled_revision || item.bundled));
   const rows = new Map();

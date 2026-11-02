@@ -7,7 +7,6 @@ HOME_ROUTES = {
     "/integrations/wled": "wled",
     "/integrations/visual-wled": "wled2",
     "/integrations/caller": "caller",
-    "/integrations/scoreboard": "scoreboard",
     "/profiles": "profiles",
     "/events": "events",
 }

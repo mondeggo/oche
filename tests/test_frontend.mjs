@@ -34,7 +34,7 @@ test("browser translations interpolate safely, translate dynamic messages and re
   const context = appearanceContext(french);
   assert.equal(context.tr("Settings"), "Paramètres");
   assert.equal(context.tr("{0} wins!", { 0: "<Zoë & A>" }), "<Zoë & A> gagne !");
-  assert.equal(context.tr("Last dart: 60"), "Dernière fléchette : 60");
+  assert.equal(context.tr("Ana to throw"), "À Ana de lancer");
   assert.equal(context.tr("New message not in catalogue"), "New message not in catalogue");
   assert.equal(context.tr("Score {missing}"), "Score {missing}");
 });
@@ -142,7 +142,7 @@ test("healthy services stay green and local detection failure is also red", () =
   assert.equal(localHealth({ detecting: false, state: "calibrating" })[0], "warn");
 });
 
-test("scoreboard source selection distinguishes cloud games from local board players", () => {
+test("source selection distinguishes cloud games from local board players", () => {
   assert.equal(sourceEnabled({}, "local"), true);
   assert.equal(sourceEnabled({ run_on_local: false }, "local"), false);
   assert.equal(sourceEnabled({ run_on_local: false }, "cloud"), true);

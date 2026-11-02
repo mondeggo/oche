@@ -10,7 +10,6 @@ from app.core.autodarts.errors import ConnectionProblem
 from app.core.config import ConnectionConfig, Settings
 from app.core.events import EventBus, RawEventRecorder
 from app.core.integrations.caller.service import Caller
-from app.core.integrations.scoreboard.service import Scoreboard
 from app.core.integrations.sources import integration_view
 from app.core.integrations.wled.service import WLED
 from app.core.integrations.wled2.service import WLED2
@@ -45,7 +44,6 @@ class Runtime:
         )
         self.wled2 = WLED2(settings.data_dir / "wled2.json", http, self.bus, self.game_state, self.wled)
         self.profiles.wled2 = self.wled2
-        self.scoreboard = Scoreboard(settings)
 
     def game_state(self) -> dict:
         if self.local.active:
