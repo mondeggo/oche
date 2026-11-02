@@ -81,7 +81,8 @@ class UpdateManager:
 
     def status(self):
         modules = []
-        for name in store.MODULES:
+        # Oche heads the list; the runtime's module order stays as it is.
+        for name in sorted(store.MODULES, key=lambda module: module != "oche"):
             state = store.read_state(name)
             bundled = store.BUNDLES / name / "VERSION"
             versions = store.ROOT / name / "versions"

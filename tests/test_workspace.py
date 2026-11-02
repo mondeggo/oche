@@ -182,10 +182,11 @@ def test_restart_requires_launcher_and_serializes_with_updates(application, tmp_
             assert (tmp_path / "state/restart-oche").exists()
             store.write_state("oche", {"pending": True, "active": "2.0.1"})
             assert client.post("/system/restart").status_code == 409
-            assert {m["name"] for m in client.get("/updates/status").json()["modules"]} == {
+            # Oche is listed first, above the modules it updates.
+            assert [m["name"] for m in client.get("/updates/status").json()["modules"]] == [
                 "oche",
                 "autodarts",
-            }
+            ]
 
 
 def test_core_configuration_reads_the_oche_environment(tmp_path, monkeypatch):
