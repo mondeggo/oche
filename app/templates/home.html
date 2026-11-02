@@ -34,10 +34,7 @@
           ×
         </button>
       </div>
-      <div id="connection-warning" class="warning" role="status" hidden>
-        <span id="warning-text"></span>
-        <a href="/integrations/autodarts">{{ _("Connection details") }}</a>
-      </div>
+      {%- for part in home_slots.get("notices", []) %}{% include part %}{% endfor %}
 
       <dialog id="profile-confirm" aria-labelledby="profile-confirm-title">
         <h2 id="profile-confirm-title">{{ _("Remove profile?") }}</h2>
@@ -55,12 +52,10 @@
 
       <section data-view="overview" aria-label="{{ _('Overview') }}">
         <div class="panel board-panel">
-          <div class="panel-heading">
-            <h2>{{ _("Board") }}</h2>
-            <span id="board-state" class="badge">{{ _("Not selected") }}</span>
-          </div>
-          <p id="board-name" class="board-name">{{ _("Choose your board") }}</p>
-          <p id="match" class="muted">{{ _("Connect Autodarts to get started.") }}</p>
+          {%- for part in home_slots.get("board", []) %}{% include part %}{% endfor %}
+          {%- if not home_slots.get('board') %}
+          <div class="panel-heading"><h2>{{ _("Board") }}</h2></div>
+          {%- endif %}
           <div class="board-controls">
             <div>
               <strong id="overview-phase" class="board-phase"
@@ -72,12 +67,7 @@
           </div>
         </div>
         <dl class="metrics">
-          <div class="panel">
-            <dt>{{ _("Autodarts cloud") }}</dt>
-            <dd id="cloud-state">—</dd>
-            <p class="hint">{{ _("Account:") }} <span id="auth-state">—</span></p>
-            <a href="/events"><span id="count">0</span> game events →</a>
-          </div>
+          {%- for part in home_slots.get("tiles", []) %}{% include part %}{% endfor %}
           <div class="panel">
             <dt>WLED</dt>
             <dd id="overview-wled">{{ _("Loading…") }}</dd>
@@ -101,38 +91,7 @@
       </section>
 
       <section data-view="integrations" aria-label="{{ _('Integrations') }}" hidden>
-        <div class="panel connection-card">
-          <div class="panel-heading">
-            <div class="connection-title">
-              <span class="connection-logo"><img src="/static/integrations/autodarts/logo.svg" alt=""></span>
-              <div><h2>{{ _("Autodarts account") }}</h2><p class="hint">{{ _("Cloud sign-in and board for game events") }}</p></div>
-            </div>
-            <span id="account-state" class="badge">—</span>
-          </div>
-          <p id="account-hint" class="muted">
-            {{ _("Sign in on Autodarts to connect your board.") }}
-          </p>
-          <div class="actions">
-            <button id="login" class="primary" type="button" disabled>
-              {{ _("Connect account") }}
-            </button>
-            <button id="logout" type="button" disabled>{{ _("Disconnect") }}</button>
-          </div>
-          <div id="device" class="device" hidden>
-            <p>{{ _("Enter this code on Autodarts to approve the connection.") }}</p>
-            <strong id="user-code"></strong>
-            <a
-              id="verification"
-              class="button primary"
-              target="_blank"
-              rel="noreferrer"
-            >
-              {{ _("Open Autodarts ↗") }}
-            </a>
-            <p id="expires" class="hint"></p>
-          </div>
-          <p class="connection-board"><a href="/integrations/autodarts">{{ _("Board and connection details →") }}</a></p>
-        </div>
+        {%- for part in home_slots.get("account", []) %}{% include part %}{% endfor %}
         <a class="panel events-card" href="/events">
           <div>
             <h3>{{ _("Game events") }}</h3>
@@ -283,59 +242,7 @@
         </div>
       </section>
 
-      <section data-view="autodarts" aria-label="{{ _('Autodarts settings') }}" hidden>
-        <form id="configuration" class="panel">
-          <h2>{{ _("Board") }}</h2>
-          <label for="board_id">{{ _("Selected board") }}</label>
-          <div class="field-row">
-            <select
-              id="board_id"
-              name="board_id"
-              aria-describedby="boards-status"
-            >
-              <option value="">{{ _("No board selected") }}</option>
-            </select>
-            <button type="button" id="refresh-boards" disabled>{{ _("Refresh") }}</button>
-          </div>
-          <p class="hint" id="boards-status" role="status">
-            {{ _("Connect your account to load boards.") }}
-          </p>
-          <details class="advanced">
-            <summary>{{ _("Advanced settings") }}</summary>
-            <label for="client_id">OAuth Client ID</label>
-            <input
-              id="client_id"
-              name="client_id"
-              autocomplete="off"
-              maxlength="200"
-              aria-describedby="managed"
-            />
-            <p class="hint" id="managed"></p>
-          </details>
-          <div class="actions">
-            <button type="submit" id="save" class="primary" disabled>
-              {{ _("Save settings") }}
-            </button>
-            <span id="unsaved" class="save-state" data-state="dirty" hidden>{{ _("Unsaved changes") }}</span>
-          </div>
-        </form>
-        <details class="panel diagnostics">
-          <summary>{{ _("Connection details") }}</summary>
-          <dl class="detail-list">
-            <div>
-              <dt>{{ _("Board ID") }}</dt>
-              <dd id="detail-board">—</dd>
-            </div>
-            <div>
-              <dt>{{ _("Match ID") }}</dt>
-              <dd id="detail-match">—</dd>
-            </div>
-          </dl>
-          <p id="connection-error" class="hint">
-            {{ _("No connection errors reported.") }}
-          </p>
-        </details>
-      </section>
+      {%- for view in home_views %}{% include view.template %}{% endfor %}
 
       <section data-view="wled2" aria-label="{{ _('Visual WLED lighting editor') }}" hidden>
         <div class="w2-topbar panel">
@@ -977,7 +884,7 @@
 <script type="module" src="/static/core/wled2.js"></script>
 <script type="module" src="/static/core/caller.js"></script>
 <script type="module" src="/static/core/integrations.js"></script>
-{%- for item in integrations_registry %}{% for script in item.scripts %}
+{%- for item in integrations_registry if item.enabled %}{% for script in item.scripts %}
 <script type="module" src="{{ script }}"></script>
 {%- endfor %}{% endfor %}
 {% endblock %}

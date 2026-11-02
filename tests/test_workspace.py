@@ -161,8 +161,8 @@ def test_appearance_and_connection_persist_in_the_same_runtime(application):
         assert client.patch("/api/ui", json={"theme": "dark"}).status_code == 200
         assert 'data-theme="dark"' in client.get("/").text
         assert 'data-theme="dark"' in client.get("/config").text
-        assert client.put("/api/config", json={"client_id": "oche-test"}).status_code == 200
-        assert client.get("/api/config").json()["client_id"] == "oche-test"
+        assert client.put("/api/autodarts/config", json={"client_id": "oche-test"}).status_code == 200
+        assert client.get("/api/autodarts/config").json()["client_id"] == "oche-test"
 
 
 def test_restart_requires_launcher_and_serializes_with_updates(application, tmp_path):

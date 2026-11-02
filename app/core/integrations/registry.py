@@ -50,6 +50,33 @@ class Release:
 
 
 @dataclass(frozen=True)
+class HomeView:
+    """A page of the Home workspace, such as an account's details."""
+
+    id: str
+    href: str
+    title: str
+    description: str
+    template: str
+
+
+@dataclass(frozen=True)
+class Health:
+    """A status dot in the sidebar. Its module exports ``health(id, status, tr)``.
+
+    ``status`` is the shared /api/status reply (or null when it failed); the
+    function returns ``[tone, text, detail]`` with tone good, warn or bad. Core's
+    local detector dot has order 50.
+    """
+
+    id: str
+    label: str
+    href: str
+    module: str
+    order: int
+
+
+@dataclass(frozen=True)
 class Engine:
     """A vision engine Play can choose. Only one engine reads the cameras at a time."""
 
@@ -75,7 +102,16 @@ class Integration:
     templates: Path | None = None  # Loaded as "<id>/<name>.html".
     static: Path | None = None  # Served at /static/integrations/<id>/.
     cards: tuple[str, ...] = ()  # Templates included on the Integrations page.
-    scripts: tuple[str, ...] = ()  # Module scripts the Integrations page loads.
+    scripts: tuple[str, ...] = ()  # Module scripts the Home workspace loads.
+    # Home slots filled with templates: "notices" above every view, "board" (the
+    # board panel's heading on Overview), "tiles" (Overview metrics) and
+    # "account" (the top of the Integrations page).
+    home: dict[str, tuple[str, ...]] = field(default_factory=dict)
+    views: tuple[HomeView, ...] = ()
+    health: tuple[Health, ...] = ()
+    # Builds a game source for the runtime: (runtime) -> object with run(),
+    # pause(), game_state(), status(), ready, normalizer and close().
+    source: Callable | None = None
     shutdown: tuple[Callable, ...] = field(default_factory=tuple)  # Async callables run at stop.
 
     @property

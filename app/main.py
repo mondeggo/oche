@@ -24,7 +24,7 @@ from app.core.integrations import registry
 from app.core.integrations.wled.simulator import DEMO_URL
 from app.core.integrations.wled.simulator import create_app as create_demo_app
 from app.core.runtime import Runtime
-from app.navigation import HOME_ROUTES
+from app.navigation import home_routes
 from app.routers import config, engines, panels, system, updates
 from app.security import same_origin
 from app.services import engines as detection_engines
@@ -89,6 +89,8 @@ def create_app(
                                 await run_in_threadpool(detection_engines.stop_all)
 
     application = FastAPI(title="Oche", version=__version__, lifespan=lifespan, redoc_url=None)
+    # Home serves its own pages and the views integrations register.
+    routes = home_routes()
     application.state.ui = UISettings(settings)
 
     @application.middleware("http")
@@ -114,7 +116,7 @@ def create_app(
         )
         if request.url.path.startswith(("/api/", "/updates/", "/system/")):
             response.headers["Cache-Control"] = "no-store"
-        elif request.url.path in HOME_ROUTES or request.url.path.startswith("/static/"):
+        elif request.url.path in routes or request.url.path.startswith("/static/"):
             response.headers["Cache-Control"] = "no-cache"
         return response
 
@@ -159,13 +161,13 @@ def create_app(
             name="home.html",
             context={
                 "core_page": True,
-                "home_page": HOME_ROUTES[request.url.path],
+                "home_page": routes[request.url.path],
                 "active_nav": "home",
                 "full_width": True,
             },
         )
 
-    for path in HOME_ROUTES:
+    for path in routes:
         application.add_api_route(path, index, methods=["GET"], include_in_schema=False)
 
     @application.get("/local")

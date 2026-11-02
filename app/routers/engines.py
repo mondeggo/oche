@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, ConfigDict
 from starlette.concurrency import run_in_threadpool
 
@@ -50,11 +50,19 @@ def list_integrations():
 
 
 @router.put("/api/integrations/{name}")
-async def switch_integration(name: str, switch: Switch):
-    """Switching an integration on only shows it; switching it off stops its engine."""
+async def switch_integration(name: str, switch: Switch, request: Request):
+    """Switching an integration on only shows it; switching it off stops its engine.
+
+    An integration that feeds games, like Autodarts Play, joins or leaves the runtime.
+    """
     def apply(_):
         registry.set_enabled(name, switch.enabled)
         if not switch.enabled:
             engines.switch_off(name)
         return integration_status()
-    return await _run(apply, name)
+    result = await _run(apply, name)
+    item = registry.get(name)
+    runtime = getattr(request.app.state, "runtime", None)
+    if item and item.source and runtime and (name in runtime.sources) != switch.enabled:
+        await runtime.restart()
+    return result

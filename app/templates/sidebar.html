@@ -26,18 +26,18 @@
       <a class="nav-item nav-play nav-play-oche" href="/local" data-label="{{ _('Play') }}" {{ 'aria-current=page' if active_nav == 'local' }}>{{ icon('play') }}<span class="nav-text">{{ _("Play") }}</span></a>
       {#- Integrations add their own play buttons below Play. #}
       {%- for entry in nav_registry %}{% for button, shown in entry.play %}
-      <a id="nav-link-{{ button.id }}" class="nav-item nav-play" href="{{ button.href }}" data-label="{{ _(button.label) }}" data-nav-sync {{ 'aria-current=page' if sidebar_page == button.page }} {{ 'hidden' if not shown }}><span class="nav-icon" aria-hidden="true"><span class="nav-icon-mask" style="--icon: url('{{ button.icon }}')"></span></span><span class="nav-text">{{ _(button.label) }}</span></a>
+      <a id="nav-link-{{ button.id }}" class="nav-item nav-play" href="{{ button.href }}" data-label="{{ _(button.label) }}" data-nav-sync data-visible-setting="show_play_in_navbar"{{ ' data-integration-off' if not entry.enabled }} {{ 'aria-current=page' if sidebar_page == button.page }} {{ 'hidden' if not shown }}><span class="nav-icon" aria-hidden="true"><span class="nav-icon-mask" style="--icon: url('{{ button.icon }}')"></span></span><span class="nav-text">{{ _(button.label) }}</span></a>
       {%- endfor %}{% endfor %}
     </div>
 
     <div class="nav-section">
-      <a class="nav-item" href="/integrations" data-label="{{ _('Integrations') }}" data-page="integrations" data-subpages="autodarts events" {% if home_page|default('') in ['integrations', 'autodarts', 'events'] %}aria-current="page"{% endif %}>{{ icon('integrations') }}<span class="nav-text">{{ _("Integrations") }}</span></a>
+      <a class="nav-item" href="/integrations" data-label="{{ _('Integrations') }}" data-page="integrations" {%- set view_ids = home_views | map(attribute='id') | list %} data-subpages="{{ (['events'] + view_ids) | join(' ') }}" {% if home_page|default('') in ['integrations', 'events'] + view_ids %}aria-current="page"{% endif %}>{{ icon('integrations') }}<span class="nav-text">{{ _("Integrations") }}</span></a>
       <div class="nav-children">
         <a class="nav-child" href="/integrations/visual-wled" data-page="wled2" {% if home_page|default('') == 'wled2' %}aria-current="page"{% endif %} data-integration="wled2">Visual WLED</a>
         <a id="nav-integration-wled" class="nav-child" href="/integrations/wled" data-page="wled" {% if home_page|default('') == 'wled' %}aria-current="page"{% endif %} data-integration="wled" data-nav-sync {{ 'hidden' if not nav_integrations.wled }}>WLED</a>
         <a id="nav-integration-caller" class="nav-child" href="/integrations/caller" data-page="caller" {% if home_page|default('') == 'caller' %}aria-current="page"{% endif %} data-integration="caller" data-nav-sync {{ 'hidden' if not nav_integrations.caller }}>{{ _("Caller") }}</a>
         {%- for entry in nav_registry %}{% for link, shown in entry.pages %}
-        <a id="nav-link-{{ link.id }}" class="nav-child" href="{{ link.href }}" data-label="{{ _(link.label) }}" data-nav-sync {{ 'hidden' if not shown }} {{ 'aria-current=page' if sidebar_page == link.page }}>{{ _(link.label) }}{% if entry.release and loop.first %}<span class="service-update-dot" data-update-dot="{{ entry.id }}" hidden role="img" aria-label="{{ _('Update available') }}"></span>{% endif %}</a>
+        <a id="nav-link-{{ link.id }}" class="nav-child" href="{{ link.href }}" data-label="{{ _(link.label) }}" data-nav-sync{% if link.setting %} data-visible-setting="{{ link.setting }}"{% endif %}{{ ' data-integration-off' if not entry.enabled }} {{ 'hidden' if not shown }} {{ 'aria-current=page' if sidebar_page == link.page }}>{{ _(link.label) }}{% if entry.release and loop.first %}<span class="service-update-dot" data-update-dot="{{ entry.id }}" hidden role="img" aria-label="{{ _('Update available') }}"></span>{% endif %}</a>
         {%- endfor %}{% endfor %}
       </div>
       {{ item('/profiles', 'Profiles', 'profiles', False, 'profiles') }}
@@ -72,9 +72,10 @@
         </select>
       </label>
       <div class="sidebar-health" id="sidebar-health" role="group" aria-label="{{ _('Status') }}">
-        <a class="health-row" href="/integrations/autodarts/board" data-health="autodarts" data-label="Autodarts"><span class="health-dot" aria-hidden="true"></span><span class="nav-text">Autodarts</span></a>
-        <a class="health-row" href="/local" data-health="local" data-label="{{ _('Local') }}"><span class="health-dot" aria-hidden="true"></span><span class="nav-text">{{ _("Local") }}</span></a>
-        <a class="health-row" href="/integrations/autodarts" data-health="cloud" data-label="{{ _('Cloud') }}"><span class="health-dot" aria-hidden="true"></span><span class="nav-text">{{ _("Cloud") }}</span></a>
+        {#- Core reports the local detector; switched-on integrations add their own dots. #}
+        {%- for row in health_rows %}
+        <a id="health-{{ row.id }}" class="health-row" href="{{ row.href }}" data-health="{{ row.id }}" data-label="{{ _(row.label) }}"{% if row.module %} data-health-module="{{ row.module }}"{% endif %} data-nav-sync {{ 'hidden' if not row.shown }}><span class="health-dot" aria-hidden="true"></span><span class="nav-text">{{ _(row.label) }}</span></a>
+        {%- endfor %}
       </div>
     </div>
     <div class="nav-section sidebar-tools">

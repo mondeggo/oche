@@ -26,12 +26,14 @@
   function syncSidebar() {
     const shown = key => document.querySelector(`[data-setting="${key}"]`)?.checked;
     const set = (id, visible) => { const element = document.getElementById(id); if (element) element.hidden = !visible; };
-    set('nav-link-play', shown('show_play_in_navbar'));
     set('sidebar-panels', shown('show_panels_in_navbar'));
-    set('nav-link-cameras', shown('show_page_cameras'));
+    // Entries integrations add name their switch, and stay hidden while the integration is off.
+    for (const element of document.querySelectorAll('#app-sidebar [data-visible-setting]')) {
+      element.hidden = 'integrationOff' in element.dataset || !shown(element.dataset.visibleSetting);
+    }
     // A section is shown while at least one of its pages is.
     let systemVisible = false;
-    for (const page of ['autodarts', 'system', 'updates']) {
+    for (const page of ['system', 'updates']) {
       const visible = shown(`show_page_${page}`);
       systemVisible ||= visible;
       set(`nav-link-${page}`, visible);

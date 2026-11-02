@@ -24,40 +24,40 @@ def test_unconfigured_startup_and_configuration_persistence(settings):
         assert client.get("/healthz").json()["status"] == "ok"
         assert client.get("/readyz").status_code == 503
         assert client.get("/api/status").json()["auth"]["state"] == "disconnected"
-        assert client.get("/api/config").json()["client_id"] == "darts-caller"
+        assert client.get("/api/autodarts/config").json()["client_id"] == "darts-caller"
         config = {"client_id": "my-app", "board_id": BOARD_ID}
-        assert client.put("/api/config", json=config).status_code == 200
+        assert client.put("/api/autodarts/config", json=config).status_code == 200
         assert client.get("/api/status").json()["cloud"]["state"] == "waiting_for_login"
-        assert client.get("/api/config").json()["board_id"] == BOARD_ID
+        assert client.get("/api/autodarts/config").json()["board_id"] == BOARD_ID
     with TestClient(create_app(settings)) as client:
-        assert client.get("/api/config").json()["client_id"] == "my-app"
+        assert client.get("/api/autodarts/config").json()["client_id"] == "my-app"
 
 
 def test_config_validation_origin_guard_and_no_secrets(settings):
     with TestClient(create_app(settings)) as client:
-        assert client.put("/api/config", json={"board_id": "invalid"}).status_code == 422
+        assert client.put("/api/autodarts/config", json={"board_id": "invalid"}).status_code == 422
         assert (
-            client.put("/api/config", json={"local_board_url": "file:///etc/passwd"}).status_code
+            client.put("/api/autodarts/config", json={"local_board_url": "file:///etc/passwd"}).status_code
             == 422
         )
         assert (
             client.post(
-                "/api/auth/logout", json={}, headers={"Origin": "https://other.site"}
+                "/api/autodarts/logout", json={}, headers={"Origin": "https://other.site"}
             ).status_code
             == 403
         )
-        assert client.post("/api/auth/logout", data={}).status_code == 415
+        assert client.post("/api/autodarts/logout", data={}).status_code == 415
         assert client.get("/api/status").headers["cache-control"] == "no-store"
-        assert "tokens" not in client.get("/api/config").json()
+        assert "tokens" not in client.get("/api/autodarts/config").json()
         assert client.get("/openapi.json").status_code == 200
 
 
 def test_env_fields_cannot_be_overwritten(settings):
     settings.client_id = "env-client"
     with TestClient(create_app(settings)) as client:
-        assert "client_id" in client.get("/api/config").json()["locked_fields"]
-        assert client.put("/api/config", json={"client_id": "another"}).status_code == 409
-        assert client.put("/api/config", json={"client_id": "env-client"}).status_code == 200
+        assert "client_id" in client.get("/api/autodarts/config").json()["locked_fields"]
+        assert client.put("/api/autodarts/config", json={"client_id": "another"}).status_code == 409
+        assert client.put("/api/autodarts/config", json={"client_id": "env-client"}).status_code == 200
 
 
 @pytest.mark.parametrize("raw", [True, False])
@@ -97,7 +97,7 @@ def test_raw_api_preserves_cloud_frame_and_normalized_api_is_separate(settings):
         "server_metadata": {"version": 2},
     }
     with TestClient(app) as client:
-        cloud = app.state.runtime.cloud
+        cloud = app.state.runtime.sources["autodarts"].cloud
         cloud.board_id = BOARD_ID
         cloud.publish("match.state", {"id": "snapshot"}, snapshot=True)
         assert client.get("/api/events/raw").json() == []
@@ -107,7 +107,7 @@ def test_raw_api_preserves_cloud_frame_and_normalized_api_is_separate(settings):
         assert [event["event"] for event in normalized] == ["takeout_started"]
         assert all(event["kind"] == "normalized" for event in normalized)
         assert client.get("/api/events/raw").headers["cache-control"] == "no-store"
-        assert client.post("/api/auth/logout", json={}).status_code == 200
+        assert client.post("/api/autodarts/logout", json={}).status_code == 200
         assert client.get("/api/events/raw").json() == []
         assert client.get("/api/events").json() == []
 
@@ -115,7 +115,7 @@ def test_raw_api_preserves_cloud_frame_and_normalized_api_is_separate(settings):
 def test_readiness_reports_rejected_required_subscription(settings):
     app = create_app(settings)
     with TestClient(app) as client:
-        cloud = app.state.runtime.cloud
+        cloud = app.state.runtime.sources["autodarts"].cloud
         cloud.state = "connected"
         cloud.subscriptions.add(("autodarts.boards", f"{BOARD_ID}.events"))
         client.portal.call(
@@ -138,7 +138,7 @@ def test_logout_forgets_persisted_token(settings):
     settings.client_id = "test"
     app = create_app(settings)
     with TestClient(app) as client:
-        app.state.runtime.auth._save(
+        app.state.runtime.sources["autodarts"].auth._save(
             {
                 "access_token": "private",
                 "refresh_token": "private-r",
@@ -146,7 +146,7 @@ def test_logout_forgets_persisted_token(settings):
             }
         )
         assert "private" not in json.dumps(client.get("/api/status").json())
-        assert client.post("/api/auth/logout", json={}).status_code == 200
+        assert client.post("/api/autodarts/logout", json={}).status_code == 200
         assert not (settings.data_dir / "tokens.json").exists()
         assert client.get("/api/status").json()["auth"]["state"] == "disconnected"
 
@@ -185,15 +185,15 @@ def test_account_board_discovery_without_configured_board(settings):
 
     app = create_app(settings, transport=httpx.MockTransport(upstream))
     with TestClient(app) as client:
-        assert client.get("/api/boards").status_code == 409
-        app.state.runtime.auth._save(
+        assert client.get("/api/autodarts/boards").status_code == 409
+        app.state.runtime.sources["autodarts"].auth._save(
             {
                 "access_token": "private-access",
                 "refresh_token": "private-refresh",
                 "expires_in": 900,
             }
         )
-        response = client.get("/api/boards")
+        response = client.get("/api/autodarts/boards")
         assert response.status_code == 200
         assert response.headers["cache-control"] == "no-store"
         assert response.json() == {
@@ -204,7 +204,7 @@ def test_account_board_discovery_without_configured_board(settings):
             "selected_board_id": None,
         }
         assert "private" not in response.text and "upstream-secret" not in response.text
-        assert client.get("/api/config").json()["board_id"] == ""
+        assert client.get("/api/autodarts/config").json()["board_id"] == ""
         assert not (settings.data_dir / "connection.json").exists()
 
 
@@ -217,14 +217,14 @@ def test_discovery_distinguishes_empty_and_invalid_responses(settings, payload, 
         settings, transport=httpx.MockTransport(lambda _: httpx.Response(200, json=payload))
     )
     with TestClient(app) as client:
-        app.state.runtime.auth._save(
+        app.state.runtime.sources["autodarts"].auth._save(
             {
                 "access_token": "access",
                 "refresh_token": "refresh",
                 "expires_in": 900,
             }
         )
-        response = client.get("/api/boards")
+        response = client.get("/api/autodarts/boards")
         assert response.status_code == status
         if status == 200:
             assert response.json()["boards"] == []

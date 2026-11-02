@@ -213,3 +213,30 @@ def test_settings_accept_only_known_integration_sidebar_keys(tmp_path, monkeypat
         assert client.post("/config/data", json={"show_page_cameras": False}).status_code == 200
         assert client.post("/config/data", json={"autohide_navbar_on_glow": True}).status_code == 422
         assert client.post("/config/data", json={"show_page_cameras": "no"}).status_code == 422
+
+
+def test_switching_autodarts_off_removes_its_account_and_status_dots(tmp_path, monkeypatch):
+    from app.main import create_app
+
+    monkeypatch.setattr(settings, "CONFIG_FILE", tmp_path / "settings.json")
+    with TestClient(create_app(app_settings(tmp_path))) as client:
+        status = client.get("/api/status").json()
+        assert {"auth", "cloud"} <= status.keys()
+        home = client.get("/integrations").text
+        assert 'id="login"' in home and 'data-view="autodarts"' in home
+        assert not re.search(r'id="health-cloud"[^>]*\shidden', home)
+        assert client.put("/api/integrations/autodarts", json={"enabled": False}).status_code == 200
+        # The runtime drops Autodarts Play as a game source; core keeps local detection.
+        status = client.get("/api/status").json()
+        assert "auth" not in status and "cloud" not in status and "local_detection" in status
+        assert client.get("/api/autodarts/config").status_code == 409
+        assert client.get("/api/game").json()["available"] is False
+        home = client.get("/integrations").text
+        assert 'id="login"' not in home and 'data-view="autodarts"' not in home
+        assert "/static/integrations/autodarts/account.js" not in home
+        for dot in ("autodarts", "cloud"):
+            assert re.search(rf'id="health-{dot}"[^>]*\shidden', home)
+        assert not re.search(r'id="health-local"[^>]*\shidden', home)
+        assert client.put("/api/integrations/autodarts", json={"enabled": True}).status_code == 200
+        assert "auth" in client.get("/api/status").json()
+        assert client.get("/api/autodarts/config").json()["client_id"] == "darts-caller"

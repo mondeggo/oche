@@ -1,9 +1,13 @@
 import os
 from pathlib import Path
 
-from app.config import AUTODARTS_DIR
+from app.config import DATA_DIR
 from app.services.module_paths import source
 from app.services.process_manager import ManagedProcess, registry
+
+# Autodarts keeps its board configuration here.
+AUTODARTS_DIR = DATA_DIR / "autodarts"
+AUTODARTS_DIR.mkdir(exist_ok=True)
 
 # The v2 headless binary lives in the module store (data/modules/autodarts). The
 # installer adds it, and Updates installs and updates it. This path is only a

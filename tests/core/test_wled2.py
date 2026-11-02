@@ -373,7 +373,7 @@ def test_preview_uses_connected_controller_and_restores_simulator(app):
 def test_automation_dispatches_light_rules_and_cleans_up_on_switch(app, monkeypatch):
     with TestClient(app) as client:
         monkeypatch.setattr(
-            app.state.runtime.cloud, "game_state", lambda: {"phase": "ready", "available": True}
+            app.state.runtime.sources["autodarts"].cloud, "game_state", lambda: {"phase": "ready", "available": True}
         )
         data = scene(enabled=True).model_dump(mode="json")
         data["lights"] = data["lights"][:1]

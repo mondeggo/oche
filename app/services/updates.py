@@ -100,6 +100,7 @@ class UpdateManager:
     def status(self):
         modules = []
         for name in module_names():
+            integration = releases().get(name)
             state = store.read_state(name)
             bundled = store.BUNDLES / name / "VERSION"
             versions = store.ROOT / name / "versions"
@@ -122,7 +123,8 @@ class UpdateManager:
             )
             active_id = state.get("active") or bundle_info.get("revision") or bundle_info.get("version")
             has_update = bool(release and release["version"] != active_id)
-            if release.get("format") == "autodarts-archive":
+            # Integrations publish numbered versions; only a newer one is an update.
+            if integration and release.get("format") == integration.release.format:
                 current = active_info.get("version")
                 if current and re.fullmatch(r"\d+(\.\d+)*", current):
                     has_update = tuple(map(int, available_version.split("."))) > tuple(
@@ -130,7 +132,6 @@ class UpdateManager:
                     )
             # A module the image does not include stays absent until it is installed.
             present = installed(name, state) or bundled.exists()
-            integration = releases().get(name)
             modules.append(
                 {
                     "name": name,

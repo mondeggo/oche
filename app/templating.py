@@ -7,7 +7,7 @@ from app import __version__
 from app.config import load_config
 from app.core.integrations import registry
 from app.i18n import LANGUAGES, catalogue, translate
-from app.navigation import HOME_ROUTES
+from app.navigation import home_routes
 
 
 class IntegrationTemplates(BaseLoader):
@@ -39,18 +39,27 @@ def _profiles(runtime):
         return {"active_profile": None, "profiles": []}
 
 
+def _home_slots(switched_on) -> dict[str, list[str]]:
+    slots: dict[str, list[str]] = {}
+    for item in switched_on:
+        for name, parts in item.home.items():
+            slots.setdefault(name, []).extend(parts)
+    return slots
+
+
 def navigation_context(request):
     config = load_config()
     ui = getattr(request.app.state, "ui", None)
     runtime = getattr(request.app.state, "runtime", None)
     path = request.url.path
     service = request.query_params.get("service")
+    routes = home_routes()
     integration_pages = {
         link.href: link.page for item in registry.integrations() for link in (*item.pages, *item.play)
     }
     page = (
         "home"
-        if path in HOME_ROUTES
+        if path in routes
         else integration_pages[path]
         if path in integration_pages
         else "local"
@@ -85,6 +94,18 @@ def navigation_context(request):
         # Integrations. Every registered entry renders, hidden when off, so the
         # sidebar can show it again without a reload.
         "integrations_registry": registry.integrations(),
+        # System pages and integration pages use the wide layout.
+        "wide_pages": ["system", "updates"] + [link.page for item in registry.integrations() for link in item.pages],
+        # What switched-on integrations add to Home, and the sidebar's status dots.
+        "home_slots": _home_slots(switched_on),
+        "home_views": [view for item in switched_on for view in item.views],
+        "home_routes": {page_id: href for href, page_id in routes.items()},
+        # Every registered dot renders, hidden while its integration is off.
+        "health_rows": sorted(
+            [{"id": "local", "label": "Local", "href": "/local", "module": None, "order": 50, "shown": True}]
+            + [{**vars(row), "shown": item in switched_on} for item in registry.integrations() for row in item.health],
+            key=lambda row: row["order"],
+        ),
         "nav_registry": [
             {
                 "id": item.id,

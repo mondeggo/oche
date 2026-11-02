@@ -1,5 +1,5 @@
 import { tr } from "./i18n.mjs";
-import { autodartsHealth, localHealth, cloudHealth } from './health.mjs';
+import { localHealth } from './health.mjs';
 
 // Sidebar: collapses to an icon rail on wide screens and becomes a drawer on small ones.
 (() => {
@@ -60,29 +60,30 @@ import { autodartsHealth, localHealth, cloudHealth } from './health.mjs';
   labelRail();
 })();
 
-// Sidebar status: Autodarts process, local detector readiness and cloud connection.
+// Sidebar status: core reports local detector readiness; integrations add their dots,
+// each checked by the module it registers.
 (() => {
-  const rows = Object.fromEntries([...document.querySelectorAll('#sidebar-health [data-health]')]
-    .map(row => [row.dataset.health, row]));
-  if (!rows.autodarts) return;
+  const rows = [...document.querySelectorAll('#sidebar-health [data-health]')];
+  if (!rows.length) return;
+  const modules = new Map();
+  const load = url => {
+    if (!modules.has(url)) modules.set(url, import(url));
+    return modules.get(url);
+  };
   const getJSON = url => fetch(url, {cache: 'no-store', signal: AbortSignal.timeout(4000)})
     .then(response => response.ok ? response.json() : null).catch(() => null);
 
   // Keep each cause and recovery action in the tooltip and accessible name.
-  function show(name, tone, text, detail = '') {
-    const row = rows[name];
-    if (!row) return;
+  function show(row, tone, text, detail = '') {
     row.dataset.tone = tone;
     row.title = `${row.dataset.label}: ${text}${detail ? ' · ' + detail : ''}`;
     row.setAttribute('aria-label', row.title);
   }
 
-  function age(iso) {
-    const seconds = Math.max(0, Math.round((Date.now() - Date.parse(iso)) / 1000));
-    if (seconds < 10) return tr("Just now");
-    if (seconds < 60) return tr("{0} s ago", {0: seconds});
-    if (seconds < 3600) return tr("{0} min ago", {0: Math.round(seconds / 60)});
-    return tr("{0} h ago", {0: Math.round(seconds / 3600)});
+  async function check(row, status) {
+    if (!row.dataset.healthModule) return localHealth(status?.local_detection ?? null);
+    const module = await load(row.dataset.healthModule);
+    return module.health(row.dataset.health, status, tr);
   }
 
   let loading = false;
@@ -91,18 +92,14 @@ import { autodartsHealth, localHealth, cloudHealth } from './health.mjs';
     if (loading || window.frameElement?.hidden) return;
     loading = true;
     try {
-      const [local, status] = await Promise.all([getJSON('/autodarts/status'), getJSON('/api/status')]);
-      show('autodarts', ...autodartsHealth(local));
-      if (!status) {
-        show('local', ...localHealth(null));
-        return show('cloud', ...cloudHealth(null));
-      }
-      show('local', ...localHealth(status.local_detection));
-      const [tone, text, reason] = cloudHealth(status);
-      const last = status.cloud.last_message_at;
-      const linked = status.auth.state === 'authenticated';
-      const lastEvent = last ? tr("Last event {0}", {"0": (age(last).toLowerCase())}) : linked ? tr("No game events yet") : '';
-      show('cloud', tone, text, [reason, lastEvent].filter(Boolean).join(' · '));
+      const status = await getJSON('/api/status');
+      await Promise.all(rows.filter(row => !row.hidden).map(async row => {
+        try {
+          show(row, ...await check(row, status));
+        } catch {
+          show(row, 'bad', tr("Status unavailable"));
+        }
+      }));
     } finally {
       loading = false;
     }

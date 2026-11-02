@@ -6,6 +6,7 @@
     <meta name="color-scheme" content="dark light" />
     <title>{% block title %}Oche{% endblock %}</title>
     <script id="oche-translations" type="application/json">{{ translations | tojson }}</script>
+    <script id="oche-home-routes" type="application/json">{{ home_routes | tojson }}</script>
     <script src="/static/js/i18n.js"></script>
     <script src="/static/js/theme.js"></script>
     <link rel="stylesheet" href="/static/css/theme.css" />
@@ -35,7 +36,7 @@
     </header>
     {% include "sidebar.html" %}
     <div class="sidebar-backdrop" id="sidebar-backdrop" hidden></div>
-    <main id="main" tabindex="-1" class="{{ 'container-full' if full_width else 'container' }} {{ 'home-viewport' if core_page }} {{ 'container-wide' if active_nav in ['autodarts', 'cameras', 'system', 'updates'] }}">
+    <main id="main" tabindex="-1" class="{{ 'container-full' if full_width else 'container' }} {{ 'home-viewport' if core_page }} {{ 'container-wide' if active_nav in wide_pages }}">
       {% block content %}{% endblock %}
     </main>
     </div>

@@ -4,11 +4,10 @@ import httpx
 
 from app.core.api.ui import UISettings
 from app.core.board.detection import LocalDetection
-from app.core.config import ConnectionConfig, Settings
+from app.core.config import Settings
 from app.core.errors import ConnectionProblem
 from app.core.events import EventBus, RawEventRecorder
-from app.core.integrations.autodarts.account.auth import DeviceAuth
-from app.core.integrations.autodarts.account.cloud import CloudConnection
+from app.core.integrations import registry
 from app.core.integrations.caller.service import Caller
 from app.core.integrations.sources import integration_view
 from app.core.integrations.wled.service import WLED
@@ -16,7 +15,6 @@ from app.core.integrations.wled2.service import WLED2
 from app.core.integrations.wled2.service import Layout as WLED2Layout
 from app.core.local import LocalGames, LocalOptions
 from app.core.profiles import Profiles
-from app.core.storage import write_private_json
 
 
 class Runtime:
@@ -25,13 +23,14 @@ class Runtime:
         self.http = http
         self.debug = RawEventRecorder(settings.data_dir / "debug")
         self.bus = EventBus(recorder=self.debug)
-        self.config = settings.connection()
         self.tasks: list[asyncio.Task] = []
         self.lock = asyncio.Lock()
         self.local = LocalGames(settings.data_dir, http, self.bus, settings.local_autodarts_url)
         self.detection = LocalDetection(http, settings.local_autodarts_url)
-        self.cloud_task: asyncio.Task | None = None
-        self._create_connections()
+        # Game sources come from switched-on integrations, such as Autodarts Play.
+        self.sources: dict = {}
+        self.source_tasks: dict[str, asyncio.Task] = {}
+        self._create_sources()
         self.wled = WLED(settings.data_dir / "wled.json", http, self.bus, self.game_state)
         self.caller = Caller(
             settings.data_dir,
@@ -48,37 +47,48 @@ class Runtime:
     def game_state(self) -> dict:
         if self.local.active:
             return self.local.game_state()
-        return self.cloud.game_state()
+        for source in self.sources.values():
+            return source.game_state()
+        return self.local.game_state()
 
-    def start_cloud(self) -> None:
+    def start_sources(self) -> None:
         if self.local.active:
-            self.cloud.state = "paused_for_local_game"
+            for source in self.sources.values():
+                source.pause()
             return
-        self.cloud.normalizer.resync()
         self.tasks = [task for task in self.tasks if not task.done()]
-        self.cloud_task = asyncio.create_task(self.cloud.run(), name="autodarts-cloud")
-        self.tasks.append(self.cloud_task)
+        for name, source in self.sources.items():
+            source.normalizer.resync()
+            task = asyncio.create_task(source.run(), name=f"{name}-source")
+            self.source_tasks[name] = task
+            self.tasks.append(task)
+
+    async def _stop_sources(self) -> None:
+        tasks = [task for task in self.source_tasks.values() if not task.done()]
+        for task in tasks:
+            task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
+        self.source_tasks.clear()
 
     async def start_local(self, options: LocalOptions) -> dict:
         async with self.lock, self.local.lock:
             if self.local.active:
                 raise ConnectionProblem("End the current local game before starting another.")
-            if self.cloud_task and not self.cloud_task.done():
-                self.cloud_task.cancel()
-                await asyncio.gather(self.cloud_task, return_exceptions=True)
+            await self._stop_sources()
             try:
                 self.local.start(options)
             except Exception:
-                self.start_cloud()
+                self.start_sources()
                 raise
-            self.cloud.state = "paused_for_local_game"
+            for source in self.sources.values():
+                source.pause()
             return self.local.status()
 
     async def stop_local(self) -> dict:
         async with self.lock, self.local.lock:
             if self.local.active:
                 self.local.stop()
-                self.start_cloud()
+                self.start_sources()
             return self.local.status()
 
     async def configure_wled2(self, layout: WLED2Layout) -> None:
@@ -99,23 +109,15 @@ class Runtime:
                 restore.result()
             raise
 
-    def _create_connections(self) -> None:
-        self.auth = DeviceAuth(
-            self.http,
-            self.settings.api_base_url,
-            self.config.client_id,
-            self.settings.data_dir / "tokens.json",
-        )
-        self.cloud = CloudConnection(
-            self.http, self.auth, self.config.board_id, self.bus, self.settings.reconcile_interval
-        )
+    def _create_sources(self) -> None:
+        self.sources = {item.id: item.source(self) for item in registry.active() if item.source}
 
     def start(self) -> None:
         self.tasks = [
             asyncio.create_task(self.local.run(), name="autodarts-local"),
             asyncio.create_task(self.local.run_bots(), name="local-bots"),
         ]
-        self.start_cloud()
+        self.start_sources()
         self.wled.start()
         self.wled2.start()
         self.caller.start()
@@ -129,33 +131,29 @@ class Runtime:
         await self.wled.close()
         await self.wled2.close()
         await self.caller.close()
-        await self.auth.close()
+        self.source_tasks.clear()
+        for source in self.sources.values():
+            await source.close()
         if stop_debug:
             await self.debug.stop()
 
-    async def configure(self, config: ConnectionConfig) -> None:
-        async with self.lock:
-            write_private_json(self.settings.data_dir / "connection.json", config.model_dump())
-            await self.close(stop_debug=False)
-            if config.client_id != self.config.client_id:
-                await self.auth.forget()
-            self.config = config
-            self._create_connections()
-            self.bus.clear()
-            self.start()
-
-    async def logout(self) -> None:
+    async def restart(self, change=None) -> None:
+        """Stop, apply a change (such as new account settings), then start fresh sources."""
         async with self.lock:
             await self.close(stop_debug=False)
-            await self.auth.forget()
+            if change:
+                await change()
             self.bus.clear()
-            self._create_connections()
+            self._create_sources()
             self.start()
 
     def status(self) -> dict:
+        sources = {}
+        for source in self.sources.values():
+            sources.update(source.status())
+        normalizers = [source.normalizer for source in self.sources.values()]
         return {
-            "auth": self.auth.status(),
-            "cloud": self.cloud.status(),
+            **sources,
             "local_detection": self.detection.status(),
             "local": {
                 "active": self.local.active,
@@ -169,8 +167,8 @@ class Runtime:
                 "raw_subscribers": len(self.bus.raw_queues),
                 "dropped_deliveries": self.bus.dropped,
                 "raw_dropped_deliveries": self.bus.raw_dropped,
-                "normalized": self.cloud.normalizer.emitted + self.local.normalizer.emitted,
-                "invalid_match_states": self.cloud.normalizer.invalid_states,
+                "normalized": sum(item.emitted for item in normalizers) + self.local.normalizer.emitted,
+                "invalid_match_states": sum(item.invalid_states for item in normalizers),
                 "debug": self.debug.status(),
             },
         }

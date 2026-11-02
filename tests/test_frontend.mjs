@@ -5,7 +5,9 @@ import vm from "node:vm";
 
 import { api, eventEntries, callerTestState, fitPanel } from "../app/static/core/client.mjs";
 import { sourceEnabled } from "../app/static/core/sources.mjs";
-import { autodartsHealth, localHealth, cloudHealth } from "../app/static/js/health.mjs";
+import { localHealth } from "../app/static/js/health.mjs";
+// The Autodarts integration adds the process and cloud dots.
+import { autodartsHealth, cloudHealth } from "../app/core/integrations/autodarts/static/health.mjs";
 import { boardMarkup, boardPoint, checkout, funnyName, hitKey, playerStats, seats } from "../app/static/core/game.mjs";
 
 function appearanceContext(messages = {}, fetcher = async () => ({ ok: true,

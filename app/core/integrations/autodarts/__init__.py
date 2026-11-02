@@ -1,10 +1,22 @@
-"""Autodarts: the board software, its setup terminal, Camera Enhancer and Play on Autodarts."""
+"""Autodarts: the board software, its setup terminal, Camera Enhancer, the cloud account
+and Play on Autodarts."""
 
 from pathlib import Path
 
-from app.core.integrations.registry import Engine, Integration, Page, PlayButton, Release, register
+from app.core.integrations.registry import (
+    Engine,
+    Health,
+    HomeView,
+    Integration,
+    Page,
+    PlayButton,
+    Release,
+    register,
+)
 
 from . import camera_controls, process, release
+from .account.routes import router as account_router
+from .account.source import AutodartsAccount
 from .camera_routes import router as camera_router
 from .routes import pages, router
 
@@ -32,10 +44,26 @@ integration = register(Integration(
     process=process,
     port=3180,
     engine=Engine(label="Autodarts", scores=True),
-    routers=(router, camera_router, pages),
+    routers=(router, camera_router, pages, account_router),
     templates=HERE / "templates",
     static=HERE / "static",
     cards=("autodarts/cameras_card.html",),
-    scripts=(f"{STATIC}/cameras-card.js",),
+    scripts=(f"{STATIC}/account.js", f"{STATIC}/cameras-card.js"),
+    home={
+        "notices": ("autodarts/home_notice.html",),
+        "board": ("autodarts/home_board.html",),
+        "tiles": ("autodarts/home_tile.html",),
+        "account": ("autodarts/home_account.html",),
+    },
+    views=(HomeView(
+        "autodarts", "/integrations/autodarts", "Autodarts account",
+        "Choose your board and review the cloud connection.", "autodarts/home_view.html",
+    ),),
+    health=(
+        Health("autodarts", "Autodarts", "/integrations/autodarts/board", f"{STATIC}/health.mjs", 10),
+        Health("cloud", "Cloud", "/integrations/autodarts", f"{STATIC}/health.mjs", 90),
+    ),
+    # Autodarts Play reaches Oche as the "cloud" game source.
+    source=AutodartsAccount,
     shutdown=(camera_controls.shutdown,),
 ))

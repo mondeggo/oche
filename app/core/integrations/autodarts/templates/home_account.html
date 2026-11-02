@@ -1,0 +1,33 @@
+{#- The Autodarts account card at the top of Integrations. -#}
+        <div class="panel connection-card">
+          <div class="panel-heading">
+            <div class="connection-title">
+              <span class="connection-logo"><img src="/static/integrations/autodarts/logo.svg" alt=""></span>
+              <div><h2>{{ _("Autodarts account") }}</h2><p class="hint">{{ _("Cloud sign-in and board for game events") }}</p></div>
+            </div>
+            <span id="account-state" class="badge">—</span>
+          </div>
+          <p id="account-hint" class="muted">
+            {{ _("Sign in on Autodarts to connect your board.") }}
+          </p>
+          <div class="actions">
+            <button id="login" class="primary" type="button" disabled>
+              {{ _("Connect account") }}
+            </button>
+            <button id="logout" type="button" disabled>{{ _("Disconnect") }}</button>
+          </div>
+          <div id="device" class="device" hidden>
+            <p>{{ _("Enter this code on Autodarts to approve the connection.") }}</p>
+            <strong id="user-code"></strong>
+            <a
+              id="verification"
+              class="button primary"
+              target="_blank"
+              rel="noreferrer"
+            >
+              {{ _("Open Autodarts ↗") }}
+            </a>
+            <p id="expires" class="hint"></p>
+          </div>
+          <p class="connection-board"><a href="/integrations/autodarts">{{ _("Board and connection details →") }}</a></p>
+        </div>

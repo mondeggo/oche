@@ -9,25 +9,20 @@ CONFIG_FILE = DATA_DIR / "settings.json"
 LOG_DIR = DATA_DIR / "logs"
 LOG_DIR.mkdir(exist_ok=True)
 
-AUTODARTS_DIR = DATA_DIR / "autodarts"
-AUTODARTS_DIR.mkdir(exist_ok=True)
 
 DEFAULTS = {
     "https_enabled": False,
     # Starts the active detection engine on boot (originally named for Autodarts).
     "autostart_autodarts": True,
-    "detection_engine": "autodarts",
     "panels": [],
     "autohide_navbar_on_home": False,
     "autohide_navbar_on_play": True,
-    "autohide_navbar_on_autodarts": False,
     "autohide_navbar_on_cameras": False,
     "autohide_navbar_on_system": False,
     "autohide_navbar_on_updates": False,
     "autohide_navbar_on_panels": True,
     "show_play_in_navbar": True,
     "show_panels_in_navbar": True,
-    "show_page_autodarts": True,
     "show_page_cameras": True,
     "show_page_system": True,
     "show_page_updates": True,

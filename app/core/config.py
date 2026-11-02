@@ -1,8 +1,6 @@
-import json
 from pathlib import Path
 from typing import Literal
 from urllib.parse import urlsplit
-from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from pydantic_settings import (
@@ -21,23 +19,6 @@ class UIConfig(BaseModel):
 
 class UIUpdate(UIConfig):
     profile_id: str | None = None
-
-
-class ConnectionConfig(BaseModel):
-    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
-
-    client_id: str = Field(default="darts-caller", max_length=200)
-    board_id: str = ""
-
-    @field_validator("client_id")
-    @classmethod
-    def default_client_id(cls, value: str) -> str:
-        return value or "darts-caller"
-
-    @field_validator("board_id")
-    @classmethod
-    def valid_board(cls, value: str) -> str:
-        return str(UUID(value)) if value else ""
 
 
 class Settings(BaseSettings):
@@ -112,14 +93,3 @@ class Settings(BaseSettings):
         ):
             raise ValueError("The cloud API requires an HTTPS origin without credentials")
         return value.rstrip("/")
-
-    def connection(self) -> ConnectionConfig:
-        path = self.data_dir / "connection.json"
-        values = {}
-        if path.exists():
-            saved = json.loads(path.read_text(encoding="utf-8"))
-            values = ConnectionConfig.model_validate(saved).model_dump()
-        for key in ConnectionConfig.model_fields:
-            if value := getattr(self, key):
-                values[key] = value
-        return ConnectionConfig(**values)

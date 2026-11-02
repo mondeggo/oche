@@ -36,17 +36,6 @@ function renderEngines(data) {
   }
 }
 
-// The sidebar shows what switched-on integrations add; copy its visibility from a fresh page.
-async function syncSidebar() {
-  const response = await fetch(location.href, { cache: "no-store" });
-  if (!response.ok) return;
-  const updated = new DOMParser().parseFromString(await response.text(), "text/html");
-  for (const source of updated.querySelectorAll("#app-sidebar [data-nav-sync][id]")) {
-    const target = document.getElementById(source.id);
-    if (target) target.hidden = source.hidden;
-  }
-}
-
 async function refresh() {
   if (working || loading || !cards.size) return;
   loading = true;
@@ -67,7 +56,9 @@ for (const [name, card] of cards) {
     try {
       const list = await api(`/api/integrations/${name}`, "PUT", { enabled });
       renderSwitch(card, list.find(item => item.id === name)?.enabled ?? enabled);
-      await syncSidebar();
+      // Home shows what switched-on integrations add, with their scripts: reload it.
+      location.reload();
+      return;
     } catch (cause) { error(card, cause.message); }
     finally { working = toggle.disabled = false; await refresh(); }
   });

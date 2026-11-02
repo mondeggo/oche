@@ -547,7 +547,7 @@ class LocalGames:
                     self.feed_error = (
                         str(exc)
                         if isinstance(exc, ConnectionProblem)
-                        else ("Cannot read local Autodarts detection. Check Integrations → Autodarts.")
+                        else ("Cannot read local detection. Check the vision engine's page in Integrations.")
                     )
                     if self.scoring_key() is not None:
                         self.connected = self.armed = False

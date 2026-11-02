@@ -120,7 +120,7 @@ def test_debug_api_works_headless_survives_connection_reset_and_restarts_off(set
             app.state.runtime.bus.record_raw('{"channel":"unknown","data":{"access_token":"x"}}')
 
         client.portal.call(publish)
-        assert client.post("/api/auth/logout", json={}).status_code == 200
+        assert client.post("/api/autodarts/logout", json={}).status_code == 200
         assert client.get("/api/events/debug").json()["enabled"] is True
         assert client.get("/api/events/raw").json() == []
         stopped = client.put("/api/events/debug", json={"enabled": False}).json()

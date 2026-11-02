@@ -6,7 +6,6 @@ from fastapi import APIRouter, HTTPException, Request, Response
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, ConfigDict, ValidationError
 
-from app.core.config import ConnectionConfig
 from app.core.events import DebugRecording, Event
 from app.core.integrations.caller.service import CallerConfig, CallerTest
 from app.core.integrations.wled.service import (
@@ -69,7 +68,9 @@ def create_router() -> APIRouter:
     async def ready(request: Request):
         runtime = request.app.state.runtime
         available = (
-            runtime.game_state()["available"] if runtime.local.active else runtime.cloud.state == "connected"
+            runtime.game_state()["available"]
+            if runtime.local.active
+            else any(source.ready for source in runtime.sources.values())
         )
         return JSONResponse({"ready": available}, status_code=200 if available else 503)
 
@@ -79,15 +80,6 @@ def create_router() -> APIRouter:
         # Local readiness follows the vision engine Play uses.
         await runtime.detection.check(engines.process_status())
         return runtime.status()
-
-    @router.get("/api/config")
-    async def config(request: Request):
-        runtime = request.app.state.runtime
-        return {
-            **runtime.config.model_dump(),
-            "api_base_url": runtime.settings.api_base_url,
-            "locked_fields": [key for key in ConnectionConfig.model_fields if getattr(runtime.settings, key)],
-        }
 
     @router.get("/api/game")
     async def game(request: Request):
@@ -265,15 +257,6 @@ def create_router() -> APIRouter:
         async with runtime.lock:
             return await runtime.wled.test(device_id, preview)
 
-    @router.get("/api/boards")
-    async def boards(request: Request):
-        runtime = request.app.state.runtime
-        async with runtime.lock:
-            return {
-                "boards": await runtime.cloud.list_boards(),
-                "selected_board_id": runtime.config.board_id or None,
-            }
-
     @router.get("/api/caller")
     async def caller_config(request: Request, response: Response) -> CallerConfig:
         runtime = request.app.state.runtime
@@ -340,27 +323,6 @@ def create_router() -> APIRouter:
     async def caller_audio(voice_id: str, clip: str, request: Request):
         library = request.app.state.runtime.caller.library
         return FileResponse(library.clip_path(voice_id, clip))
-
-    @router.put("/api/config")
-    async def configure(config: ConnectionConfig, request: Request):
-        runtime = request.app.state.runtime
-        configured = runtime.settings.connection()
-        for key in ConnectionConfig.model_fields:
-            if getattr(runtime.settings, key) and getattr(config, key) != getattr(configured, key):
-                raise HTTPException(409, f"{key} is managed by .env or config/config.yaml. Edit that file.")
-        await runtime.configure(config)
-        return {"saved": True}
-
-    @router.post("/api/auth/login")
-    async def login(request: Request):
-        runtime = request.app.state.runtime
-        async with runtime.lock:
-            return await runtime.auth.start_login()
-
-    @router.post("/api/auth/logout")
-    async def logout(request: Request):
-        await request.app.state.runtime.logout()
-        return {"disconnected": True}
 
     @router.get("/api/events")
     async def events(request: Request, monitor_local: bool = False) -> list[Event]:

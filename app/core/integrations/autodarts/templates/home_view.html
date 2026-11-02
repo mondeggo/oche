@@ -1,0 +1,54 @@
+{#- The Autodarts account details: board, OAuth client and connection state. -#}
+      <section data-view="{{ view.id }}" data-title="{{ _(view.title) }}" data-description="{{ _(view.description) }}" aria-label="{{ _('Autodarts settings') }}" hidden>
+        <form id="configuration" class="panel">
+          <h2>{{ _("Board") }}</h2>
+          <label for="board_id">{{ _("Selected board") }}</label>
+          <div class="field-row">
+            <select
+              id="board_id"
+              name="board_id"
+              aria-describedby="boards-status"
+            >
+              <option value="">{{ _("No board selected") }}</option>
+            </select>
+            <button type="button" id="refresh-boards" disabled>{{ _("Refresh") }}</button>
+          </div>
+          <p class="hint" id="boards-status" role="status">
+            {{ _("Connect your account to load boards.") }}
+          </p>
+          <details class="advanced">
+            <summary>{{ _("Advanced settings") }}</summary>
+            <label for="client_id">OAuth Client ID</label>
+            <input
+              id="client_id"
+              name="client_id"
+              autocomplete="off"
+              maxlength="200"
+              aria-describedby="managed"
+            />
+            <p class="hint" id="managed"></p>
+          </details>
+          <div class="actions">
+            <button type="submit" id="save" class="primary" disabled>
+              {{ _("Save settings") }}
+            </button>
+            <span id="unsaved" class="save-state" data-state="dirty" hidden>{{ _("Unsaved changes") }}</span>
+          </div>
+        </form>
+        <details class="panel diagnostics">
+          <summary>{{ _("Connection details") }}</summary>
+          <dl class="detail-list">
+            <div>
+              <dt>{{ _("Board ID") }}</dt>
+              <dd id="detail-board">—</dd>
+            </div>
+            <div>
+              <dt>{{ _("Match ID") }}</dt>
+              <dd id="detail-match">—</dd>
+            </div>
+          </dl>
+          <p id="connection-error" class="hint">
+            {{ _("No connection errors reported.") }}
+          </p>
+        </details>
+      </section>

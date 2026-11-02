@@ -5,14 +5,14 @@ Stable launcher
 └── Oche application / one FastAPI lifecycle
     ├── Sidebar, Home, Play, Camera Enhancer and System pages, and Settings
     ├── app/core/
-    │   ├── AutoDarts cloud login and event processing
+    │   ├── Event processing and the board API client (app/core/board/)
     │   ├── WLED lighting and visual layouts
     │   ├── Caller and voice library
     │   ├── Profiles
     │   └── REST and WebSocket routes
     ├── HTTPS, persistent settings, panels and updates
     └── app/core/integrations/registry.py
-        ├── autodarts/  board software, setup terminal, Camera Enhancer, Play on Autodarts
+        ├── autodarts/  board software, setup terminal, Camera Enhancer, cloud account, Play on Autodarts
         └── ochecore/   offline board service and its management page
 ```
 
@@ -28,11 +28,23 @@ integration on or off (`integrations.<id>.enabled` in `data/settings.json`);
 switching it off hides what it adds and stops its engine, and keeps its files and
 settings. Registration order is fixed by `order`, then id.
 
+Integrations also extend Home and the runtime. Home has slots for their templates
+(`notices` above every view, the Overview `board` heading and `tiles`, and the
+`account` area at the top of Integrations) and their own views with routes,
+titles and scripts; Home sends `/api/status` to those scripts as an `oche:status`
+event. Sidebar status dots are registered too: core reports local detector
+readiness, and each integration's dot is checked by the module it names
+(`health(id, status, tr)`). A `source` factory gives the runtime a game source:
+the runtime starts it, pauses it during local games, merges its status into
+`/api/status` and drops it when the integration is switched off. The Autodarts
+integration uses this for the cloud account (`account/`): sign-in, board choice and
+Autodarts Play events, with its API under `/api/autodarts/`.
+
 Vision engines share the cameras, so `app/services/engines.py` keeps one chosen
 (`detection_engine`, or `manual`): choosing one stops the others, and boot starts
 it when **Start on boot** is on. An engine that scores speaks the
 Autodarts-compatible board API (`GET /api/state`, `WS /api/events?type=state`),
-which core reads through `app/core/autodarts/local.py`. Engine releases are
+which core reads through `app/core/board/`. Engine releases are
 installed into `data/modules/<id>`. OcheCore keeps its settings in
 `data/ochecore/board.toml` and listens on the LAN, like Autodarts.
 
@@ -67,7 +79,7 @@ detector is an external executable, while account authentication, profiles,
 lighting and caller processing belong to Oche. Use one application worker to avoid
 duplicating board connections and device output.
 
-`app/core/local.py` owns local X01 state. `app/core/autodarts/local.py` reads local
+`app/core/local.py` owns local X01 state. `app/core/board/local.py` reads local
 detector WebSocket state events, with HTTP snapshots and a polling fallback.
 The detector defaults to loopback; `OCHE_CORE_LOCAL_AUTODARTS_URL` selects a
 separate LAN detector. Local frames use the existing event normalizer and integrations. Runtime source

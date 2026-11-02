@@ -1,14 +1,12 @@
 import { tr } from "../js/i18n.mjs";
 import { $, api, poll, eventEntries, eventSource } from "./client.mjs";
 import { pageForUrl } from "../js/routes.mjs";
-const fields = ["client_id", "board_id"];
 const pages = {
   overview: [tr("Overview"), tr("Your board and connection at a glance.")],
   integrations: [
     tr("Integrations"),
-    tr("Connect Autodarts and choose the lights and sound to use."),
+    tr("Choose your vision engines, lights and sound."),
   ],
-  autodarts: [tr("Autodarts account"), tr("Choose your board and review the cloud connection.")],
   profiles: [tr("Profiles"), tr("Create, switch between and manage app profiles.")],
   wled: ["WLED", tr("Lighting effects for your game.")],
   wled2: ["Visual WLED", tr("Build your lighting setup around the board.")],
@@ -16,31 +14,12 @@ const pages = {
   events: [tr("Events"), tr("See what Oche receives from your board.")],
 };
 const integrations = { wled: null, wled2: null, caller: null };
-const labels = {
-  unconfigured: tr("Not configured"),
-  disconnected: tr("Disconnected"),
-  awaiting_authorization: tr("Awaiting approval"),
-  authenticated: tr("Connected"),
-  waiting_for_login: tr("Waiting for login"),
-  connecting: tr("Connecting…"),
-  connected: tr("Connected"),
-  degraded: tr("Needs attention"),
-  reconnecting: tr("Reconnecting…"),
-  error: tr("Connection error"),
-  stopped: tr("Stopped"),
-};
 export let page = "overview";
 let stream = "normalized";
 let refreshTask = null;
 let busy = false;
 let available = false;
-let dirty = false;
-let config = { client_id: "", board_id: "", locked_fields: [] };
 let status = null;
-let boardOptions = [];
-let renderedBoards = "";
-let boardLoading = false;
-let nextBoardRefresh = 0;
 let renderedEvents = "";
 let entries = [];
 let eventElements = new Map();
@@ -52,8 +31,10 @@ let debugBusy = false;
 function navigate(focus = false) {
   if (location.hash === "#main") return;
   const requested = pageForUrl(new URL(location.href));
-  page = Object.hasOwn(pages, requested) ? requested : "overview";
-  const [title, description] = pages[page];
+  // Integrations add views that carry their own title and description.
+  const registered = document.querySelector(`[data-view="${CSS.escape(requested)}"][data-title]`);
+  page = Object.hasOwn(pages, requested) || registered ? requested : "overview";
+  const [title, description] = pages[page] || [registered.dataset.title, registered.dataset.description];
   document.querySelectorAll("[data-view]").forEach((view) => {
     view.hidden = view.dataset.view !== page;
   });
@@ -83,176 +64,15 @@ export function notice(message, error = false) {
   $("notice").hidden = false;
 }
 
-function updateButtons() {
-  const auth = status?.auth.state ?? "unconfigured";
-  fields.forEach((key) => {
-    $(key).disabled = busy || config.locked_fields.includes(key);
-  });
-  $("save").disabled = busy || !available || !dirty;
-  $("unsaved").hidden = !dirty;
-  $("login").disabled =
-    busy ||
-    !available ||
-    dirty ||
-    !config.client_id ||
-    ["authenticated", "awaiting_authorization"].includes(auth);
-  $("logout").disabled =
-    busy || !available || ["unconfigured", "disconnected"].includes(auth);
-  $("refresh-boards").disabled =
-    busy || boardLoading || !available || auth !== "authenticated";
-}
-
-function applyConfig(value) {
-  if (config.client_id !== value.client_id) {
-    boardOptions = [];
-    nextBoardRefresh = 0;
-  }
-  config = value;
-  renderBoardOptions(
-    dirty && !config.locked_fields.includes("board_id")
-      ? $("board_id").value
-      : config.board_id,
-  );
-  fields.forEach((key) => {
-    if (!dirty || config.locked_fields.includes(key))
-      $(key).value = config[key];
-  });
-  $("managed").textContent = config.locked_fields.length
-    ? tr("Locked settings are managed by config/config.yaml or environment variables.")
-    : tr("Use an OAuth client with device authorization enabled.");
-}
-
-function renderBoardOptions(selected) {
-  const signature = JSON.stringify([boardOptions, selected]);
-  if (signature === renderedBoards) return;
-  renderedBoards = signature;
-  const select = $("board_id");
-  select.replaceChildren(new Option(tr("No board selected"), ""));
-  boardOptions.forEach((board) => {
-    const state =
-      board.online === true
-        ? tr("Online")
-        : board.online === false
-          ? tr("Offline")
-          : tr("Status unknown");
-    select.add(new Option(`${board.name} — ${state}`, board.id));
-  });
-  if (selected && !boardOptions.some((board) => board.id === selected)) {
-    select.add(new Option(tr("Configured board ({0})", {"0": (selected)}), selected));
-  }
-  select.value = selected;
-}
-
-async function loadBoards() {
-  if (boardLoading || status?.auth.state !== "authenticated") return;
-  boardLoading = true;
-  nextBoardRefresh = Date.now() + 30000;
-  $("boards-status").textContent = tr("Loading boards…");
-  updateButtons();
-  try {
-    const result = await api("/api/boards");
-    boardOptions = result.boards;
-    renderBoardOptions(
-      dirty ? $("board_id").value : (result.selected_board_id ?? ""),
-    );
-    $("boards-status").textContent = config.locked_fields.includes("board_id")
-      ? tr("This board is managed by the service configuration.")
-      : boardOptions.length
-        ? tr("Choose your board, then save settings.")
-        : tr("No boards found. Register a board on Autodarts, then refresh.");
-    renderStatus();
-  } catch (error) {
-    $("boards-status").textContent = tr(error.message);
-  } finally {
-    boardLoading = false;
-    updateButtons();
-  }
-}
-
-function badge(id, text, tone = "") {
-  $(id).textContent = text;
-  $(id).dataset.tone = tone;
-}
-
+// Integrations render their own parts from this event; null means status is unavailable.
 function renderStatus() {
-  const { auth, cloud, events } = status;
+  const { events } = status;
   document.dispatchEvent(new CustomEvent("oche:status", { detail: status }));
   renderDebug(events.debug);
-  const authLabel = labels[auth.state] ?? auth.state;
-  const cloudLabel = labels[cloud.state] ?? cloud.state;
-  const connected = cloud.state === "connected";
-  $("auth-state").textContent = authLabel;
-  $("cloud-state").textContent = cloudLabel;
-  $("count").textContent = events.normalized;
   $("events-summary").textContent = tr("{count} game events · {raw} raw frames", { count: events.normalized, raw: events.received });
   $("local-feed-status").textContent = status.local.feed.error ? tr(status.local.feed.error)
     : status.local.feed.transport ? tr("Local detector feed connected.")
     : tr("Open Events or enable recording to inspect the local detector feed.");
-  badge(
-    "account-state",
-    authLabel,
-    auth.state === "authenticated" ? "good" : "",
-  );
-  $("account-hint").textContent = !config.client_id
-    ? tr("Set an OAuth Client ID in Advanced settings below to connect.")
-    : auth.state === "authenticated"
-      ? tr("Your account is connected. Select the board you want to use.")
-      : auth.state === "awaiting_authorization"
-        ? tr("Approve the connection using the code below.")
-        : tr("Sign in on Autodarts to connect your board.");
-  const board = boardOptions.find((item) => item.id === config.board_id);
-  $("board-name").textContent =
-    board?.name ||
-    (config.board_id ? tr("Your Autodarts board") : tr("Choose your board"));
-  badge(
-    "board-state",
-    !config.board_id
-      ? tr("Not selected")
-      : !connected || cloud.board_online == null
-        ? tr("Status unknown")
-        : cloud.board_online
-          ? tr("Online")
-          : tr("Offline"),
-    connected && cloud.board_online ? "good" : "",
-  );
-  $("match").textContent = !connected
-    ? tr("Connect Autodarts to receive game events.")
-    : cloud.match_id
-      ? tr("Match in progress")
-      : tr("No active match");
-  $("detail-board").textContent = config.board_id || tr("No board selected");
-  $("detail-match").textContent = cloud.match_id || tr("No active match");
-  const errors = [
-    auth.error,
-    cloud.error,
-    ...(cloud.subscription_errors ?? []).map(
-      (item) => `${item.channel}: ${item.error}.`,
-    ),
-  ].filter(Boolean);
-  $("connection-error").textContent =
-    errors.join(" ") || tr("No connection errors reported.");
-  $("connection-warning").hidden = !errors.length;
-  $("warning-text").textContent =
-    auth.error || cloud.error || tr("Some Autodarts subscriptions need attention.");
-  $("device").hidden = !auth.device;
-  if (auth.device) {
-    const device = auth.device;
-    $("user-code").textContent = device.user_code;
-    $("verification").removeAttribute("href");
-    try {
-      const url = new URL(
-        device.verification_uri_complete || device.verification_uri,
-      );
-      if (url.protocol === "https:") $("verification").href = url.href;
-    } catch {
-      /* Keep invalid approval links inactive. */
-    }
-    const seconds = Math.max(
-      0,
-      Math.ceil(device.expires_at - Date.now() / 1000),
-    );
-    $("expires").textContent = tr("Code expires in {0} seconds.", {"0": (seconds)});
-  }
 }
 
 function renderDebug(value) {
@@ -369,14 +189,9 @@ async function refreshEvents() {
 
 async function refreshData() {
   try {
-    const [newStatus, newConfig, game] = await Promise.all([
-      api("/api/status"),
-      api("/api/config"),
-      api("/api/game"),
-    ]);
+    const [newStatus, game] = await Promise.all([api("/api/status"), api("/api/game")]);
     available = true;
     status = newStatus;
-    applyConfig(newConfig);
     renderStatus();
     $("overview-phase").textContent = game.editing
       ? tr("Editing score")
@@ -388,30 +203,15 @@ async function refreshData() {
         }[game.phase] || tr("Waiting for board");
     $("overview-phase").dataset.phase = game.phase;
     $("overview-phase-reason").textContent = tr(game.reason || "");
-    if (status.auth.state === "authenticated") {
-      if (Date.now() >= nextBoardRefresh) await loadBoards();
-    } else {
-      boardOptions = [];
-      nextBoardRefresh = 0;
-      renderBoardOptions($("board_id").value);
-      $("boards-status").textContent = tr("Connect your account to load boards.");
-    }
   } catch {
     available = false;
+    document.dispatchEvent(new CustomEvent("oche:status", { detail: null }));
     $("debug-toggle").disabled = true;
-    $("auth-state").textContent = $("cloud-state").textContent = tr("Unavailable");
     $("events-summary").textContent = tr("Event status unavailable.");
-    badge("account-state", tr("Unavailable"), "warning");
-    badge("board-state", tr("Status unknown"));
-    $("match").textContent = tr("Waiting for the service to reconnect.");
     $("overview-phase").textContent = tr("Unavailable");
     $("overview-phase").dataset.phase = "waiting";
     $("overview-phase-reason").textContent = "";
-    $("warning-text").textContent =
-      tr("Cannot reach Oche. Retrying automatically.");
-    $("connection-warning").hidden = false;
   }
-  updateButtons();
   await refreshEvents();
 }
 
@@ -424,10 +224,9 @@ function refresh() {
   return refreshTask;
 }
 
-async function action(work) {
+export async function action(work) {
   if (busy) return;
   busy = true;
-  updateButtons();
   try {
     await refreshTask;
     await work();
@@ -436,41 +235,9 @@ async function action(work) {
   } finally {
     busy = false;
     await refresh();
-    updateButtons();
   }
 }
 
-fields.forEach((key) =>
-  $(key).addEventListener(key === "board_id" ? "change" : "input", () => {
-    dirty = fields.some((field) => $(field).value.trim() !== config[field]);
-    updateButtons();
-  }),
-);
-$("configuration").addEventListener("submit", (event) => {
-  event.preventDefault();
-  action(async () => {
-    await api(
-      "/api/config",
-      "PUT",
-      Object.fromEntries(fields.map((key) => [key, $(key).value.trim()])),
-    );
-    dirty = false;
-    notice(tr("Settings saved."));
-  });
-});
-$("login").addEventListener("click", () =>
-  action(async () => {
-    await api("/api/auth/login", "POST");
-    notice(tr("Approve the code on Autodarts."));
-  }),
-);
-$("logout").addEventListener("click", () =>
-  action(async () => {
-    await api("/api/auth/logout", "POST");
-    notice(tr("Account disconnected."));
-  }),
-);
-$("refresh-boards").addEventListener("click", () => action(loadBoards));
 $("dismiss-notice").addEventListener("click", () => {
   $("notice").hidden = true;
 });

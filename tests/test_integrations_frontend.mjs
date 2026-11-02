@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import vm from "node:vm";
 import test from "node:test";
@@ -178,12 +178,18 @@ test("metrics settings save numeric choices, hide disabled charts and preserve r
   assert.equal(config.retention_minutes, 90);
 });
 
-test("every Home JavaScript module parses, including Visual WLED", () => {
-  for (const file of readdirSync(core).filter(file => /\.(?:m?js)$/.test(file))) {
-    const result = spawnSync(process.execPath, ["--check", "--input-type=module"], {
-      input: readFileSync(new URL(file, core), "utf8"), encoding: "utf8",
-    });
-    assert.equal(result.status, 0, `${file}: ${result.stderr}`);
+test("every Home JavaScript module parses, including Visual WLED and integrations", () => {
+  const integrations = new URL("../app/core/integrations/", import.meta.url);
+  const folders = [core, ...readdirSync(integrations, { withFileTypes: true })
+    .filter(entry => entry.isDirectory()).map(entry => new URL(`${entry.name}/static/`, integrations))
+    .filter(folder => existsSync(folder))];
+  for (const folder of folders) {
+    for (const file of readdirSync(folder).filter(file => /\.(?:m?js)$/.test(file))) {
+      const result = spawnSync(process.execPath, ["--check", "--input-type=module"], {
+        input: readFileSync(new URL(file, folder), "utf8"), encoding: "utf8",
+      });
+      assert.equal(result.status, 0, `${file}: ${result.stderr}`);
+    }
   }
 });
 

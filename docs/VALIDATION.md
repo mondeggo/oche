@@ -522,3 +522,23 @@ Browser acceptance (headless Microsoft Edge, dark and light): Play first with Pl
 on Autodarts below it, the vision engine choice above the games, the Vision engines
 cards with switches, and the OcheCore page. Not verified: the Autodarts setup
 terminal, Camera Enhancer and both engines on the board's cameras.
+
+## Autodarts account and status dots in the integration (2026-11-02)
+
+Automated: with Autodarts switched off, `/api/status` has no account or cloud
+section, the account API answers 409, Home has no account card, view or script,
+and the Autodarts and Cloud dots are hidden while Local stays; switching it on
+restores them. Every script in Home and the integrations parses as a module. The
+Python suite also passed in a Linux Python 3.12 container.
+
+Docker acceptance (image built locally, fresh named volume): Autodarts 2.1.1
+installed and ran. The account settings saved through `/api/autodarts/config`, the
+account view and the integration's scripts answered HTTP 200, and the sidebar
+listed the Autodarts, Local and Cloud dots in that order. Switching Autodarts off
+removed the account and cloud from the status and stopped the process; switching it
+on restored them.
+
+Browser acceptance (headless Microsoft Edge): Overview with Autodarts on (board
+name, cloud tile, three dots) and off (generic board panel, no cloud tile, no Play
+on Autodarts, only the Local dot), and the Autodarts account view. Not verified:
+signing in to a real Autodarts account and receiving cloud games.
