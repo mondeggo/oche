@@ -220,3 +220,15 @@ def test_first_autodarts_install_keeps_running(manager, installed, autostart, ex
     # stop() runs once before starting the candidate, and again only to leave it stopped.
     assert stop.call_count == (2 if expected_stop else 1)
     assert store.read_state("autodarts")["active"] == "2.1.0" and not store.read_state("autodarts")["pending"]
+
+
+def test_active_release_with_missing_files_can_be_installed_again(manager):
+    # An older image's state can name a release whose files never reached this layout.
+    store.write_state("autodarts", {"active": "2.0.2", "previous": None, "pending": False})
+    entry, downloads = autodarts_release()
+    manager.available = {"autodarts": entry}
+    module = next(m for m in manager.status()["modules"] if m["name"] == "autodarts")
+    assert not module["present"] and module["installable"]
+    with downloads, patch("app.services.updates.discover_autodarts", return_value=entry):
+        assert manager.install_missing("autodarts") == "2.1.0"
+    assert (store.location("autodarts", "unused") / "autodarts").is_file()

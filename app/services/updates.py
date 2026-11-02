@@ -76,6 +76,11 @@ def extract(archive, destination):
         bundle.extractall(destination, members=members, filter="data")
 
 
+def installed(name, state):
+    """An active release counts only while its files are still in the store."""
+    return bool(state.get("active")) and store.release_path(name, state["active"]).is_dir()
+
+
 class UpdateManager:
     def __init__(self):
         self.lock = threading.Lock()
@@ -115,7 +120,7 @@ class UpdateManager:
                         map(int, current.split("."))
                     )
             # A module the image does not include stays absent until it is installed.
-            present = bool(state.get("active")) or bundled.exists()
+            present = installed(name, state) or bundled.exists()
             modules.append(
                 {
                     "name": name,
@@ -309,7 +314,7 @@ class UpdateManager:
         The installer runs this in a one-off container before Oche starts, so the
         release lands in the module store with the container's ownership.
         """
-        if store.read_state(name).get("active"):
+        if installed(name, store.read_state(name)):
             return None
         architecture = {"x86_64": "amd64", "amd64": "amd64", "aarch64": "arm64", "arm64": "arm64"}.get(
             platform.machine().lower(), platform.machine().lower()
