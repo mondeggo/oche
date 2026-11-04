@@ -85,7 +85,9 @@
     </div>
     <div class="nav-section sidebar-tools">
       <span class="sidebar-version nav-text">Oche {{ app_version }}</span>
-      <select id="language-select" class="language-select" aria-label="{{ _('Interface language') }}" title="{{ _('Interface language') }}">{% for code, label in ui_languages.items() %}<option value="{{ code }}" lang="{{ code }}" title="{{ label }}" aria-label="{{ label }}"{% if code == ui_language %} selected{% endif %}>{{ code[:2] | upper }}</option>{% endfor %}</select>
+      <span class="language-picker">
+        <select id="language-select" class="language-select" aria-label="{{ _('Interface language') }}" title="{{ _('Interface language') }}">{% for code, label in ui_languages.items() %}<option value="{{ code }}" lang="{{ code }}" title="{{ label }}" aria-label="{{ label }}"{% if code == ui_language %} selected{% endif %}>{{ code[:2] | upper }}</option>{% endfor %}</select>
+      </span>
       <button id="theme-toggle" class="icon-button theme-toggle" type="button" aria-label="{{ _('Switch to light theme') }}" title="{{ _('Switch to light theme') }}">
         <svg class="theme-sun" aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg>
         <svg class="theme-moon" aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 13a8.5 8.5 0 0 1-9.5-9.5A8.5 8.5 0 1 0 20.5 13Z"/></svg>
