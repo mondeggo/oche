@@ -73,6 +73,11 @@
             </div>
             <p class="muted">{{ _(item.description) }}</p>
             <p class="hint" data-engine-detail></p>
+            <div class="actions">
+              <button type="button" data-engine-action="clear-cache">{{ _("Clear cache") }}</button>
+              <button type="button" class="danger" data-engine-action="uninstall" disabled>{{ _("Uninstall") }}</button>
+            </div>
+            <p class="hint">{{ _("Clear cache resets engine settings and calibration. Uninstall removes engine releases but keeps settings.") }}</p>
             <p class="error" role="status" data-integration-error hidden></p>
             {%- if item.pages %}
             <a class="integration-card-link" href="{{ item.pages[0].href }}" data-integration-link {{ 'hidden' if not item.enabled }}>{{ _("Manage {name} →", name=item.name) }}</a>

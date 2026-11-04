@@ -425,6 +425,26 @@ $("local-bot-auto-open").addEventListener("click", () => {
   $("local-bot-auto").querySelector("button[value=auto-medium]").focus();
 });
 $("local-history-open").addEventListener("click", () => $("local-history-dialog").showModal());
+let startingEngine = false;
+function renderEngineStart(data) {
+  const engine = data.engines.find(item => item.name === engineChoice());
+  const button = $("local-engine-start");
+  button.hidden = !engine || !engine.enabled || !engine.installed || engine.status === "running";
+  button.disabled = startingEngine;
+  button.textContent = startingEngine ? tr("Starting…") : tr("Start {name}", { name: engine?.label || "" });
+}
+$("local-engine-start").addEventListener("click", async () => {
+  if (startingEngine || engineChoice() === "manual") return;
+  startingEngine = true;
+  $("local-engine-start").disabled = true;
+  $("local-engine-start").textContent = tr("Starting…");
+  const error = $("game-engine-error");
+  error.hidden = true;
+  try {
+    renderEngineStart(await api(`/api/engines/${engineChoice()}/use`, "POST"));
+  } catch (cause) { error.textContent = cause.message; error.hidden = false; }
+  finally { startingEngine = false; $("local-engine-start").disabled = false; await refresh(); }
+});
 let engineSaved = engineChoice();
 document.querySelectorAll('input[name="engine"]').forEach(input => input.addEventListener("change", async () => {
   const error = $("game-engine-error");
@@ -434,6 +454,7 @@ document.querySelectorAll('input[name="engine"]').forEach(input => input.addEven
     // Choosing an engine starts it and stops the other one, which shares the cameras.
     await api(`/api/engines/${engineChoice()}/use`, "POST");
     engineSaved = engineChoice();
+    await refresh();
   } catch (cause) {
     setRadio("engine", engineSaved);
     renderInput();
@@ -476,7 +497,8 @@ async function refresh() {
   if (working || document.hidden) return;
   const currentGeneration = generation;
   try {
-    const value = await api("/api/local");
+    const [value, engines] = await Promise.all([api("/api/local"), api("/api/engines")]);
+    renderEngineStart(engines);
     if (!working && currentGeneration === generation) render(value);
   } catch (cause) {
     fail(cause);

@@ -544,3 +544,84 @@ test("players are seated clockwise around the board", () => {
   assert.deepEqual(seats(5), { left: [0, 4], right: [1, 2, 3] });
   assert.deepEqual(seats(8), { left: [0, 7, 6, 5], right: [1, 2, 3, 4] });
 });
+
+test("missing compatible modules stay installable across refreshes and submit installation", async () => {
+  const nodes = [];
+  function node(tag = '') {
+    const entry = { tag, dataset: {}, children: [], listeners: {}, disabled: false,
+      append(child) { this.children.push(child); },
+      replaceChildren() { this.children = []; },
+      setAttribute() {}, contains() { return false; },
+      addEventListener(event, listener) { this.listeners[event] = listener; },
+      querySelector(selector) {
+        const action = selector.match(/data-action="(.*?)"/)?.[1];
+        const matches = child => action ? child.dataset.action === action : child.tag === selector;
+        const find = parent => {
+          for (const child of parent.children) {
+            if (matches(child)) return child;
+            const found = find(child);
+            if (found) return found;
+          }
+          return null;
+        };
+        return find(this);
+      },
+    };
+    nodes.push(entry);
+    return entry;
+  }
+  const ids = Object.fromEntries(['update-status', 'update-modules', 'check-updates', 'update-all',
+    'update-installation-notice'].map(id => [id, node()]));
+  const item = { name: 'autodarts', present: false, installable: true, has_update: false,
+    available: '2.1.1', runtime_compatible: true, installed: [] };
+  const data = { enabled: true, modules: [item], job: { status: 'complete', action: 'check' } };
+  const posts = [];
+  let refresh;
+  const context = vm.createContext({
+    document: { getElementById: id => ids[id], createElement: node, activeElement: null,
+      dispatchEvent() {}, querySelectorAll: () => nodes.filter(entry => entry.tag === 'button') },
+    window: {}, tr: text => text, CustomEvent: class {},
+    setInterval: callback => { refresh = callback; },
+    fetch: async (path, options) => {
+      if (options.method === 'POST') posts.push(path);
+      return { ok: true, json: async () => options.method === 'POST' ? { job_id: 'install' } : data };
+    },
+  });
+  vm.runInContext(readFileSync(new URL('../app/static/js/updates.js', import.meta.url), 'utf8'), context);
+  await new Promise(resolve => setImmediate(resolve));
+  const install = () => ids['update-modules'].querySelector('[data-action="update"]');
+  assert.equal(install().textContent, 'Install');
+  assert.equal(install().disabled, false);
+  await refresh(); // The row signature is unchanged; button restoration must retain Install.
+  assert.equal(install().disabled, false);
+  assert.equal(ids['update-all'].disabled, true); // Bulk updates do not install missing modules.
+  await install().listeners.click();
+  assert.deepEqual(posts, ['/updates/autodarts/update']);
+  assert.equal(install().disabled, false);
+  data.job = { status: 'running', module: 'autodarts', installing: true };
+  await refresh();
+  const badge = () => ids['update-modules'].children[0].children[0].children.find(child => child.tag === 'span');
+  assert.equal(badge().textContent, 'Installing…');
+  item.present = true; // Activation has created the release; this is still a first install.
+  await refresh();
+  assert.equal(badge().textContent, 'Installing…');
+  data.job.installing = false;
+  data.job.status = 'complete';
+  await refresh();
+  data.job.status = 'running';
+  await refresh();
+  assert.equal(badge().textContent, 'Updating…');
+  data.job = { status: 'complete', action: 'check' };
+  item.present = false;
+  await refresh();
+  for (const [target, key, value] of [[item, 'runtime_compatible', false],
+    [data, 'enabled', false], [data.job, 'status', 'running'], [item, 'installable', false]]) {
+    const original = target[key];
+    target[key] = value;
+    await refresh();
+    assert.equal(install().disabled, true, `${key} must block installation`);
+    target[key] = original;
+    await refresh();
+    assert.equal(install().disabled, false);
+  }
+});

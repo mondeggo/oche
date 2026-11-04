@@ -5,6 +5,7 @@
   const updateAll = document.getElementById('update-all');
   const installationNotice = document.getElementById('update-installation-notice');
   const needsUpdate = item => item.has_update ?? Boolean(item.available && item.available !== (item.active || item.bundled_revision || item.bundled));
+  const canInstall = item => needsUpdate(item) || Boolean(item.installable);
   const rows = new Map();
   let submitting = false;
   let refreshing = false;
@@ -55,7 +56,7 @@
       row = {article, signature: ''};
       rows.set(item.name, row);
     }
-    const signature = JSON.stringify([item, data.enabled, busy, data.job.module, data.job.status]);
+    const signature = JSON.stringify([item, data.enabled, busy, data.job.module, data.job.status, data.job.installing]);
     if (signature === row.signature) return;
     const open = row.article.querySelector('details')?.open || false;
     const focusedAction = row.article.contains(document.activeElement) ? document.activeElement.dataset.action : null;
@@ -70,10 +71,11 @@
     element(service, 'p', description);
     const active = item.active || item.bundled_revision || item.bundled;
     const missing = item.present === false;
-    const available = needsUpdate(item) || Boolean(item.installable);
+    const available = canInstall(item);
     const incompatible = available && item.runtime_compatible === false;
     const working = item.pending || (data.job.status === 'running' && data.job.module === item.name);
-    const badge = element(service, 'span', working ? tr("Updating…") : item.error || item.discovery_error ? tr("Needs attention") : incompatible ? tr("Release incompatible with this runtime") : missing ? tr("Not installed") : available ? tr("Update available") : item.available ? tr("Up to date") : tr("Not checked"), 'update-badge');
+    const installing = data.job.module === item.name && data.job.installing;
+    const badge = element(service, 'span', working ? installing ? tr("Installing…") : tr("Updating…") : item.error || item.discovery_error ? tr("Needs attention") : incompatible ? tr("Release incompatible with this runtime") : missing ? tr("Not installed") : available ? tr("Update available") : item.available ? tr("Up to date") : tr("Not checked"), 'update-badge');
     badge.dataset.state = working || incompatible ? 'pending' : item.error || item.discovery_error ? 'error' : available && !missing ? 'available' : '';
     const readable = value => value && !/^[a-f0-9]{40,64}$/i.test(value) ? value : null;
     version(article, tr("Installed"), item.active_version || readable(active), missing ? tr("Not installed") : tr("Version unavailable"));
@@ -127,7 +129,7 @@
       check.disabled = busy;
       check.textContent = data.job.status === 'running' && (data.job.action === 'check' || (!data.job.action && !data.job.module)) ? tr("Checking…") : tr("Check for updates");
       installationNotice.hidden = data.enabled;
-      let jobMessage = data.job.status === 'idle' ? tr("Check for releases to see what’s available.") : data.job.status === 'complete' ? `${data.job.action === 'update-all' || data.job.module ? 'Update complete.' : 'Check complete.'} ${availability}` : data.job.message;
+      let jobMessage = data.job.status === 'idle' ? tr("Check for releases to see what’s available.") : data.job.status === 'complete' ? `${data.job.installing ? tr('Installation complete.') : data.job.action === 'update-all' || data.job.module ? 'Update complete.' : 'Check complete.'} ${availability}` : data.job.message;
       if (data.job.status === 'running' && (data.job.action === 'check' || data.job.message === 'check')) {
         jobMessage = tr("Checking for updates…");
       }
@@ -141,7 +143,7 @@
       // A request disables buttons immediately; unchanged rows also need restoring.
       for (const item of data.modules) {
         const row = rows.get(item.name).article;
-        row.querySelector('[data-action="update"]').disabled = !data.enabled || busy || item.runtime_compatible === false || !needsUpdate(item);
+        row.querySelector('[data-action="update"]').disabled = !data.enabled || busy || item.runtime_compatible === false || !canInstall(item);
         row.querySelector('[data-action="rollback"]').disabled = !data.enabled || busy || !item.previous;
       }
     } catch (_) {

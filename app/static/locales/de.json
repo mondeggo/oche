@@ -1292,5 +1292,14 @@
   "{count} game events · {raw} raw frames": "{count} Spielereignisse · {raw} Rohnachrichten",
   "{count} samples": "{count} Messwerte",
   "{count} samples · {minutes} minutes · every {seconds} seconds": "{count} Messwerte · {minutes} Minuten · alle {seconds} Sekunden",
-  "Integrations and profiles": "Integrationen und Profile"
+  "Integrations and profiles": "Integrationen und Profile",
+  "Clear cache": "Cache leeren",
+  "Uninstall": "Deinstallieren",
+  "Installation complete.": "Installation abgeschlossen.",
+  "Start detection": "Erkennung starten",
+  "Start {name}": "{name} starten",
+  "Starting…": "Wird gestartet…",
+  "Clear cache resets engine settings and calibration. Uninstall removes engine releases but keeps settings.": "Das Leeren des Caches setzt Engine-Einstellungen und Kalibrierung zurück. Die Deinstallation entfernt Engine-Versionen, behält aber die Einstellungen.",
+  "Reset all {name} engine data? This stops the engine and permanently deletes its settings, calibration and logs. You will need to configure and calibrate it again.": "Alle Engine-Daten von {name} zurücksetzen? Dies stoppt die Engine und löscht ihre Einstellungen, Kalibrierung und Protokolle dauerhaft. Sie müssen sie erneut einrichten und kalibrieren.",
+  "Uninstall {name}? This stops the engine and removes all installed versions and rollback history. Settings and calibration are kept. You can reinstall it from Updates.": "{name} deinstallieren? Dies stoppt die Engine und entfernt alle installierten Versionen sowie den Rollback-Verlauf. Einstellungen und Kalibrierung bleiben erhalten. Sie können sie unter Updates erneut installieren."
 }

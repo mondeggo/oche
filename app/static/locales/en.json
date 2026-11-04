@@ -1292,5 +1292,14 @@
   "{count} game events · {raw} raw frames": "{count} game events · {raw} raw frames",
   "{count} samples": "{count} samples",
   "{count} samples · {minutes} minutes · every {seconds} seconds": "{count} samples · {minutes} minutes · every {seconds} seconds",
-  "Integrations and profiles": "Integrations and profiles"
+  "Integrations and profiles": "Integrations and profiles",
+  "Clear cache": "Clear cache",
+  "Uninstall": "Uninstall",
+  "Installation complete.": "Installation complete.",
+  "Start detection": "Start detection",
+  "Start {name}": "Start {name}",
+  "Starting…": "Starting…",
+  "Clear cache resets engine settings and calibration. Uninstall removes engine releases but keeps settings.": "Clear cache resets engine settings and calibration. Uninstall removes engine releases but keeps settings.",
+  "Reset all {name} engine data? This stops the engine and permanently deletes its settings, calibration and logs. You will need to configure and calibrate it again.": "Reset all {name} engine data? This stops the engine and permanently deletes its settings, calibration and logs. You will need to configure and calibrate it again.",
+  "Uninstall {name}? This stops the engine and removes all installed versions and rollback history. Settings and calibration are kept. You can reinstall it from Updates.": "Uninstall {name}? This stops the engine and removes all installed versions and rollback history. Settings and calibration are kept. You can reinstall it from Updates."
 }

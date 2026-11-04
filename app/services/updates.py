@@ -192,6 +192,7 @@ class UpdateManager:
             "module": name,
             "action": action,
             "id": uuid.uuid4().hex,
+            "installing": action == "update" and not installed(name, store.read_state(name)),
         }
         threading.Thread(target=self._run, args=(action, name), daemon=True).start()
 

@@ -336,3 +336,67 @@ test("a delayed camera visibility poll cannot overwrite a newer activation chang
   assert.equal($("cameras-toggle-label").textContent, "Off");
   assert.equal($("nav-link-cameras").hidden, true);
 });
+
+test("engine maintenance warns before resetting or uninstalling and cancellation sends no request", async () => {
+  const parts = new Map();
+  const part = selector => {
+    if (!parts.has(selector)) parts.set(selector, element());
+    return parts.get(selector);
+  };
+  const reset = element({ engineAction: "clear-cache" });
+  const uninstall = element({ engineAction: "uninstall" });
+  const card = { dataset: { integrationCard: "autodarts" },
+    querySelector: selector => selector === '[data-engine-action="uninstall"]' ? uninstall : part(selector),
+    querySelectorAll: () => [reset, uninstall] };
+  const calls = [], warnings = [];
+  let confirmed = false, reloads = 0;
+  const { polls } = scriptContext("integrations.js", async (path, method, body) => {
+    calls.push({ path, method, body });
+    return { engines: [{ name: "autodarts", installed: true, enabled: true, scores: true, status: "stopped" }] };
+  }, {
+    document: { querySelectorAll: selector => selector === '[data-integration-card]' ? [card] : [] },
+    confirm: message => { warnings.push(message); return confirmed; },
+    location: { reload: () => { reloads++; } },
+  });
+  await reset.listeners.click();
+  assert.equal(calls.length, 0);
+  assert.match(warnings[0], /permanently deletes its settings, calibration and logs/);
+  confirmed = true;
+  await reset.listeners.click();
+  assert.equal(calls[0].path, '/api/engines/autodarts/clear-cache');
+  assert.equal(calls[0].body.confirmed, true);
+  assert.equal(reloads, 1);
+  calls.length = 0;
+  await uninstall.listeners.click();
+  assert.match(warnings.at(-1), /Settings and calibration are kept/);
+  assert.equal(calls[0].path, '/api/engines/autodarts/uninstall');
+  assert.equal(calls[0].body.confirmed, true);
+  await polls[0]();
+  assert.equal(uninstall.disabled, false);
+});
+
+test("Play can start the selected stopped engine without changing its radio selection", async () => {
+  const nodes = new Map();
+  const $ = id => { if (!nodes.has(id)) nodes.set(id, element()); return nodes.get(id); };
+  const calls = [];
+  const engine = { name: 'autodarts', label: 'Autodarts', enabled: true, installed: true, status: 'stopped' };
+  const data = { engines: [engine] };
+  const context = vm.createContext({ $, tr: (text, values) => text.replace('{name}', values?.name || ''),
+    engineChoice: () => 'autodarts', renderInput() {}, setRadio() {},
+    document: { querySelectorAll: () => [] },
+    api: async (path, method) => { calls.push([path, method]); engine.status = 'running'; return data; },
+    refresh: async () => { context.renderEngineStart(data); },
+  });
+  const source = readFileSync(new URL('local.js', core), 'utf8');
+  vm.runInContext(source.slice(source.indexOf('let startingEngine = false;'),
+    source.indexOf("document.querySelectorAll('input[name=\"names\"]')")), context);
+  context.renderEngineStart(data);
+  assert.equal($('local-engine-start').hidden, false);
+  assert.equal($('local-engine-start').textContent, 'Start Autodarts');
+  await $('local-engine-start').listeners.click();
+  assert.deepEqual(calls, [['/api/engines/autodarts/use', 'POST']]);
+  assert.equal($('local-engine-start').hidden, true);
+  engine.status = 'stopped'; engine.installed = false;
+  context.renderEngineStart(data);
+  assert.equal($('local-engine-start').hidden, true);
+});

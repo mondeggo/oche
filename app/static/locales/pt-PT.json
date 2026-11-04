@@ -1292,5 +1292,14 @@
   "{count} game events · {raw} raw frames": "{count} eventos de jogo · {raw} mensagens em bruto",
   "{count} samples": "{count} amostras",
   "{count} samples · {minutes} minutes · every {seconds} seconds": "{count} amostras · {minutes} minutos · a cada {seconds} segundos",
-  "Integrations and profiles": "Integrações e perfis"
+  "Integrations and profiles": "Integrações e perfis",
+  "Clear cache": "Limpar cache",
+  "Uninstall": "Desinstalar",
+  "Installation complete.": "Instalação concluída.",
+  "Start detection": "Iniciar deteção",
+  "Start {name}": "Iniciar {name}",
+  "Starting…": "A iniciar…",
+  "Clear cache resets engine settings and calibration. Uninstall removes engine releases but keeps settings.": "Limpar a cache repõe as definições e a calibração do motor. Desinstalar remove as versões do motor, mas mantém as definições.",
+  "Reset all {name} engine data? This stops the engine and permanently deletes its settings, calibration and logs. You will need to configure and calibrate it again.": "Repor todos os dados do motor {name}? Isto para o motor e elimina permanentemente as suas definições, calibração e registos. Terá de o configurar e calibrar novamente.",
+  "Uninstall {name}? This stops the engine and removes all installed versions and rollback history. Settings and calibration are kept. You can reinstall it from Updates.": "Desinstalar {name}? Isto para o motor e remove todas as versões instaladas e o histórico de reversão. As definições e a calibração são mantidas. Pode reinstalá-lo em Atualizações."
 }

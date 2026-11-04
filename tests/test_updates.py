@@ -241,3 +241,14 @@ def test_active_release_with_missing_files_can_be_installed_again(manager):
     with downloads, offline_autodarts(entry):
         assert manager.install_missing("autodarts") == "2.1.0"
     assert (store.location("autodarts", "unused") / "autodarts").is_file()
+
+
+@pytest.mark.parametrize("name,installing", [("autodarts", True), ("oche", False)])
+def test_update_job_distinguishes_first_install(manager, monkeypatch, name, installing):
+    monkeypatch.setenv("OCHE_LAUNCHER", "1")
+    with patch("app.services.updates.threading.Thread"):
+        manager.submit("update", name)
+    try:
+        assert manager.job["installing"] is installing
+    finally:
+        manager.lock.release()

@@ -5,7 +5,8 @@ Autodarts board software as its detection engine, opens Autodarts Play, and conn
 can drive lighting and a caller.
 
 - **Play**: choose a vision engine (Autodarts, OcheCore or manual darts), then a
-  game mode, and play X01 (301/501) on this device. Only manual darts are offered
+  game mode, and play X01 (301/501) on this device. If the chosen engine is stopped,
+  use its Start button under Local detection. Only manual darts are offered
   until a vision engine is switched on and installed; OcheCore is listed but cannot
   score until its Autodarts-compatible API exists. Automatic offline scoring with the
   Autodarts v2 detector is not verified; see [local games](docs/LOCAL_GAMES.md).
@@ -16,7 +17,12 @@ can drive lighting and a caller.
   cards; each has its own page under Integrations to install, start and stop it and
   read its logs. One engine reads the cameras at a time, so starting one stops the
   other. OcheCore's own page opens in a new tab on port 5180. Updates list only the
-  integrations that are switched on.
+  integrations that are switched on. Each engine card also offers **Clear cache**
+  and **Uninstall**, both with confirmation warnings. Clear cache stops the engine
+  and deletes its board settings, calibration and logs; the installed binary stays.
+  Uninstall stops the engine and removes all installed versions and rollback history,
+  keeping board settings and calibration for reinstallation. Neither action resets
+  Oche profiles or the Autodarts account.
 - **Integrations**: connect your Autodarts account and turn on Visual WLED, WLED
   and Caller. Each integration can follow Autodarts Play, local play,
   or both. Camera Enhancer provides optional previews, focus and exposure controls.

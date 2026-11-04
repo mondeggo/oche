@@ -17,7 +17,7 @@
     panel.dataset.state = working ? 'running' : available ? 'available' : '';
     panel.querySelector('[data-service-update-dot]').hidden = !available;
     let message = tr("Updates not checked yet.");
-    if (working) message = tr("Update in progress…");
+    if (working) message = data.job.installing ? tr("Installing…") : tr("Update in progress…");
     else if (available) message = tr("Update available{0}", {"0": (item.available_version ? ` · ${item.available_version}` : '')});
     else if (item?.available) message = tr("Up to date · No update available.");
     else if (item?.discovery_error) message = tr("Update availability could not be checked.");

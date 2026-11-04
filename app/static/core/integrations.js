@@ -33,6 +33,7 @@ function renderEngines(data) {
     if (engine.enabled && engine.active) parts.push(tr("Used by Play"));
     if (!engine.scores && engine.note) parts.push(tr(engine.note));
     part(card, "engine-detail").textContent = parts.join(" · ");
+    card.querySelector('[data-engine-action="uninstall"]').disabled = working || !engine.installed;
   }
 }
 
@@ -47,6 +48,24 @@ async function refresh() {
 }
 
 for (const [name, card] of cards) {
+  for (const button of card.querySelectorAll("[data-engine-action]")) {
+    button.addEventListener("click", async () => {
+      if (working) return;
+      const action = button.dataset.engineAction;
+      const warning = action === "clear-cache"
+        ? tr("Reset all {name} engine data? This stops the engine and permanently deletes its settings, calibration and logs. You will need to configure and calibrate it again.", { name })
+        : tr("Uninstall {name}? This stops the engine and removes all installed versions and rollback history. Settings and calibration are kept. You can reinstall it from Updates.", { name });
+      if (!confirm(warning)) return;
+      working = true;
+      button.disabled = true;
+      error(card);
+      try {
+        await api(`/api/engines/${name}/${action}`, "POST", { confirmed: true });
+        location.reload();
+      } catch (cause) { error(card, cause.message); }
+      finally { working = false; button.disabled = false; await refresh(); }
+    });
+  }
   const toggle = part(card, "integration-switch");
   toggle.addEventListener("click", async () => {
     if (working) return;

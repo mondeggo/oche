@@ -4,6 +4,10 @@ Play chooses the engine (or manual darts); starting an engine from its own page
 chooses it too. Only integrations that are switched on offer an engine.
 """
 
+import shutil
+from contextlib import contextmanager
+
+import oche_runtime as store
 from app import config as settings
 from app.core.integrations import registry
 
@@ -44,6 +48,11 @@ def status() -> dict:
 
 
 def use(name: str) -> dict:
+    with maintenance():
+        return _use(name)
+
+
+def _use(name: str) -> dict:
     """Choose an engine: stop the others, then start it if installed. Manual stops nothing."""
     engines = available()
     if name != MANUAL and name not in engines:
@@ -99,3 +108,46 @@ def stop_all() -> None:
     for item in registry.integrations():
         if item.process:
             item.process.stop()
+
+
+@contextmanager
+def maintenance():
+    # Share the updater's lock: do not remove files while a release is activating.
+    from app.services.updates import manager
+
+    if not manager.lock.acquire(blocking=False):
+        raise RuntimeError("Wait for the current update or engine operation to finish.")
+    try:
+        names = ("oche", *(item.id for item in registry.integrations()))
+        if any(store.read_state(name).get("pending") for name in names):
+            raise RuntimeError("Wait for the activation health check to finish.")
+        yield
+    finally:
+        manager.lock.release()
+
+
+def maintain(name: str, action: str) -> dict:
+    item = registry.get(name)
+    if not (item and item.engine and item.process):
+        raise ValueError("Unknown vision engine")
+    if action not in {"clear-cache", "uninstall"}:
+        raise ValueError("Unknown engine action")
+    with maintenance():
+        if action == "clear-cache":
+            reset = getattr(item.process, "reset_data", None)
+            if not reset:
+                raise RuntimeError("This engine does not support resetting data.")
+            item.process.stop()
+            reset()
+        else:
+            module = store.ROOT / store.valid_module(name)
+            if item.process.get_status()["installed"] and not module.is_dir():
+                raise RuntimeError("This engine is provided outside the module store and cannot be uninstalled here.")
+            item.process.stop()
+            if module.exists():
+                shutil.rmtree(module)
+            config = settings.load_config()
+            if chosen() == name:
+                config["detection_engine"] = MANUAL
+                settings.save_config(config)
+        return status()

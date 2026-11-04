@@ -66,3 +66,22 @@ async def switch_integration(name: str, switch: Switch, request: Request):
     if item and item.source and runtime and (name in runtime.sources) != switch.enabled:
         await runtime.restart()
     return result
+
+
+class MaintenanceRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    confirmed: bool = False
+
+
+@router.post("/api/engines/{name}/clear-cache")
+async def clear_engine_cache(name: str, payload: MaintenanceRequest):
+    if not payload.confirmed:
+        raise HTTPException(409, "Confirm resetting all engine settings and calibration.")
+    return await _run(lambda engine: engines.maintain(engine, "clear-cache"), name)
+
+
+@router.post("/api/engines/{name}/uninstall")
+async def uninstall_engine(name: str, payload: MaintenanceRequest):
+    if not payload.confirmed:
+        raise HTTPException(409, "Confirm uninstalling the engine and its saved releases.")
+    return await _run(lambda engine: engines.maintain(engine, "uninstall"), name)

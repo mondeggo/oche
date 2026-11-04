@@ -5,6 +5,7 @@ and calibration in data/ochecore/board.toml.
 """
 
 import os
+import shutil
 from pathlib import Path
 
 from app.config import DATA_DIR
@@ -72,3 +73,11 @@ def logs(lines: int = 200) -> str:
 
 def clear_logs() -> None:
     _process.clear_log()
+
+
+def reset_data() -> None:
+    """Reset board settings and calibration after the engine has stopped."""
+    if HOME.exists():
+        shutil.rmtree(HOME)
+    HOME.mkdir(parents=True, exist_ok=True)
+    clear_logs()

@@ -240,3 +240,79 @@ def test_switching_autodarts_off_removes_its_account_and_status_dots(tmp_path, m
         assert client.put("/api/integrations/autodarts", json={"enabled": True}).status_code == 200
         assert "auth" in client.get("/api/status").json()
         assert client.get("/api/autodarts/config").json()["client_id"] == "darts-caller"
+
+
+def test_engine_reset_stops_engine_and_preserves_releases(engines_registry, tmp_path, monkeypatch):
+    monkeypatch.setattr(store, "ROOT", tmp_path / "modules")
+    process = engines_registry["first"].process
+    process.running = True
+    called = []
+    process.reset_data = lambda: called.append(process.running)
+    release = store.ROOT / "first/versions/1.0/binary"
+    release.parent.mkdir(parents=True)
+    release.write_text("engine")
+    engines.maintain("first", "clear-cache")
+    assert called == [False]
+    assert release.read_text() == "engine"
+
+
+def test_uninstall_removes_releases_keeps_settings_and_selects_manual(engines_registry, tmp_path, monkeypatch):
+    monkeypatch.setattr(store, "ROOT", tmp_path / "modules")
+    process = engines_registry["first"].process
+    module = store.ROOT / "first"
+    module.mkdir(parents=True)
+    (module / "state.json").write_text('{"active":"1.0"}')
+    board = tmp_path / "first/board.toml"
+    board.parent.mkdir()
+    board.write_text("calibration")
+    process.running = True
+    engines.maintain("first", "uninstall")
+    assert not module.exists()
+    assert board.read_text() == "calibration"
+    assert not process.running
+    assert engines.chosen() == "manual"
+
+
+def test_engine_maintenance_is_blocked_during_updates(engines_registry, tmp_path, monkeypatch):
+    monkeypatch.setattr(store, "ROOT", tmp_path / "modules")
+    with updates.manager.lock:
+        with pytest.raises(RuntimeError, match="current update"):
+            engines.maintain("first", "uninstall")
+        with pytest.raises(RuntimeError, match="current update"):
+            engines.use("first")
+    store.write_state("first", {"pending": True})
+    with pytest.raises(RuntimeError, match="health check"):
+        engines.maintain("first", "uninstall")
+    assert not updates.manager.lock.locked()
+
+
+@pytest.mark.parametrize("name,directory", [("autodarts", "AUTODARTS_DIR"), ("ochecore", "HOME")])
+def test_reset_removes_saved_engine_data(name, directory, tmp_path, monkeypatch):
+    from importlib import import_module
+
+    process = import_module(f"app.core.integrations.{name}.process")
+    home = tmp_path / name
+    home.mkdir()
+    (home / "calibration.json").write_text("calibration")
+    (home / "settings.toml").write_text("settings")
+    monkeypatch.setattr(process, directory, home)
+    with patch.object(process, "clear_logs") as clear:
+        process.reset_data()
+        clear.assert_called_once_with()
+    assert home.is_dir() and not list(home.iterdir())
+
+
+def test_engine_maintenance_endpoints_require_confirmation(engines_registry):
+    from fastapi import FastAPI
+
+    from app.routers.engines import router
+
+    app = FastAPI()
+    app.include_router(router)
+    with TestClient(app) as client, patch.object(engines, "maintain", return_value={"engines": []}) as maintain:
+        for action in ("clear-cache", "uninstall"):
+            assert client.post(f"/api/engines/first/{action}", json={}).status_code == 409
+            maintain.assert_not_called()
+            assert client.post(f"/api/engines/first/{action}", json={"confirmed": True}).status_code == 200
+            maintain.assert_called_once_with("first", action)
+            maintain.reset_mock()
