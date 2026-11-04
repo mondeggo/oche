@@ -1,3 +1,4 @@
+import { chooseLightShape, lightSegments, lightShapeNames, registerLightingEditor } from "./lighting-view.mjs";
 import { tr } from "../js/i18n.mjs";
 import { $, api, poll } from "./client.mjs";
 import { sourceControls } from "./sources.mjs";
@@ -117,6 +118,7 @@ import {
     enabled: true,
     segment: 0,
     mode: "segment",
+    shape: "strip",
     start: 0,
     count: 1,
     phases: {
@@ -405,7 +407,7 @@ import {
     const name = document.createElement("strong");
     name.textContent = title;
     if (isEffect) {
-      const toggle = label(title, input("checkbox", Boolean(value), "enabled"));
+      const toggle = label(title, input("checkbox", Boolean(value) && value.enabled !== false, "enabled"));
       toggle.className = "check-label";
       heading.append(toggle);
       const state = document.createElement("span");
@@ -571,6 +573,8 @@ import {
 
   function targetMode(root) {
     const mode = field(root, "mode").value;
+    if (mode === "matrix") field(root, "shape").value = "matrix";
+    else if (field(root, "shape").value === "matrix") field(root, "shape").value = "strip";
     root.querySelector("[data-pixels]").hidden = mode === "segment";
     root.querySelector("[data-count]").hidden = mode !== "pixels";
     for (const tab of root.querySelectorAll("[data-editor-tab]")) {
@@ -846,11 +850,11 @@ import {
     }
     $("wled-add-target").disabled =
       working ||
-      current.targets.length >= 16 ||
+      current.targets.length >= 128 ||
       (!!selectedOutput && !segments.length);
     $("wled-add-target").textContent = selectedOutput
-      ? tr("Add zone on {0}", {"0": (outputLabel(selectedOutput))})
-      : tr("Add zone");
+      ? tr("Add light on {0}", {"0": (outputLabel(selectedOutput))})
+      : tr("Add light");
     const hiddenCount = selectedOutput ? current.targets.length - visible : 0;
     const hiddenHint = $("wled-hidden-zones-hint");
     hiddenHint.hidden = !hiddenCount;
@@ -906,6 +910,13 @@ import {
       root.querySelector("[data-title]").textContent = target.name;
       ["name", "mode", "start", "count"].forEach((key) => {
         field(root, key).value = target[key];
+      });
+      field(root, "shape").value = target.mode === "matrix" ? "matrix" : target.shape || "strip";
+      field(root, "shape").addEventListener("change", () => {
+        const shape = field(root, "shape").value;
+        if (shape === "matrix") field(root, "mode").value = "matrix";
+        else if (field(root, "mode").value === "matrix") field(root, "mode").value = "segment";
+        targetMode(root);
       });
       segmentOptions(root, target, deviceInfo());
       field(root, "segment").addEventListener("change", () => {
@@ -1043,7 +1054,7 @@ import {
       .querySelectorAll("[data-rule]")
       .forEach((row) => {
         const enabled = row.querySelector('[data-value="enabled"]');
-        if (enabled && !enabled.checked) return;
+        if (row.dataset.playerSlot && enabled && !enabled.checked) return;
         const value = (name) =>
           row.querySelector(`[data-value="${name}"]`).value;
         const key = row.dataset.playerSlot || row.dataset.rule;
@@ -1054,7 +1065,10 @@ import {
         };
         if (row.dataset.playerSlot)
           result[key].name_filter = value("name_filter").trim();
-        else if (enabled) result[key].duration = Number(value("duration"));
+        else if (enabled) {
+          result[key].duration = Number(value("duration"));
+          result[key].enabled = enabled.checked;
+        }
       });
     return result;
   }
@@ -1073,7 +1087,7 @@ import {
         const target = current.targets.find(
           (item) => item.id === root.dataset.target,
         );
-        ["name", "mode"].forEach((key) => {
+        ["name", "mode", "shape"].forEach((key) => {
           target[key] = field(root, key).value;
         });
         ["segment", "start", "count"].forEach((key) => {
@@ -1162,6 +1176,9 @@ import {
     const result = await api("/api/wled", "GET", undefined, { metadata: true });
     if (!discard && (changed || revision !== editRevision)) return;
     configuration = result.data;
+    $("wled-migration-note").textContent = tr(configuration.migration_note || "");
+    $("wled-migration-note").hidden = !configuration.migration_note;
+    $("wled-unconnected-note").hidden = !configuration.unconnected_lights?.length;
     configurationETag = result.etag;
     changed = false;
     saveConflict = false;
@@ -1328,7 +1345,9 @@ import {
     render();
     markChanged();
   });
-  $("wled-add-target").addEventListener("click", () => {
+  $("wled-add-target").addEventListener("click", async () => {
+    const shape = await chooseLightShape();
+    if (!shape || !device()) return;
     collect();
     const current = device();
     const info = deviceInfo();
@@ -1337,24 +1356,32 @@ import {
     );
     const segments = outputSegments(output, info);
     if (output && !segments.length) return;
-    const unused = segments.find(
+    const choices = lightSegments(shape, segments, info?.segments || segments);
+    const unused = choices.find(
       (segment) =>
         !current.targets.some(
           (target) => target.enabled && target.segment === segment.id,
         ),
     );
-    const segment = unused || segments[0];
+    const segment = unused || choices[0];
     const target = newTarget();
+    target.shape = shape;
+    target.name = lightShapeNames()[shape];
+    if (shape === "matrix") {
+      target.mode = "matrix";
+      target.phases.idle.effect = 0;
+      for (const effect of Object.values(target.effects)) { effect.effect = 0; effect.enabled = false; }
+    }
     if (segment) {
       target.segment = segment.id;
       target.name =
-        `${output ? `${outputLabel(output)} · ` : ""}${segment.name}`.slice(
+        `${output && segments.includes(segment) ? `${outputLabel(output)} · ` : ""}${segment.name}`.slice(
           0,
           80,
         );
       target.enabled = !!unused;
       if (
-        segment.matrix &&
+        shape === "matrix" && segment.matrix &&
         segment.matrix.width >= 11 &&
         segment.matrix.height >= 5 &&
         segment.matrix.width <= 64 &&
@@ -1382,6 +1409,7 @@ import {
     )
       target.enabled = false;
     current.targets.push(target);
+    selectedOutputs.set(current.id, "all");
     markChanged();
     render();
   });
@@ -1425,7 +1453,7 @@ import {
       }),
     );
   }
-  registerProfileEditor("WLED", {
+  const editor = {
     async prepare() {
       if (working) throw new Error(tr("Wait for the WLED action to finish."));
       await refreshing;
@@ -1450,6 +1478,11 @@ import {
       await refreshWled(true);
       buttons();
     },
+  };
+  registerProfileEditor("WLED", editor);
+  registerLightingEditor("list", {
+    prepare: () => editor.prepare(),
+    async reload() { await refreshing; await load(true); await refreshWled(true); },
   });
   window.addEventListener("hashchange", refreshWled);
   window.addEventListener("oche:route", refreshWled);

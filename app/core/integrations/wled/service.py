@@ -142,6 +142,21 @@ def default_effects() -> dict[EffectName, Effect]:
     }
 
 
+class Position(Model):
+    x: float = Field(default=500, ge=0, le=1000, allow_inf_nan=False)
+    y: float = Field(default=350, ge=0, le=700, allow_inf_nan=False)
+
+
+class Placement(Model):
+    id: Identifier | None = None
+    position: Position = Field(default_factory=Position)
+    width: float = Field(default=240, ge=20, le=800, allow_inf_nan=False)
+    height: float = Field(default=24, ge=12, le=600, allow_inf_nan=False)
+    rotation: int = Field(default=0, ge=-180, le=180, strict=True)
+    after_light_id: Identifier | None = None
+    wired: bool = False
+
+
 class Target(Model):
     id: Identifier
     name: str = Field(min_length=1, max_length=80)
@@ -153,6 +168,8 @@ class Target(Model):
     phases: PhaseColours = Field(default_factory=PhaseColours)
     effects: dict[EffectName, Effect] = Field(default_factory=default_effects)
     players: dict[PlayerSlot, PlayerAppearance] = Field(default_factory=dict)
+    shape: Literal["strip", "ring", "matrix"] = "strip"
+    placement: Placement | None = None
     matrix: Matrix = Field(default_factory=Matrix)
 
     @property
@@ -203,7 +220,8 @@ class Device(DeviceAddress):
     name: str = Field(min_length=1, max_length=80)
     enabled: bool = True
     idle_timeout_minutes: int | None = Field(default=None, ge=1, le=1440)
-    targets: list[Target] = Field(default_factory=list, max_length=16)
+    placement: Placement | None = None
+    targets: list[Target] = Field(default_factory=list, max_length=128)
 
     @model_validator(mode="after")
     def separate_targets(self):
@@ -255,6 +273,10 @@ class ProfileSelection(Model):
 
 class WLEDConfig(Model, PlaySources):
     enabled: bool = False
+    board: Position = Field(default_factory=Position)
+    unconnected_lights: list[Target] = Field(default_factory=list, max_length=128)
+    visual_migrated: bool = False
+    migration_note: str | None = None
     devices: list[Device] = Field(default_factory=list, max_length=8)
     active_profile: Identifier = "default"
     profiles: list[LightingProfile] = Field(
@@ -265,6 +287,8 @@ class WLEDConfig(Model, PlaySources):
 
     @model_validator(mode="after")
     def unique_devices(self):
+        if sum(len(device.targets) for device in self.devices) + len(self.unconnected_lights) > 128:
+            raise ValueError("Keep at most 128 lights")
         if len({d.id for d in self.devices}) != len(self.devices):
             raise ValueError("Device IDs must be unique")
         if len({d.url.lower() for d in self.devices}) != len(self.devices):
@@ -1286,6 +1310,19 @@ class WLED:
         self.sync_profiles(config)
         if persist:
             write_private_json(self.path, config.model_dump(mode="json"))
+
+        def automation(value):
+            return value.model_dump(exclude={
+                "board": True, "unconnected_lights": True, "visual_migrated": True,
+                "migration_note": True,
+                "devices": {"__all__": {"placement": True, "targets": {"__all__": {
+                    "placement": True, "shape": True,
+                }}}},
+            })
+
+        if automation(config) == automation(self.config) and not self.error:
+            self.config = config
+            return
         active_devices = {
             d.url.lower(): d
             for d in config.devices

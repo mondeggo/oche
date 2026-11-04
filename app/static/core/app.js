@@ -8,7 +8,7 @@ const pages = {
   ],
   profiles: [tr("Profiles"), tr("Create, switch between and manage app profiles.")],
   wled: ["WLED", tr("Lighting effects for your game.")],
-  wled2: ["Visual WLED", tr("Build your lighting setup around the board.")],
+  wled2: ["WLED", tr("Build your lighting setup around the board.")],
   caller: [tr("Caller"), tr("Choose a voice and where to hear your game.")],
   events: [tr("Events"), tr("See what Oche receives from your board.")],
 };
@@ -51,7 +51,7 @@ function navigate(focus = false) {
 }
 
 export function setIntegrationEnabled(name, enabled) {
-  document.querySelector(`[data-integration="${name}"]`).hidden = !enabled && name !== "wled2";
+  for (const link of document.querySelectorAll(`[data-integration="${name}"]`)) link.hidden = !enabled;
 }
 
 export function notice(message, error = false) {
@@ -411,7 +411,7 @@ async function changeProfile(path, method, body, expected) {
   // Inert blocks new edits while pending autosaves complete.
   document
     .querySelectorAll(
-      '[data-view="wled"], [data-view="caller"], [data-view="integrations"]',
+      '[data-view="wled"], [data-view="wled2"], [data-view="caller"], [data-view="integrations"]',
     )
     .forEach((view) => {
       view.inert = true;
@@ -469,7 +469,7 @@ async function changeProfile(path, method, body, expected) {
     profileChanging = false;
     document
       .querySelectorAll(
-        '[data-view="wled"], [data-view="caller"], [data-view="integrations"]',
+        '[data-view="wled"], [data-view="wled2"], [data-view="caller"], [data-view="integrations"]',
       )
       .forEach((view) => {
         view.inert = false;

@@ -30,9 +30,7 @@ class DeviceEnabled(BaseModel):
 
 def configuration_revision(runtime, request: Request) -> str:
     path = request.url.path
-    if path.startswith("/api/wled2"):
-        data = runtime.wled2.config.model_dump(mode="json")
-    elif path.startswith("/api/wled"):
+    if path.startswith("/api/wled"):
         data = runtime.wled.config.model_dump(mode="json")
     elif path.startswith("/api/caller"):
         data = {

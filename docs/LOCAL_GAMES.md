@@ -193,8 +193,8 @@ remain separate acceptance items.
 
 Local games produce the same `MatchFrame` structure as cloud play and pass it
 through `EventNormalizer`. Throws, corrections, removals, busts, visit totals,
-player changes, takeout, checkouts and wins reach the existing event bus. WLED,
-Visual WLED and Caller use the selected local game snapshot through
+player changes, takeout, checkouts and wins reach the existing event bus. WLED (both List and Visual views)
+and Caller use the selected local game snapshot through
 `Runtime.game_state()` and `/api/game`. Source switching is exclusive.
 
 Each event integration has **Game sources** switches for **Autodarts Play** and

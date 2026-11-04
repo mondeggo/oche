@@ -1710,7 +1710,7 @@ async def test_worker_isolation_preview_restoration_and_shutdown(tmp_path):
 
 
 def test_wled_partial_updates_validate_and_keep_browser_guards(settings):
-    config = WLEDConfig(devices=[device(enabled=False)])
+    config = WLEDConfig(devices=[device(enabled=False)], visual_migrated=True)
     WLED.sync_profiles(config)
     values = config.model_dump(mode="json")
     with TestClient(create_app(settings)) as client:
@@ -1733,7 +1733,7 @@ def test_wled_partial_updates_validate_and_keep_browser_guards(settings):
         )
         assert client.get("/api/wled").json() == values
         assert client.patch("/api/wled", json={"devices": []}).status_code == 200
-        assert client.get("/api/wled").json() == WLEDConfig().model_dump(mode="json")
+        assert client.get("/api/wled").json() == WLEDConfig(visual_migrated=True).model_dump(mode="json")
 
 
 def test_bad_saved_wled_configuration_does_not_stop_core(settings):

@@ -11,7 +11,14 @@ export const homeRoutes = {
   ...registered,
 };
 export const isHome = path => Object.values(homeRoutes).includes(path);
-export const pageForUrl = url => Object.keys(homeRoutes).find(key => homeRoutes[key] === url.pathname) || "integrations";
+export function pageForUrl(url) {
+  if (url.pathname === "/integrations/wled") {
+    let view = url.searchParams.get("view");
+    if (!view) { try { view = globalThis.localStorage?.getItem("oche.wled.view"); } catch { /* Default list. */ } }
+    return view === "visual" ? "wled2" : "wled";
+  }
+  return Object.keys(homeRoutes).find(key => homeRoutes[key] === url.pathname) || "integrations";
+}
 export function canonicalUrl(href, base) {
   const url = new URL(href, base);
   if ((isHome(url.pathname) || url.pathname === "/") && Object.hasOwn(homeRoutes, url.hash.slice(1))) {

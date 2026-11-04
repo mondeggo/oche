@@ -111,3 +111,7 @@
 .core-workspace .save-state[data-state="saved"] { background: var(--success); color: var(--success-text); }
 .core-workspace .save-state[data-state="dirty"] { background: var(--warning); color: var(--warning-text); }
 .core-workspace .save-state[data-state="conflict"] { background: var(--danger-soft); color: var(--error); }
+
+.wled-view-switch { display: flex; gap: 4px; margin-bottom: 16px; }
+.core-workspace .wled-view-switch button[aria-pressed="true"] { background: var(--selected-bg); color: var(--selected-fg); border-color: var(--primary); }
+#wled-light-dialog { max-width: 440px; }

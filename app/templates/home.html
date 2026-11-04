@@ -91,26 +91,13 @@
         <div class="integration-grid">
           <article class="panel integration-card">
             <div class="integration-card-head">
-              <h3>Visual WLED</h3>
-              <button id="w2-toggle" class="switch" type="button" role="switch" aria-checked="false" aria-label="{{ _('Enable Visual WLED') }}" disabled>
-                <span id="w2-toggle-label">{{ _("Loading…") }}</span>
-                <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
-              </button>
-            </div>
-            <p class="muted">{{ _("Draw your lights around the board, connect controllers and assign game rules.") }}</p>
-            {{ source_options('wled2', 'Visual WLED') }}
-            <p id="w2-integration-error" class="error" role="status" hidden></p>
-            <a class="integration-card-link" href="/integrations/visual-wled">{{ _("Open layout →") }}</a>
-          </article>
-          <article class="panel integration-card">
-            <div class="integration-card-head">
               <h3>WLED</h3>
               <button id="wled-toggle" class="switch" type="button" role="switch" aria-checked="false" aria-label="{{ _('Enable WLED') }}" disabled>
                 <span id="wled-toggle-label">{{ _("Loading…") }}</span>
                 <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
               </button>
             </div>
-            <p class="muted">{{ _("Rule-based phase colours, game effects and matrix scores per zone.") }}</p>
+            <p class="muted">{{ _("Configure your strips, rings and score panels in a list or visual layout.") }}</p>
             {{ source_options('wled', 'WLED') }}
             <p id="wled-integration-error" class="error" role="status" hidden></p>
             <a class="integration-card-link" id="wled-settings" href="/integrations/wled" hidden>{{ _("Settings →") }}</a>
@@ -211,13 +198,31 @@
 
       {%- for view in home_views %}{% include view.template %}{% endfor %}
 
-      <section data-view="wled2" aria-label="{{ _('Visual WLED lighting editor') }}" hidden>
+        <dialog id="wled-light-dialog" aria-labelledby="wled-light-title">
+          <form method="dialog">
+            <h2 id="wled-light-title">{{ _("Add light") }}</h2>
+            <p>{{ _("Choose the light shape. Then assign its controller and segment.") }}</p>
+            <div class="actions">
+              <button value="strip">{{ _("Strip") }}</button>
+              <button value="ring">{{ _("Ring") }}</button>
+              <button value="matrix">{{ _("Matrix") }}</button>
+            </div>
+            <div class="actions"><button value="cancel">{{ _("Cancel") }}</button></div>
+          </form>
+        </dialog>
+      <section data-view="wled2" aria-label="{{ _('WLED visual layout') }}" hidden>
+        <div class="wled-view-switch" role="group" aria-label="{{ _('Lighting view') }}">
+          <button type="button" data-wled-view="list" aria-pressed="false">{{ _("List") }}</button>
+          <button type="button" data-wled-view="visual" aria-pressed="true">{{ _("Visual") }}</button>
+        </div>
+        <p data-wled-view-error class="error" role="alert" hidden></p>
+
         <div class="w2-topbar panel">
           <div class="w2-topbar-status">
             <span class="eyebrow">{{ _("Your physical setup") }}</span>
             <p id="w2-live" role="status">{{ _("Loading layout…") }}</p>
-            {{ source_options('wled2', 'Visual WLED') }}
-            <label class="check-label" title="{{ _('When on, these lights react to your Autodarts games: ready, takeout, hits and wins. Turning it on switches the WLED integration off.') }}">
+            {{ source_options('wled2', 'WLED') }}
+            <label class="check-label" title="{{ _('Enable WLED lighting for the selected local and online game events.') }}">
               <input id="w2-enabled" type="checkbox" /> {{ _("Follow game events") }}
             </label>
           </div>
@@ -228,14 +233,13 @@
             <button id="w2-save" class="primary" type="button" disabled>{{ _("Save layout") }}</button>
           </div>
         </div>
+        <p id="w2-migration-note" class="notice" role="status" hidden></p>
         <p id="w2-error" class="error" role="alert" hidden></p>
         <div class="w2-workspace">
           <div class="w2-stage panel">
             <div class="w2-toolbar" role="toolbar" aria-label="{{ _('Add and connect lights') }}">
               <button type="button" data-w2-add="controller">+ Controller</button>
-              <button type="button" data-w2-add="strip">+ Strip</button>
-              <button type="button" data-w2-add="ring">+ Ring</button>
-              <button type="button" data-w2-add="matrix">+ Matrix</button>
+              <button type="button" data-w2-add="light">{{ _("Add light") }}</button>
               <button id="w2-connect" type="button" aria-pressed="false">{{ _("Connect wire") }}</button>
               <button id="w2-rename" type="button" disabled>{{ _("Rename selected") }}</button>
               <button id="w2-discover" type="button">{{ _("Find controllers") }}</button>
@@ -269,6 +273,12 @@
       </section>
 
       <section data-view="wled" aria-label="{{ _('WLED settings') }}" hidden>
+        <div class="wled-view-switch" role="group" aria-label="{{ _('Lighting view') }}">
+          <button type="button" data-wled-view="list" aria-pressed="true">{{ _("List") }}</button>
+          <button type="button" data-wled-view="visual" aria-pressed="false">{{ _("Visual") }}</button>
+        </div>
+        <p data-wled-view-error class="error" role="alert" hidden></p>
+
         <div class="panel wled-overview">
           <div class="wled-live">
             <span class="eyebrow">{{ _("Live board state") }}</span>
@@ -276,6 +286,8 @@
             <p id="wled-reason" class="hint">{{ _("Loading service state…") }}</p>
           </div>
         </div>
+        <p id="wled-migration-note" class="notice" role="status" hidden></p>
+        <p id="wled-unconnected-note" class="hint" hidden>{{ _("Some lights are not connected to a controller. Open Visual to connect them.") }}</p>
         <p id="wled-error" class="error" role="status" hidden></p>
         <form id="wled-form" class="panel wled-workspace">
           {{ source_options('wled', 'WLED') }}
@@ -395,7 +407,7 @@
                 <p class="hint">{{ _("Changes save automatically to your profile.") }}</p>
                 <p id="wled-hidden-zones-hint" class="hint" role="status" hidden></p>
               </div>
-              <button id="wled-add-target" type="button">{{ _("Add zone") }}</button>
+              <button id="wled-add-target" type="button">{{ _("Add light") }}</button>
             </div>
             <div id="wled-output-empty" class="wled-empty" role="status" hidden>
               <span class="wled-light-icon" aria-hidden="true">✧</span>
@@ -414,6 +426,7 @@
             </button>
           </div>
         </form>
+
         <template id="wled-target-template">
           <details class="wled-target" open>
             <summary data-title>{{ _("Lighting zone") }}</summary>
@@ -431,6 +444,14 @@
                 <label>
                   {{ _("Name") }}
                   <input data-field="name" maxlength="80" required />
+                </label>
+                <label>
+                  {{ _("Light shape") }}
+                  <select data-field="shape">
+                    <option value="strip">{{ _("Strip") }}</option>
+                    <option value="ring">{{ _("Ring") }}</option>
+                    <option value="matrix">{{ _("Matrix") }}</option>
+                  </select>
                 </label>
                 <label>
                   {{ _("Mode") }}

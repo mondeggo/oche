@@ -136,7 +136,7 @@ def test_unassigned_chains_persist_without_device_output(app, settings, kind):
         assert client.put("/api/wled2", json=data).status_code == 200
         assert client.post("/api/wled2/preview", json={"target_id": "second"}).status_code == 409
     with TestClient(create_app(settings)) as client:
-        assert client.get("/api/wled2").json() == data
+        assert client.get("/api/wled2").json() == Layout.from_config(Layout.model_validate(data).compile()).model_dump(mode="json")
         assert client.get("/api/wled2/status").json()["devices"] == []
 
 
@@ -185,7 +185,7 @@ def test_names_sizes_and_chains_survive_restart(app, settings):
     with TestClient(app) as client:
         assert client.put("/api/wled2", json=data).status_code == 200
     with TestClient(create_app(settings)) as client:
-        assert client.get("/api/wled2").json() == data
+        assert client.get("/api/wled2").json() == Layout.from_config(Layout.model_validate(data).compile()).model_dump(mode="json")
 
 
 @pytest.mark.parametrize("invalid", ["duplicate", "missing", "overlap", "url", "reserved"])
@@ -212,7 +212,7 @@ def test_layout_api_is_headless_persistent_and_revision_guarded(app, settings):
         before = client.get("/api/wled2")
         response = client.put("/api/wled2", json=data, headers={"If-Match": before.headers["etag"]})
         assert response.status_code == 200
-        assert response.json() == data
+        assert response.json() == Layout.from_config(Layout.model_validate(data).compile()).model_dump(mode="json")
         assert response.headers["etag"] != before.headers["etag"]
         assert (
             client.put(
@@ -228,67 +228,42 @@ def test_layout_api_is_headless_persistent_and_revision_guarded(app, settings):
         invalid = deepcopy(data)
         invalid["lights"][0]["connection"]["controller_id"] = "missing"
         assert client.put("/api/wled2", json=invalid).status_code == 422
-        assert client.get("/api/wled2").json() == data
+        assert client.get("/api/wled2").json() == Layout.from_config(Layout.model_validate(data).compile()).model_dump(mode="json")
         assert client.get("/api/wled2/defaults").json()["matrix"]["width"] == 16
     with TestClient(create_app(settings)) as client:
         assert client.get("/").status_code == 200
-        assert client.get("/api/wled2").json() == data
+        assert client.get("/api/wled2").json() == Layout.from_config(Layout.model_validate(data).compile()).model_dump(mode="json")
         assert len(client.get("/api/wled2/status").json()["devices"]) == 1
 
 
-def test_switches_are_mutually_exclusive_and_preserve_settings_across_restart(app, settings):
-    data = scene().model_dump(mode="json")
-    # Disabled controllers prove exclusion applies globally, even without active hardware.
-    data["controllers"][0]["enabled"] = False
-    classic = WLEDConfig(
-        devices=[
-            {
-                "id": "old",
-                "name": "Old controller",
-                "url": "http://other.test",
-                "enabled": False,
-            }
-        ]
-    ).model_dump(mode="json")
+def test_views_share_one_enable_state_and_configuration_across_restart(app, settings):
     with TestClient(app) as client:
-        assert client.put("/api/wled", json=classic).status_code == 200
-        assert client.patch("/api/wled", json={"enabled": True}).status_code == 200
-        data["enabled"] = True
-        assert client.put("/api/wled2", json=data).status_code == 200
-        assert client.get("/api/wled").json()["enabled"] is False
-        assert client.get("/api/wled2/status").json()["enabled"] is True
+        result = client.put("/api/wled2", json=scene(enabled=True).model_dump(mode="json"))
+        assert result.status_code == 200
+        data = result.json()
+        assert client.get("/api/wled").json()["enabled"] is True
+        assert client.app.state.runtime.wled2.engine is client.app.state.runtime.wled
+        assert client.get("/api/wled").headers["etag"] == result.headers["etag"]
     with TestClient(create_app(settings)) as client:
-        assert client.get("/api/wled").json()["enabled"] is False
-        assert client.get("/api/wled2").json() == data
-        etag = client.get("/api/wled2").headers["etag"]
-        assert client.patch("/api/wled", json={"enabled": True}).status_code == 200
+        assert client.get("/api/wled2").json() == Layout.from_config(Layout.model_validate(data).compile()).model_dump(mode="json")
+        assert client.patch("/api/wled", json={"enabled": False}).status_code == 200
         assert client.get("/api/wled2/status").json()["enabled"] is False
         data["enabled"] = False
-        assert client.get("/api/wled2").json() == data
-        assert client.get("/api/wled2").headers["etag"] != etag
-        assert client.get("/api/wled").json()["devices"] == classic["devices"]
-    with TestClient(create_app(settings)) as client:
-        assert client.get("/api/wled").json()["enabled"] is True
-        assert client.get("/api/wled2").json()["enabled"] is False
+        assert client.get("/api/wled2").json() == Layout.from_config(Layout.model_validate(data).compile()).model_dump(mode="json")
+    assert not (settings.data_dir / "wled2.json").exists()
 
 
 @pytest.mark.parametrize("destination", ["wled", "wled2"])
 @pytest.mark.parametrize("failure", ["write", "apply", "cancel"])
-def test_failed_switch_restores_previous_integration(
+def test_failed_shared_save_restores_both_views(
     app, settings, monkeypatch, destination, failure
 ):
     with TestClient(app) as client:
-        client.put("/api/wled2", json={"enabled": destination == "wled"})
-        if destination == "wled2":
-            client.patch("/api/wled", json={"enabled": True})
+        client.put("/api/wled2", json={"enabled": False})
         runtime = app.state.runtime
         before = {name: client.get(f"/api/{name}").json() for name in ("wled", "wled2")}
         if failure == "write":
-            module = (
-                "app.core.profiles"
-                if destination == "wled"
-                else "app.core.integrations.wled2.service"
-            )
+            module = "app.core.profiles"
 
             def fail_write(*args):
                 raise ConnectionProblem("Disk unavailable")
@@ -325,21 +300,20 @@ def test_failed_switch_restores_previous_integration(
             assert response.status_code == 409
         for name in before:
             assert client.get(f"/api/{name}").json() == before[name]
-        assert (
-            json.loads((settings.data_dir / "wled2.json").read_text())["enabled"]
-            == before["wled2"]["enabled"]
-        )
+        saved = json.loads((settings.data_dir / "profiles.json").read_text())
+        assert saved["wled"] == before["wled"]
 
 
-def test_conflicting_restored_files_start_only_one_integration(app, settings):
+
+def test_legacy_file_is_not_reimported_after_a_shared_save(app, settings):
     with TestClient(app) as client:
         client.patch("/api/wled", json={"enabled": True})
     (settings.data_dir / "wled2.json").write_text('{"enabled": true}')
     with TestClient(create_app(settings)) as client:
         assert client.get("/api/wled").json()["enabled"] is True
-        assert client.get("/api/wled2").json()["enabled"] is False
-        assert client.get("/api/wled2/status").json()["enabled"] is False
-        assert json.loads((settings.data_dir / "wled2.json").read_text())["enabled"] is False
+        assert client.get("/api/wled2").json()["enabled"] is True
+        assert client.get("/api/wled2/status").json()["enabled"] is True
+        assert json.loads((settings.data_dir / "wled2.json").read_text())["enabled"] is True
 
 
 def test_moving_objects_does_not_restart_workers(app, monkeypatch):
@@ -394,7 +368,7 @@ def test_automation_dispatches_light_rules_and_cleans_up_on_switch(app, monkeypa
                     await asyncio.sleep(0.01)
 
         client.portal.call(dispatch)
-        assert client.patch("/api/wled", json={"enabled": True}).status_code == 200
+        assert client.patch("/api/wled", json={"enabled": False}).status_code == 200
         assert not app.state.runtime.wled2.engine.tasks
         assert client.get("/api/wled2/status").json()["enabled"] is False
 
@@ -546,3 +520,103 @@ def test_simulated_frame_updates_all_targets_and_restores_settings(app, monkeypa
             for key in ("on", "bri", "col", "fx", "frz"):
                 assert restored.get(key) == old.get(key)
         assert client.post("/api/wled2/simulate", json={"player": 2}).status_code == 422
+
+
+def test_list_and_visual_edits_share_profiles_and_stale_save_protection(app):
+    with TestClient(app) as client:
+        assert client.put('/api/wled2', json=scene().model_dump(mode='json')).status_code == 200
+        before = client.get('/api/wled2')
+        config = client.get('/api/wled').json()
+        config['devices'][0]['idle_timeout_minutes'] = 12
+        target = config['devices'][0]['targets'][0]
+        target['players'] = {'1': {'color': '#123456', 'brightness': 70, 'effect': 0, 'name_filter': 'Jo'}}
+        target['phases']['ready']['color'] = '#112233'
+        assert client.put('/api/wled', json=config).status_code == 200
+        assert client.put('/api/wled2', json=before.json(), headers={'If-Match': before.headers['etag']}).status_code == 412
+        layout = client.get('/api/wled2').json()
+        assert layout['controllers'][0]['idle_timeout_minutes'] == 12
+        assert layout['lights'][0]['rules']['players']['1']['name_filter'] == 'Jo'
+        layout['lights'][0]['name'] = 'Board ring'
+        layout['lights'][0]['position']['x'] = 123
+        assert client.put('/api/wled2', json=layout).status_code == 200
+        config = client.get('/api/wled').json()
+        assert config['devices'][0]['targets'][0]['name'] == 'Board ring'
+        assert config['devices'][0]['targets'][0]['players']['1']['color'] == '#123456'
+        profile = client.post('/api/profiles', json={'name': 'Evening'}).json()['active_profile']
+        layout = client.get('/api/wled2').json()
+        layout['lights'][0]['rules']['phases']['ready']['color'] = '#445566'
+        assert client.put('/api/wled2', json=layout).status_code == 200
+        assert client.put('/api/profile', json={'id': 'default'}).status_code == 200
+        assert client.get('/api/wled2').json()['lights'][0]['rules']['phases']['ready']['color'] == '#112233'
+        assert client.put('/api/profile', json={'id': profile}).status_code == 200
+        assert client.get('/api/wled2').json()['lights'][0]['rules']['phases']['ready']['color'] == '#445566'
+        assert client.get('/api/wled2').json()['lights'][0]['position']['x'] == 123
+
+
+@pytest.mark.parametrize('visual_active', [False, True])
+def test_migrate_legacy_setups_once_preserving_profiles_and_connections(settings, visual_active):
+    classic = scene(enabled=not visual_active).compile()
+    classic.visual_migrated = False
+    classic.devices[0].targets[0].phases.ready.color = '#112233'
+    classic.devices[0].targets[0].players = {}
+    classic.unconnected_lights = []
+    legacy = scene(enabled=visual_active)
+    legacy.lights[0].rules.phases.ready.color = '#445566'
+    legacy.lights[2].connection.after_light_id = 'mine'
+    classic_path = settings.data_dir / 'wled.json'
+    classic_path.write_text(classic.model_dump_json())
+    legacy_path = settings.data_dir / 'wled2.json'
+    legacy_path.write_text(legacy.model_dump_json())
+    original = legacy_path.read_bytes()
+    with TestClient(create_app(settings)) as client:
+        config = client.get('/api/wled').json()
+        layout = client.get('/api/wled2').json()
+        assert config['enabled'] is True
+        assert len(config['devices']) == 1
+        assert len(config['devices'][0]['targets']) == 6
+        assert len(config['unconnected_lights']) == 1
+        assert sum(t['enabled'] for t in config['devices'][0]['targets']) == 3
+        active_ring = next(t for t in config['devices'][0]['targets'] if t['enabled'] and t['shape'] == 'ring')
+        assert active_ring['phases']['ready']['color'] == ('#445566' if visual_active else '#112233')
+        chained = next(light for light in layout['lights'] if light['connection'] and light['connection']['after_light_id'])
+        parent = next(light for light in layout['lights'] if light['id'] == chained['connection']['after_light_id'])
+        assert parent['name'] == 'My score'
+        assert config['profiles'][0]['targets']['controller']['ring']['phases']['ready']['color'] == '#112233'
+        assert config['visual_migrated'] is True
+        assert config['migration_note']
+    with TestClient(create_app(settings)) as client:
+        assert client.get('/api/wled').json() == config
+        assert client.get('/api/wled2').json() == layout
+    assert legacy_path.read_bytes() == original
+    backup = json.loads((settings.data_dir / "profiles-before-wled-merge.json").read_text())
+    assert len(backup["wled"]["devices"][0]["targets"]) == 3
+    assert backup["wled"]["devices"][0]["targets"][0]["phases"]["ready"]["color"] == "#112233"
+
+
+def test_invalid_legacy_layout_does_not_overwrite_settings(settings):
+    classic = scene().compile()
+    saved = settings.data_dir / 'wled.json'
+    saved.write_text(classic.model_dump_json())
+    original = saved.read_bytes()
+    (settings.data_dir / 'wled2.json').write_text('{broken')
+    with pytest.raises(ConnectionProblem, match='Original settings are unchanged'):
+        with TestClient(create_app(settings)):
+            pass
+    assert saved.read_bytes() == original
+    assert not (settings.data_dir / 'profiles.json').exists()
+
+
+def test_duplicate_target_ids_across_controllers_survive_visual_roundtrip(app):
+    config = WLEDConfig(devices=[
+        {'id': 'a', 'name': 'A', 'url': 'http://a.test', 'targets': [{'id': 'ring', 'name': 'One'}]},
+        {'id': 'b', 'name': 'B', 'url': 'http://b.test', 'targets': [{'id': 'ring', 'name': 'Two'}]},
+    ]).model_dump(mode='json')
+    with TestClient(app) as client:
+        assert client.put('/api/wled', json=config).status_code == 200
+        layout = client.get('/api/wled2').json()
+        assert len({light['id'] for light in layout['lights']}) == 2
+        layout['lights'][1]['name'] = 'Second ring'
+        assert client.put('/api/wled2', json=layout).status_code == 200
+        devices = client.get('/api/wled').json()['devices']
+        assert [device['targets'][0]['id'] for device in devices] == ['ring', 'ring']
+        assert devices[1]['targets'][0]['name'] == 'Second ring'

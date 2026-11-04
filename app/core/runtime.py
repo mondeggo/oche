@@ -41,8 +41,8 @@ class Runtime:
         self.profiles = Profiles(
             settings.data_dir / "profiles.json", self.wled, self.caller, ui or UISettings(settings)
         )
-        self.wled2 = WLED2(settings.data_dir / "wled2.json", http, self.bus, self.game_state, self.wled)
-        self.profiles.wled2 = self.wled2
+        self.wled2 = WLED2(settings.data_dir / "wled2.json", self.wled)
+        self.wled2.migrate(self.profiles)
 
     def game_state(self) -> dict:
         if self.local.active:
@@ -92,22 +92,7 @@ class Runtime:
             return self.local.status()
 
     async def configure_wled2(self, layout: WLED2Layout) -> None:
-        previous = self.wled.config.model_copy(deep=True)
-        switching = layout.enabled and previous.enabled
-        if switching:
-            await self.profiles.configure_wled(previous.model_copy(update={"enabled": False}))
-        try:
-            await self.wled2.configure(layout)
-        except (Exception, asyncio.CancelledError):
-            if switching:
-                restore = asyncio.create_task(self.profiles.configure_wled(previous))
-                while not restore.done():
-                    try:
-                        await asyncio.shield(restore)
-                    except asyncio.CancelledError:
-                        pass
-                restore.result()
-            raise
+        await self.wled2.configure(layout)
 
     def _create_sources(self) -> None:
         self.sources = {item.id: item.source(self) for item in registry.active() if item.source}
@@ -119,7 +104,6 @@ class Runtime:
         ]
         self.start_sources()
         self.wled.start()
-        self.wled2.start()
         self.caller.start()
 
     async def close(self, *, stop_debug: bool = True) -> None:
@@ -129,7 +113,6 @@ class Runtime:
         self.local.reset_detector()
         self.tasks.clear()
         await self.wled.close()
-        await self.wled2.close()
         await self.caller.close()
         self.source_tasks.clear()
         for source in self.sources.values():

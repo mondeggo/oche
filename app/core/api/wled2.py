@@ -1,6 +1,6 @@
 """Lighting studio controls on the shared Oche API."""
 
-from fastapi import APIRouter, Request, Response
+from fastapi import APIRouter, HTTPException, Request, Response
 
 from app.core.api.http import check_revision, configuration_revision
 from app.core.integrations.wled.service import DeviceAddress, Matrix, Power, Preview
@@ -60,7 +60,10 @@ async def preview(value: Preview, request: Request):
 async def power(controller_id: str, value: Power, request: Request):
     runtime = request.app.state.runtime
     async with runtime.lock:
-        return await runtime.wled2.engine.power(value.on, controller_id)
+        controller = next((c for c in runtime.wled2.config.controllers if c.id == controller_id), None)
+        if controller is None:
+            raise HTTPException(404, "Unknown WLED controller")
+        return await runtime.wled2.engine.power(value.on, controller.device_id or controller.id)
 
 
 @router.post("/controllers/{controller_id}/corners")

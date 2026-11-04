@@ -1,15 +1,13 @@
-"""Persist a visual lighting layout and compile its connections into WLED targets."""
+"""Visual editing and legacy-layout migration for the shared WLED configuration."""
 
 import asyncio
-from collections.abc import Callable
+import hashlib
 from pathlib import Path
 from typing import Literal
 
-import httpx
 from pydantic import Field, ValidationError, model_validator
 
 from app.core.errors import ConnectionProblem
-from app.core.events import EventBus
 from app.core.integrations.sources import PlaySources
 from app.core.integrations.wled.service import (
     WLED,
@@ -23,6 +21,10 @@ from app.core.integrations.wled.service import (
     Model,
     Phase,
     PhaseColours,
+    Placement,
+    PlayerAppearance,
+    PlayerSlot,
+    Position,
     Preview,
     Target,
     WLEDConfig,
@@ -31,12 +33,8 @@ from app.core.integrations.wled.service import (
 from app.core.storage import write_private_json
 
 
-class Position(Model):
-    x: float = Field(default=500, ge=0, le=1000, allow_inf_nan=False)
-    y: float = Field(default=350, ge=0, le=700, allow_inf_nan=False)
-
-
 class Rules(Model):
+    players: dict[PlayerSlot, PlayerAppearance] = Field(default_factory=dict)
     phases: PhaseColours = Field(default_factory=PhaseColours)
     effects: dict[EffectName, Effect] = Field(default_factory=default_effects)
 
@@ -53,6 +51,8 @@ class SimulationFrame(Model):
 
 
 class Controller(DeviceAddress):
+    device_id: Identifier | None = None
+    idle_timeout_minutes: int | None = Field(default=None, ge=1, le=1440)
     id: Identifier
     name: str = Field(min_length=1, max_length=80)
     position: Position = Field(default_factory=lambda: Position(x=150, y=570))
@@ -76,6 +76,7 @@ class Corners(Model):
 
 
 class Light(Model):
+    target_id: Identifier | None = None
     id: Identifier
     name: str = Field(min_length=1, max_length=80)
     kind: Literal["strip", "ring", "matrix"]
@@ -142,117 +143,214 @@ class Layout(Model, PlaySources):
         self.compile()
         return self
 
-    def compile(self) -> WLEDConfig:
-        devices = []
-        for controller in self.controllers:
-            targets = []
-            for light in self.lights:
-                wire = light.connection
-                if not wire or wire.controller_id != controller.id:
-                    continue
-                rules = light.rules.model_copy(deep=True)
-                mode = (
-                    "matrix"
-                    if light.kind == "matrix"
-                    else ("segment" if wire.whole_segment else "pixels")
-                )
-                if mode != "segment":
-                    # Individual pixels support solid colours, not native segment effects.
-                    for phase in ("ready", "takeout", "waiting", "idle"):
-                        getattr(rules.phases, phase).effect = 0
-                    for effect in rules.effects.values():
-                        effect.effect = 0
-                targets.append(
-                    Target(
-                        id=light.id,
-                        name=light.name,
-                        enabled=light.enabled,
-                        segment=wire.segment,
-                        mode=mode,
-                        start=wire.start,
-                        count=wire.count,
-                        phases=rules.phases,
-                        effects=rules.effects,
-                        matrix=light.matrix,
-                    )
-                )
-            devices.append(
-                Device(
-                    id=controller.id,
-                    name=controller.name,
-                    url=controller.url,
-                    enabled=controller.enabled,
-                    targets=targets,
-                )
+    def compile(self, base: WLEDConfig | None = None) -> WLEDConfig:
+        """Project the editor into the one saved lighting configuration."""
+        def target(light):
+            wire = light.connection or Connection()
+            rules = light.rules.model_copy(deep=True)
+            mode = "matrix" if light.kind == "matrix" else "segment" if wire.whole_segment else "pixels"
+            if mode != "segment":
+                for style in [*(getattr(rules.phases, p) for p in Phase.__args__),
+                              *rules.effects.values(), *rules.players.values()]:
+                    style.effect = 0
+            return Target(
+                id=light.target_id or light.id, name=light.name, enabled=light.enabled,
+                segment=wire.segment, mode=mode, start=wire.start, count=wire.count,
+                phases=rules.phases, effects=rules.effects, players=rules.players, matrix=light.matrix,
+                shape=light.kind,
+                placement=Placement(id=light.id, position=light.position, width=light.width,
+                                    height=light.height, rotation=light.rotation,
+                                    after_light_id=wire.after_light_id, wired=light.connection is not None),
             )
-        return WLEDConfig(
-            enabled=self.enabled, devices=devices,
-            run_on_cloud=self.run_on_cloud, run_on_local=self.run_on_local,
+
+        config = base.model_copy(deep=True) if base is not None else WLEDConfig()
+        config.enabled = self.enabled
+        config.run_on_cloud, config.run_on_local = self.run_on_cloud, self.run_on_local
+        config.board = self.board.model_copy(deep=True)
+        config.devices = [Device(
+            id=c.device_id or c.id, name=c.name, url=c.url, enabled=c.enabled,
+            idle_timeout_minutes=c.idle_timeout_minutes,
+            placement=Placement(id=c.id, position=c.position, width=c.width, height=c.height),
+            targets=[target(light) for light in self.lights
+                     if light.connection and light.connection.controller_id == c.id],
+        ) for c in self.controllers]
+        config.unconnected_lights = [target(light) for light in self.lights
+                                    if not light.connection or light.connection.controller_id is None]
+        return WLEDConfig.model_validate(config.model_dump())
+
+    @classmethod
+    def from_config(cls, config: WLEDConfig):
+        used = {"board"}
+
+        def identity(preferred, key):
+            result = preferred
+            if result in used:
+                result = "item-" + hashlib.sha256(key.encode()).hexdigest()[:24]
+            used.add(result)
+            return result
+
+        controllers, lights = [], []
+        for index, device in enumerate(config.devices):
+            place = device.placement or Placement(position=Position(x=150 + index * 80, y=570),
+                                                   width=160, height=60)
+            cid = identity(place.id or device.id, "controller:" + device.id)
+            controllers.append(Controller(
+                id=cid, device_id=device.id if cid != device.id else None,
+                name=device.name, url=device.url, enabled=device.enabled,
+                idle_timeout_minutes=device.idle_timeout_minutes,
+                position=place.position, width=max(80, place.width), height=max(40, place.height),
+            ))
+            for target in device.targets:
+                lights.append(cls._light(target, cid, identity, len(lights), config.board))
+        for target in config.unconnected_lights:
+            lights.append(cls._light(target, None, identity, len(lights), config.board))
+        # List edits may remove/reassign a light that was the upstream canvas connection.
+        by_id = {light.id: light for light in lights}
+        for light in lights:
+            wire = light.connection
+            if wire and wire.after_light_id:
+                parent = by_id.get(wire.after_light_id)
+                if not parent or not parent.connection or (
+                    parent.connection.controller_id, parent.connection.segment
+                ) != (wire.controller_id, wire.segment):
+                    wire.after_light_id = None
+        return cls(enabled=config.enabled, run_on_cloud=config.run_on_cloud,
+                   run_on_local=config.run_on_local, board=config.board,
+                   controllers=controllers, lights=lights)
+
+    @staticmethod
+    def _light(target, controller_id, identity, index, board):
+        kind = "matrix" if target.mode == "matrix" else target.shape if target.shape != "matrix" else "strip"
+        place = target.placement or Placement(
+            position=board if kind == "ring" else Position(x=220 + index % 5 * 150, y=120 + (index // 5) % 5 * 100),
+            width=310 if kind == "ring" else 160 if kind == "matrix" else 240,
+            height=310 if kind == "ring" else 160 if kind == "matrix" else 24,
+        )
+        lid = identity(place.id or target.id, f"light:{controller_id}:{target.id}")
+        return Light(
+            id=lid, target_id=target.id if lid != target.id else None,
+            name=target.name, kind=kind, enabled=target.enabled,
+            position=place.position, width=place.width, height=place.height, rotation=place.rotation,
+            connection=Connection(controller_id=controller_id, segment=target.segment,
+                                  whole_segment=target.mode != "pixels", start=target.start,
+                                  count=target.count, after_light_id=place.after_light_id)
+                       if controller_id is not None or place.wired else None,
+            matrix=target.matrix,
+            rules=Rules(phases=target.phases, effects=target.effects, players=target.players),
         )
 
 
 class WLED2:
-    def __init__(
-        self,
-        path: Path,
-        http: httpx.AsyncClient,
-        bus: EventBus,
-        view: Callable,
-        classic: WLED,
-    ):
-        self.path = path
-        self.config = Layout()
+    """Visual editor adapter for WLED. It owns no workers or independent configuration."""
+
+    def __init__(self, path: Path, classic: WLED):
+        self.path = path  # Legacy import only; all new saves go through Profiles.
+        self.engine = classic
         self.error: str | None = None
+        self.profiles = None
+
+    @property
+    def config(self) -> Layout:
+        return Layout.from_config(self.engine.config)
+
+    def migrate(self, profiles) -> None:
+        self.profiles = profiles
+        current = self.engine.config
+        if current.visual_migrated:
+            return
+        if not self.path.exists():
+            current.visual_migrated = profiles.data.wled.visual_migrated = True
+            return
+        merged = current.model_copy(deep=True)
+        if self.path.exists():
+            try:
+                legacy = Layout.model_validate_json(self.path.read_text(encoding="utf-8"))
+                imported = legacy.compile()
+                # The enabled setup keeps control. Other lights remain editable, paused
+                # where they share a controller, so migration cannot produce competing effects.
+                visual_active = imported.enabled and not current.enabled
+                self._merge_devices(merged, imported, activate=visual_active)
+                if visual_active:
+                    merged.enabled = True
+                    merged.run_on_local = imported.run_on_local
+                    merged.run_on_cloud = imported.run_on_cloud
+                if visual_active or not current.devices:
+                    merged.board = imported.board
+                merged.unconnected_lights.extend(imported.unconnected_lights)
+                merged.migration_note = (
+                    "Your WLED setups have been combined. Lights imported onto an existing "
+                    "controller are paused; review them before enabling. The original Visual WLED file is kept."
+                )
+            except (OSError, ValueError, ValidationError) as exc:
+                raise ConnectionProblem("Cannot merge the saved WLED layouts. Original settings are unchanged.") from exc
+        merged.visual_migrated = True
         try:
-            if path.exists():
-                self.config = Layout.model_validate_json(path.read_text(encoding="utf-8"))
-        except (OSError, ValueError, ValidationError):
-            self.error = "Cannot load wled2.json. Restore a backup or save a new layout."
-        if self.config.enabled and classic.config.enabled:
-            # Recover safely from independently restored files or an interrupted switch.
-            self.config.enabled = False
-            write_private_json(path, self.config.model_dump(mode="json"))
-            self.error = "WLED2 was turned off because WLED was already enabled."
-        self.engine = WLED(path, http, bus, view, initial=self.config.compile(), name="WLED2")
-        self.engine.peer = classic
-        classic.peer = self.engine
+            merged = WLEDConfig.model_validate(merged.model_dump())
+            Layout.from_config(merged)
+        except ValueError as exc:
+            raise ConnectionProblem("Cannot merge the saved WLED layouts. Original settings are unchanged.") from exc
+        WLED.sync_profiles(merged)
+        data = profiles.data.model_copy(deep=True)
+        data.wled = merged
+        backup = profiles.path.with_name("profiles-before-wled-merge.json")
+        if not backup.exists():
+            write_private_json(backup, profiles.data.model_dump(mode="json"))
+        write_private_json(profiles.path, data.model_dump(mode="json"))
+        profiles.data = data
+        self.engine.config = merged
 
-    def start(self) -> None:
-        self.engine.start()
+    @staticmethod
+    def _merge_devices(primary, secondary, *, activate=False):
+        from uuid import uuid4
 
-    async def close(self) -> None:
-        await self.engine.close()
+        # Preserve the imported diagram's chains even when legacy IDs collide.
+        existing_layout = Layout.from_config(primary)
+        taken = {item.id for item in [*existing_layout.controllers, *existing_layout.lights]} | {"board"}
+        remapped = {}
+        imported_items = [*secondary.devices, *secondary.unconnected_lights,
+                          *(target for device in secondary.devices for target in device.targets)]
+        for item in imported_items:
+            place = item.placement
+            if place is None:
+                continue
+            old = place.id or item.id
+            new = old if old not in taken else "imported-" + uuid4().hex[:24]
+            taken.add(new)
+            remapped[old] = place.id = new
+        for item in imported_items:
+            if item.placement and item.placement.after_light_id:
+                item.placement.after_light_id = remapped.get(item.placement.after_light_id,
+                                                             item.placement.after_light_id)
+        if activate:
+            for device in primary.devices:
+                device.enabled = False
+        for device in secondary.devices:
+            existing = next((d for d in primary.devices if d.url.lower() == device.url.lower()), None)
+            if existing is None:
+                device = device.model_copy(deep=True)
+                if device.id in {d.id for d in primary.devices}:
+                    device.id = "imported-" + uuid4().hex[:24]
+                # Only the previously selected setup should react after migration.
+                device.enabled = device.enabled and (activate or not primary.enabled)
+                primary.devices.append(device)
+                continue
+            if activate:
+                existing.enabled = device.enabled
+                existing.name = device.name
+                existing.placement = device.placement
+                existing.idle_timeout_minutes = device.idle_timeout_minutes
+                for target in existing.targets:
+                    target.enabled = False
+            for target in device.targets:
+                target = target.model_copy(deep=True)
+                if target.id in {t.id for t in existing.targets}:
+                    target.id = "imported-" + uuid4().hex[:24]
+                target.enabled = target.enabled and activate
+                existing.targets.append(target)
 
     async def configure(self, layout: Layout) -> None:
         layout = Layout.model_validate(layout.model_dump())
-        compiled = layout.compile()
-        self.engine.check_ownership(compiled)
-        # Moving objects changes only the diagram, never interrupts device automation.
-        previous = self.config.compile()
-        previous_engine = self.engine.config.model_copy(deep=True)
-        existed = self.path.exists()
-        write_private_json(self.path, layout.model_dump(mode="json"))
-        try:
-            if compiled != previous or self.error:
-                await self.engine.configure(compiled, persist=False)
-        except (Exception, asyncio.CancelledError):
-
-            async def restore():
-                if existed:
-                    write_private_json(self.path, self.config.model_dump(mode="json"))
-                else:
-                    self.path.unlink(missing_ok=True)
-                await self.engine.configure(previous_engine, persist=False)
-
-            task = asyncio.create_task(restore())
-            while not task.done():
-                try:
-                    await asyncio.shield(task)
-                except asyncio.CancelledError:
-                    pass
-            task.result()
-            raise
-        self.config, self.error = layout, None
+        await self.profiles.configure_wled(layout.compile(self.engine.config))
 
     async def preview(self, preview: Preview) -> dict:
         light = next((item for item in self.config.lights if item.id == preview.target_id), None)
@@ -260,7 +358,9 @@ class WLED2:
             raise ConnectionProblem("Connect this light to a controller before testing it.")
         if preview.corners and light.kind != "matrix":
             raise ConnectionProblem("Only matrix panels show corner colours.")
-        return await self.engine.test(light.connection.controller_id, preview)
+        controller = next(c for c in self.config.controllers if c.id == light.connection.controller_id)
+        return await self.engine.test(controller.device_id or controller.id,
+                                      preview.model_copy(update={"target_id": light.target_id or light.id}))
 
     async def simulate(self, frame: SimulationFrame) -> dict:
         """Preview a complete game frame without publishing synthetic game events."""
@@ -304,7 +404,16 @@ class WLED2:
         return {"applied": True, "restored": True}
 
     def status(self) -> dict:
-        return {**self.engine.status(), "error": self.error or self.engine.error}
+        status = self.engine.status()
+        layout = self.config
+        for device in status["devices"]:
+            controller = next(c for c in layout.controllers if (c.device_id or c.id) == device["id"])
+            device["id"] = controller.id
+            mapping = {light.target_id or light.id: light.id for light in layout.lights
+                       if light.connection and light.connection.controller_id == controller.id}
+            device["faces"] = {mapping.get(key, key): value for key, value in device.get("faces", {}).items()}
+            device["corners"] = [mapping.get(key, key) for key in device.get("corners", [])]
+        return {**status, "error": self.error or self.engine.error, "migration_note": self.engine.config.migration_note}
 
     async def check_connections(self) -> None:
         """Let the status route report real controller reachability, not a cached guess."""
@@ -312,4 +421,9 @@ class WLED2:
 
     async def show_corners(self, controller_id: str, target_id: str, on: bool) -> dict:
         """Toggle a matrix panel's corner colours; the service holds them until switched off."""
-        return await self.engine.show_corners(controller_id, target_id, on)
+        controller = next((c for c in self.config.controllers if c.id == controller_id), None)
+        light = next((light for light in self.config.lights if light.id == target_id), None)
+        if not controller or not light or not light.connection or light.connection.controller_id != controller_id:
+            raise ConnectionProblem("Connect this light to a controller before testing it.")
+        return await self.engine.show_corners(controller.device_id or controller.id,
+                                              light.target_id or light.id, on)

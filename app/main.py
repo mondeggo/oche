@@ -156,6 +156,8 @@ def create_app(
         return JSONResponse({"detail": safe_error(exc)}, status_code=502)
 
     async def index(request: Request):
+        if request.url.path == "/integrations/visual-wled":
+            return RedirectResponse("/integrations/wled?view=visual", status_code=307)
         return templates.TemplateResponse(
             request=request,
             name="home.html",

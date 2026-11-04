@@ -1,5 +1,6 @@
+import { chooseLightShape, lightShapeNames, registerLightingEditor } from "./lighting-view.mjs";
 import { tr } from "../js/i18n.mjs";
-import { notice, page, setIntegrationEnabled } from "./app.js";
+import { notice, page, registerProfileEditor, profileChanging } from "./app.js";
 import { $, api, fitPanel, poll, simulationFace, simulationGame, simulationPixel } from "./client.mjs";
 import { sourceControls } from "./sources.mjs";
 
@@ -154,9 +155,6 @@ function controls() {
   $("w2-save").disabled = !layout || busy || !dirty || conflict;
   $("w2-reload").disabled = busy;
   $("w2-enabled").disabled = !layout || busy;
-  $("w2-toggle").disabled = !layout || !live || busy || conflict;
-  $("w2-toggle").setAttribute("aria-checked", String(!!live?.enabled));
-  $("w2-toggle-label").textContent = !live ? tr("Unavailable") : live.enabled ? tr("On") : tr("Off");
   const state = busy ? "busy" : conflict ? "conflict" : dirty ? "dirty" : "saved";
   $("w2-save-state").dataset.state = state;
   $("w2-save-state").textContent = { busy: tr("Saving…"), conflict: tr("Reload required"), dirty: tr("Unsaved changes"), saved: tr("Saved") }[state];
@@ -212,27 +210,25 @@ async function work(action) {
   finally { busy = false; controls(); await refresh(); }
 }
 async function refresh() {
-  if (loading || busy || editingName) return;
+  if (loading || busy || editingName || profileChanging) return;
   loading = (async () => {
     try {
       live = await api("/api/wled2/status");
+      $("w2-migration-note").textContent = tr(live.migration_note || "");
+      $("w2-migration-note").hidden = !live.migration_note;
       if (!layout) await load();
       else if (!dirty && page === "wled2" && !drag) {
         const saved = await api("/api/wled2", "GET", undefined, { metadata: true });
         if (!dirty && !busy && !drag && !editingName && saved.etag !== revision) { layout = saved.data; revision = saved.etag; render(); }
       }
-      setIntegrationEnabled("wled2", live.enabled);
       $("w2-live").textContent = `${phases[live.game.phase] || "Waiting"} · ${live.enabled ? "Following game events" : "Not following games"}`;
-      $("w2-integration-error").textContent = live.error || "";
-      $("w2-integration-error").hidden = !live.error;
       if (page === "wled2" && !drag && !canvas.contains(document.activeElement)) renderCanvas();
+      if (live.error) error(live.error);
       updateConnectionStatus();
       updateColourControls();
     } catch (cause) {
       live = null;
       error(cause.message);
-      $("w2-integration-error").textContent = cause.message;
-      $("w2-integration-error").hidden = false;
     }
     finally { loading = null; controls(); }
   })();
@@ -736,7 +732,7 @@ function renderInspector() {
     const steps = element("ol");
     [tr("Add a controller and enter its address."), tr("Add a strip, ring or matrix."), tr("Connect a wire from the controller to the light."), tr("Save the layout and test the light."), tr("Give each light its game rules, then turn on Follow game events.")].forEach(text => steps.append(element("li", text)));
     parent.append(steps);
-    parent.append(element("p", tr("Enabling Visual WLED turns off the WLED integration. Both keep their settings. Visual WLED has its own layout and rules, independent of app profiles."), "hint"));
+    parent.append(element("p", tr("List and Visual edit the same lights. Game rules are saved to your active app profile."), "hint"));
     const grid = element("div", undefined, "w2-fields"); parent.append(grid);
     number(grid, tr("Board X"), layout.board, "x", 0, 1000); number(grid, tr("Board Y"), layout.board, "y", 0, 700);
     return;
@@ -757,6 +753,8 @@ function renderInspector() {
   shape.append(element("p", tr("Drag the corner handle to resize, or use arrow keys. Visual size and rotation only change this diagram: they never move LEDs or matrix pixels."), "hint"));
   field(parent, tr("Enabled"), item.enabled, v => item.enabled = v, { type: "checkbox" });
   if (isController(item)) {
+    field(parent, tr("Idle timeout (minutes, 0 disables)"), item.idle_timeout_minutes || 0,
+      value => item.idle_timeout_minutes = value || null, { type: "number", min: 0, max: 1440 });
     field(parent, tr("Controller address"), item.url, v => item.url = v.trim(), { type: "url", placeholder: "http://192.168.1.50" });
     const status = element("p", tr("Checking this controller…"), "w2-state"); status.id = "w2-controller-status"; parent.append(status);
     const actions = element("div", undefined, "actions"); parent.append(actions);
@@ -778,6 +776,12 @@ function renderInspector() {
     }
     parent.append(element("p", tr("A controller can drive a strip and a matrix panel at the same time, so every light keeps its own game rules."), "hint"));
   } else {
+    field(parent, tr("Light shape"), item.kind, value => {
+      item.kind = value;
+      item.width = value === "strip" ? 240 : 160;
+      item.height = value === "strip" ? 24 : 160;
+      renderInspector();
+    }, { choices: lightShapeNames() });
     const area = section(parent, tr("Connection"), { label: tr("Connect a wire from here"), onClick: () => focusConnector(item.id) });
     const choices = { "": tr("Not connected"), ...Object.fromEntries(layout.controllers.map(c => [c.id, c.name])) };
     field(area, tr("Controller"), item.connection?.controller_id || "", value => {
@@ -848,6 +852,21 @@ function renderInspector() {
       geometry.append(cornerLabel, matrixDiagram(item, !!canvas));
     }
     renderRules(parent, item);
+    const players = details(parent, "players", tr("Player colours"));
+    item.rules.players ||= {};
+    for (let slot = 1; slot <= 10; slot++) {
+      const area = details(players, `player-${slot}`, tr("Player {0}", { 0: slot }), "w2-rule");
+      const style = item.rules.players[slot];
+      field(area, tr("Enabled"), !!style, enabled => {
+        if (enabled) item.rules.players[slot] = { color: "#ffffff", brightness: 128, effect: 0, name_filter: "" };
+        else delete item.rules.players[slot];
+        renderInspector();
+      }, { type: "checkbox" });
+      if (style) {
+        field(area, tr("Player name filter"), style.name_filter, value => style.name_filter = value, { maxLength: 80 });
+        appearance(area, style, controllerFor(item), item.kind !== "matrix" && item.connection?.whole_segment !== false);
+      }
+    }
   }
   const actions = section(parent, tr("Remove object"));
   button(actions, tr("Remove from layout"), () => removeItem(item.id), "danger");
@@ -1035,7 +1054,10 @@ canvas.addEventListener("keydown", event => {
   position.y = Math.max(0, Math.min(700, position.y + delta[1] * (event.shiftKey ? 20 : 5)));
   changed(); render(); canvas.querySelector(`[data-object="${id}"]`)?.focus();
 });
-document.querySelectorAll("[data-w2-add]").forEach(node => node.addEventListener("click", () => add(node.dataset.w2Add)));
+document.querySelectorAll("[data-w2-add]").forEach(node => node.addEventListener("click", async () => {
+  const kind = node.dataset.w2Add === "light" ? await chooseLightShape() : node.dataset.w2Add;
+  if (kind) add(kind);
+}));
 $("w2-inspector-form").addEventListener("submit", event => { event.preventDefault(); work(save); });
 $("w2-save").addEventListener("click", () => work(save));
 $("w2-reload").addEventListener("click", () => { if (!dirty || confirm(tr("Discard unsaved layout changes?"))) work(load); });
@@ -1047,10 +1069,6 @@ $("w2-autosave").addEventListener("change", () => {
   scheduleAutosave(200);
 });
 $("w2-inspector-form").addEventListener("focusout", () => scheduleAutosave(300));
-$("w2-toggle").addEventListener("click", () => work(async () => {
-  layout.enabled = !live.enabled; changed(); await save();
-  if (layout.enabled) window.ocheNavigate("/integrations/visual-wled");
-}));
 $("w2-connect").addEventListener("click", () => {
   focusConnector();
 });
@@ -1079,10 +1097,21 @@ window.addEventListener("beforeunload", event => { if (dirty || editingName) { e
 window.addEventListener("hashchange", refresh);
   window.addEventListener("oche:route", refresh);
 poll(refresh);
-const prepareAppearance = window.ocheBeforeAppearanceChange;
-window.ocheBeforeAppearanceChange = async () => {
-  await prepareAppearance?.();
-  if (busy) throw new Error(tr("Wait for the current operation to finish."));
-  clearTimeout(autosaveTimer);
-  if (dirty) await save();
+const editor = {
+  async prepare() {
+    if (busy || editingName || drag) throw new Error(tr("Finish the current lighting edit first."));
+    await loading;
+    clearTimeout(autosaveTimer);
+    if (dirty) await save();
+  },
+  lock() { $("w2-inspector-form").inert = true; },
+  async reload(applied) {
+    if (applied) await load();
+    controls();
+  },
 };
+registerProfileEditor("WLED visual", editor);
+registerLightingEditor("visual", {
+  prepare: () => editor.prepare(),
+  async reload() { await loading; await load(); },
+});

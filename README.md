@@ -23,9 +23,10 @@ can drive lighting and a caller.
   Uninstall stops the engine and removes all installed versions and rollback history,
   keeping board settings and calibration for reinstallation. Neither action resets
   Oche profiles or the Autodarts account.
-- **Integrations**: connect your Autodarts account and turn on Visual WLED, WLED
-  and Caller. Each integration can follow Autodarts Play, local play,
-  or both. Camera Enhancer provides optional previews, focus and exposure controls.
+- **Integrations**: connect your Autodarts account and turn on WLED and Caller.
+  WLED offers **List / Visual** views of the same setup, with **Strip / Ring / Matrix**
+  choices when adding a light. Both views share effects and app profiles. Each integration
+  can follow Autodarts Play, local play, or both. Camera Enhancer provides optional previews, focus and exposure controls.
   The Camera Enhancer switch controls sidebar visibility independently of detection.
 - **Profiles**: save integration settings, theme and language as profiles and
   switch between them from the sidebar.
@@ -217,3 +218,18 @@ pytest. Commits follow Conventional Commits.
 
 More detail: [architecture](docs/ARCHITECTURE.md), [releases](docs/RELEASES.md) and
 [validation](docs/VALIDATION.md).
+
+### WLED layouts
+
+WLED has one enable switch and one saved configuration. Switch between List and Visual
+on `/integrations/wled`; the editor saves pending changes first and remembers your view.
+Controllers, lights, game sources and profile effects are shared. Visual placement does
+not restart lighting automation. The former `/integrations/visual-wled` link redirects
+to the visual view; `/api/wled2` remains a compatible visual projection of `/api/wled`.
+
+On first startup after upgrading, existing `wled2.json` layouts are imported into the
+profile store. Existing WLED profile styles and unconnected visual lights are retained.
+When both setups contain the same controller, only the previously active setup's lights
+remain enabled; the other lights are kept paused for review. The original legacy file
+and a `profiles-before-wled-merge.json` backup are kept, and the migration runs once. Invalid or oversized combined layouts stop migration
+without overwriting the originals.

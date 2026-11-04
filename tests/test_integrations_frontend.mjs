@@ -136,6 +136,7 @@ function scriptContext(file, api = async () => ({}), overrides = {}) {
     $, api, poll: callback => polls.push(callback), tr: value => value, sourceControls,
     page: "integrations", profileChanging: false, notice() {}, setIntegrationEnabled() {}, callerTestState,
     registerProfileEditor: (name, editor) => { editors[name] = editor; },
+    registerLightingEditor() {}, chooseLightShape: async () => "ring", lightShapeNames: () => ({ ring: "Ring" }),
     URL, setTimeout, clearTimeout,
     Option: class { constructor(text, value) { this.textContent = text; this.value = value; } },
     simulationGame: () => [],
@@ -228,21 +229,26 @@ test("source switches show On/Off in every copy and retain independent choices",
   } finally { globalThis.document = previous; }
 });
 
-test("Visual WLED initializes and displays saved On/Off and unavailable states", () => {
-  const previous = globalThis.document;
-  globalThis.document = { querySelectorAll: () => [] };
+test("visual editor uses the shared WLED enable state and registers for profile changes", () => {
+  const { context, $, editors } = scriptContext("wled2.js", undefined, {
+    sourceControls: () => ({ render() {} }),
+  });
+  vm.runInContext('layout = { controllers: [], lights: [], enabled: true }; live = { enabled: true }; controls();', context);
+  assert.equal($("w2-enabled").disabled, false);
+  assert.ok(editors["WLED visual"]);
+  vm.runInContext('layout = null; controls();', context);
+  assert.equal($("w2-enabled").disabled, true);
+});
+
+test("WLED view URLs share a page and honor explicit view selection", () => {
+  assert.equal(pageForUrl(new URL("http://localhost/integrations/wled?view=visual")), "wled2");
+  assert.equal(pageForUrl(new URL("http://localhost/integrations/wled?view=list")), "wled");
+  const previous = globalThis.localStorage;
+  globalThis.localStorage = { getItem: () => "visual" };
   try {
-    const { context, $ } = scriptContext("wled2.js");
-    vm.runInContext('layout = { controllers: [], lights: [] }; live = { enabled: false }; controls();', context);
-    assert.equal($("w2-toggle-label").textContent, "Off");
-    assert.equal($("w2-toggle").disabled, false);
-    vm.runInContext('live.enabled = true; controls();', context);
-    assert.equal($("w2-toggle-label").textContent, "On");
-    assert.equal($("w2-toggle").getAttribute("aria-checked"), "true");
-    vm.runInContext('live = null; controls();', context);
-    assert.equal($("w2-toggle-label").textContent, "Unavailable");
-    assert.equal($("w2-toggle").disabled, true);
-  } finally { globalThis.document = previous; }
+    assert.equal(pageForUrl(new URL("http://localhost/integrations/wled")), "wled2");
+    assert.equal(pageForUrl(new URL("http://localhost/integrations/wled?view=list")), "wled");
+  } finally { globalThis.localStorage = previous; }
 });
 
 for (const name of ["wled", "caller"]) {
@@ -450,4 +456,45 @@ test("Play can start the selected stopped engine without changing its radio sele
   engine.status = 'stopped'; engine.installed = false;
   context.renderEngineStart(data);
   assert.equal($('local-engine-start').hidden, true);
+});
+
+test("changing WLED views saves both drafts before loading and never discards a rejected save", async () => {
+  const message = { hidden: true };
+  const outgoing = { dataset: { view: "wled" }, inert: false, querySelector: () => message };
+  const button = element({ wledView: "visual" });
+  button.closest = () => outgoing;
+  const calls = [];
+  const context = vm.createContext({
+    document: { querySelectorAll: () => [button] },
+    localStorage: { setItem: (key, value) => calls.push(`remember:${value}`) },
+    window: { ocheNavigate: path => calls.push(path) },
+    tr: value => value,
+  });
+  const source = readFileSync(new URL("lighting-view.mjs", core), "utf8")
+    .replace(/^import .+;\r?\n/gm, "").replace(/^export /gm, "");
+  vm.runInContext(source, context);
+  const ring = { id: 0, length: 40 };
+  const matrix = { id: 1, length: 128, matrix: { width: 16, height: 8 } };
+  assert.deepEqual(context.lightSegments("matrix", [ring], [ring, matrix]), [matrix]);
+  assert.deepEqual(context.lightSegments("ring", [matrix], [ring, matrix]), [ring]);
+  let release;
+  const pending = new Promise(resolve => { release = resolve; });
+  context.registerLightingEditor("list", { prepare: async () => { calls.push("save:list"); await pending; } });
+  context.registerLightingEditor("visual", {
+    prepare: async () => calls.push("save:visual"), reload: async () => calls.push("reload:visual"),
+  });
+  const switching = button.listeners.click();
+  assert.equal(outgoing.inert, true);
+  assert.equal(button.disabled, true);
+  release();
+  await switching;
+  assert.deepEqual(calls, ["save:list", "save:visual", "reload:visual", "remember:visual", "/integrations/wled?view=visual"]);
+  assert.equal(outgoing.inert, false);
+  calls.length = 0;
+  context.registerLightingEditor("list", { prepare: async () => { throw new Error("Reload required"); } });
+  await button.listeners.click();
+  assert.deepEqual(calls, []);
+  assert.equal(message.textContent, "Reload required");
+  assert.equal(message.hidden, false);
+  assert.equal(outgoing.inert, false);
 });

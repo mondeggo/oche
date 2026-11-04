@@ -12,7 +12,6 @@ from app.core.config import UIConfig
 from app.core.errors import ConnectionProblem
 from app.core.integrations.caller.service import Caller, CallerConfig
 from app.core.integrations.wled.service import WLED, Identifier, TargetStyle, WLEDConfig
-from app.core.integrations.wled2.service import WLED2
 from app.core.storage import write_private_json
 
 
@@ -69,7 +68,6 @@ class Profiles:
     def __init__(self, path: Path, wled: WLED, caller: Caller, ui: UISettings | None = None):
         self.path, self.wled, self.caller = path, wled, caller
         self.ui = ui
-        self.wled2: WLED2 | None = None
         if path.exists():
             try:
                 self.data = ProfileData.model_validate_json(path.read_text(encoding="utf-8"))
@@ -115,16 +113,9 @@ class Profiles:
         previous = self.data
         previous_ui = self.ui.config.model_copy(deep=True) if self.ui is not None else None
         appearance = data.appearances[data.wled.active_profile]
-        visual = (
-            self.wled2.config.model_copy(deep=True)
-            if self.wled2 and data.wled.enabled and self.wled2.config.enabled
-            else None
-        )
         update_wled = data.wled != previous.wled or self.wled.error is not None
         written = False
         try:
-            if visual is not None:
-                await self.wled2.configure(visual.model_copy(update={"enabled": False}))
             write_private_json(self.path, data.model_dump(mode="json"))
             written = True
             if update_wled:
@@ -145,8 +136,6 @@ class Profiles:
                         previous.callers[previous.wled.active_profile].model_copy(deep=True),
                         persist=False,
                     )
-                if visual is not None:
-                    await self.wled2.configure(visual)
                 if self.ui is not None and self.ui.config != previous_ui:
                     await self.ui.configure(previous_ui)
 
@@ -164,6 +153,7 @@ class Profiles:
     async def configure_wled(self, config: WLEDConfig) -> None:
         data = self.data.model_copy(deep=True)
         data.wled = config.model_copy(deep=True)
+        data.wled.visual_migrated = True
         data.callers = {
             profile.id: data.callers.get(profile.id, self.caller.config).model_copy(deep=True)
             for profile in config.profiles
