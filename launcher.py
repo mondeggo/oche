@@ -33,6 +33,7 @@ def main():
             "OCHE_DATA_DIR": str(store.DATA.resolve()),
             "PYTHONPATH": str(root),
             "OCHE_BOOT_ID": os.urandom(16).hex(),
+            "OCHE_DEV_RELOAD": "1" if os.environ.get("OCHE_DEV_RELOAD") == "1" and source == root else "0",
         }
         child = subprocess.Popen(
             [sys.executable, "-m", "app.server"], cwd=source, env=env, start_new_session=os.name == "posix"

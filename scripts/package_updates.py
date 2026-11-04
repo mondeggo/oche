@@ -25,7 +25,7 @@ def main():
             for d in importlib.metadata.distributions()
             if d.metadata["Name"].lower() != "oche"
         )
-        contract = "oche-runtime-2\n" + platform.python_version() + "\n" + "\n".join(packages)
+        contract = "oche-runtime-3\n" + platform.python_version() + "\n" + "\n".join(packages)
         runtime_file.write_text(hashlib.sha256(contract.encode()).hexdigest())
         for source in Path("/opt/oche-bundles").iterdir():
             (source / "RUNTIME").write_text(runtime_file.read_text())

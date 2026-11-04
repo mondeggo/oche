@@ -1,6 +1,7 @@
 # Only application sources and dependencies are needed by the image.
 *
-!Dockerfile
+!docker/
+!docker/Dockerfile
 !requirements.txt
 !pyproject.toml
 !uv.lock

@@ -50,7 +50,11 @@ if [[ "$1" == cameras ]]; then
     source "$SCRIPT_DIR/scripts/install.sh"
     reconfigure_cameras
 fi
-COMPOSE_CMD=(docker compose --project-directory "$SCRIPT_DIR" -f "$SCRIPT_DIR/docker-compose.yml")
+COMPOSE_FILE="$SCRIPT_DIR/docker-compose.yml"
+if [[ -f "$SCRIPT_DIR/docker/compose.yml" ]]; then
+    COMPOSE_FILE="$SCRIPT_DIR/docker/compose.yml"
+fi
+COMPOSE_CMD=(docker compose --project-directory "$SCRIPT_DIR" -f "$COMPOSE_FILE")
 if [[ -f "$SCRIPT_DIR/docker-compose.override.yml" ]]; then
     COMPOSE_CMD+=(-f "$SCRIPT_DIR/docker-compose.override.yml")
 fi

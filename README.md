@@ -139,39 +139,62 @@ Run `./oche.sh restart` after changing `.env`.
 
 ## Development
 
-Python 3.12+ and [uv](https://docs.astral.sh/uv/) are required.
+Docker is the default development environment. The startup message also shows
+`--no-docker` for running locally with Python 3.12+ and [uv](https://docs.astral.sh/uv/).
 
 ```sh
-scripts\dev.bat            # Windows
-sh scripts/dev.sh          # Linux/macOS
+scripts/dev.sh                          # build and start, http://localhost:8180
+scripts/dev.sh up --build -d            # background
+scripts/dev.sh logs -f
+scripts/dev.sh down                     # keep development data
+scripts/dev.sh --no-docker              # local Python with reload
+scripts/dev.sh --no-docker --launcher   # local Python with restart/update controls
 ```
 
-Both install the locked dependencies and serve **http://localhost:8180** with
-reload. Add `--launcher` to run through the launcher, which enables restart and
-update controls. Autodarts has no Windows build, so the Autodarts page and setup
-terminal only work in the Linux container. `dev.bat` runs Python directly on
-Windows; it does not start or connect to a Docker container. Its Autodarts status
-therefore explains that native detection is unavailable.
+On Windows, `scripts\dev.bat [--launcher]` runs Python locally with uv.
+Autodarts has no Windows build; use the Linux container to test detection.
 
-To run the container from source with reload:
+`app/`, `launcher.py` and `oche_runtime.py` are bind-mounted. Python changes in
+`app/` reload automatically; restart the container after editing the launcher or
+runtime contract. Rebuild after dependency changes. Development uses a separate
+`oche-dev` Compose project and named data volume, leaving production data alone.
+`OCHE_DEV_PORT` and `OCHE_DEV_HTTPS_PORT` override ports 8180 and 8443.
+The helper also loads the repository's camera override when present.
+
+The launcher enables restart, installation, update health checks and rollback.
+The release feed stays enabled (override `OCHE_UPDATE_FEED` for a test feed).
+Test packages must match the image runtime fingerprint; see [releases](docs/RELEASES.md)
+for exporting compatible packages.
+Install Autodarts from the UI or with:
 
 ```sh
-docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+scripts/dev.sh run --rm --entrypoint python oche -m app.services.install_module autodarts
 ```
 
-It builds `oche:dev` and serves port 8180. The image has no Autodarts; install it
-into `./data` once with:
+Installing an Oche update switches from the checkout to the installed release;
+reload is disabled for that release. To return to mounted sources while preserving
+other settings and modules:
 
 ```sh
-docker compose -f docker-compose.yml -f docker-compose.dev.yml run --rm   --entrypoint python oche -m app.services.install_module autodarts
+scripts/dev.sh stop
+scripts/dev.sh run --rm --entrypoint python oche -c 'import oche_runtime as s; s.write_state("oche", {})'
+scripts/dev.sh up -d
 ```
 
-To try a local image the normal way, build it and point the installer or `.env` at it:
+Docker definitions live in `docker/`. Production builds the application release
+archive in a separate stage and extracts that artifact into the image's bundled
+release directory. There is no `/app/app` checkout in the production image; the
+launcher seeds and runs the release from persistent storage. The archive is built
+from the current checkout, using the same format as the published update assets.
+
+To test a local production image:
 
 ```sh
-docker build -t oche:local .
-OCHE_IMAGE=oche:local docker compose up -d
+docker build -f docker/Dockerfile -t oche:local .
+OCHE_IMAGE=oche:local docker compose --project-directory . -f docker/compose.yml up -d
 ```
+
+Installed systems keep `docker-compose.yml` beside `oche.sh` for compatibility.
 
 ### Checks
 

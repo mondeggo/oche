@@ -24,7 +24,7 @@ Point `OCHE_UPDATE_FEED` at a release's `updates.json`, for example
 Build the container for the target architecture:
 
 ```sh
-docker build --platform linux/amd64 --build-arg OCHE_VERSION=0.2.0 -t oche:local .
+docker build -f docker/Dockerfile --platform linux/amd64 --build-arg OCHE_VERSION=0.2.0 -t oche:local .
 ```
 
 Use `linux/arm64` for ARM64. The dependency environment is locked by `uv.lock`.

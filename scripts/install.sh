@@ -254,7 +254,7 @@ echo "Camera mappings saved in $PWD/$override"
 
 reconfigure_cameras() (
     [[ "$(uname -s)" == Linux ]] || { echo "Camera setup requires Linux." >&2; exit 1; }
-    [[ -f docker-compose.yml ]] || { echo "Run camera setup from the Oche installation folder." >&2; exit 1; }
+    [[ -f docker-compose.yml || -f docker/compose.yml ]] || { echo "Run camera setup from the Oche installation folder." >&2; exit 1; }
     install_mode=detailed
     sudo_cmd=()
     if (( EUID != 0 )); then
@@ -292,7 +292,7 @@ main() (
     source_dir=""
     if [[ -n "${BASH_SOURCE[0]:-}" && -f "${BASH_SOURCE[0]}" ]]; then
         source_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)
-        [[ -f "$source_dir/docker-compose.yml" ]] || source_dir=""
+        [[ -f "$source_dir/docker/compose.yml" || -f "$source_dir/docker-compose.yml" ]] || source_dir=""
     fi
     # Read prompts from the terminal even when the script arrives through a pipe.
     if ! { exec 3</dev/tty; } 2>/dev/null; then
@@ -352,10 +352,13 @@ if [[ -n "$source_dir" && "$install_dir" != "$source_dir" ]]; then
         fi
     done
 fi
+if [[ ! -f "$install_dir/docker-compose.yml" && -n "$source_dir" && -f "$source_dir/docker/compose.yml" ]]; then
+    cp -- "$source_dir/docker/compose.yml" "$install_dir/docker-compose.yml"
+fi
 if [[ ! -f "$install_dir/docker-compose.yml" ]]; then
     compose_tmp=$(mktemp "$install_dir/.compose.XXXXXX")
     trap 'rm -f -- "$compose_tmp"' EXIT
-    curl -fsSL --retry 3 "https://raw.githubusercontent.com/$repo/main/docker-compose.yml" -o "$compose_tmp"
+    curl -fsSL --retry 3 "https://raw.githubusercontent.com/$repo/main/docker/compose.yml" -o "$compose_tmp"
     mv -- "$compose_tmp" "$install_dir/docker-compose.yml"
     trap - EXIT
 fi

@@ -17,7 +17,7 @@ exit /b 2
 :prepare
 echo Starting native Windows development, without Docker.
 echo Autodarts detection is included in the Linux container image, not this Windows process.
-echo For container development: docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+echo For container development: docker compose --project-name oche-dev --project-directory . -f docker/compose.yml -f docker/compose.dev.yml up --build
 echo.
 where uv >nul 2>&1
 if errorlevel 1 (

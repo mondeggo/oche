@@ -1,0 +1,20 @@
+services:
+  oche:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      target: development
+    image: oche:dev
+    container_name: oche-dev
+    restart: "no"
+    environment:
+      OCHE_PORT: "${OCHE_DEV_PORT:-8180}"
+      OCHE_HTTPS_PORT: "${OCHE_DEV_HTTPS_PORT:-8443}"
+    volumes:
+      - oche-dev-data:/app/data
+      - ./app:/app/app:ro
+      - ./launcher.py:/app/launcher.py:ro
+      - ./oche_runtime.py:/app/oche_runtime.py:ro
+
+volumes:
+  oche-dev-data:
