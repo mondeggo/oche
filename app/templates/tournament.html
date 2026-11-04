@@ -6,15 +6,15 @@
 <div id="tournament-page">
   <header class="page-head">
     <div><a href="/local" class="game-back">← {{ _("Play") }}</a><p class="eyebrow">{{ _("Local play") }}</p><h1 id="tournament-title">{{ _("Tournaments") }}</h1><p class="subtitle">{{ _("Your players. Your bracket. All on this device.") }}</p></div>
-    <div class="btn-row"><a id="tournament-list-link" href="/local/tournament" class="game-back" hidden>← {{ _("Tournaments") }}</a><button id="tournament-new" class="btn-neutral" hidden>{{ _("New tournament") }}</button><button id="tournament-end" class="btn-neutral" hidden>{{ _("End tournament") }}</button></div>
+    <div class="btn-row"><a id="tournament-list-link" href="/local/tournament" class="game-back" hidden>← {{ _("Tournaments") }}</a><button id="tournament-end" class="btn-neutral" hidden>{{ _("End tournament") }}</button></div>
   </header>
   <p id="tournament-error" class="card game-error" role="alert" hidden></p>
   <p id="tournament-loading" role="status">{{ _("Loading tournament…") }}</p>
-  <section id="tournament-list" hidden aria-label="{{ _('Tournaments') }}">
-    <p id="tournament-empty" class="card" hidden>{{ _("No tournaments yet. Create one to get started.") }}</p>
-    <div id="tournament-history" class="tournament-history"></div>
+  <section id="tournament-active" hidden aria-label="{{ _('In progress') }}">
+    <div id="tournament-current" class="tournament-history"></div>
   </section>
   <form id="tournament-setup" hidden>
+    <h2>{{ _("New tournament") }}</h2>
     <ol class="tournament-steps" aria-label="{{ _('Tournament setup') }}"><li id="tournament-step-players" aria-current="step">1 · {{ _("Players") }}</li><li id="tournament-step-format">2 · {{ _("Format and rules") }}</li></ol>
     <section id="tournament-players-step" class="card tournament-form-card">
       <h2>{{ _("Who is playing?") }}</h2>
@@ -54,6 +54,10 @@
       <div class="btn-row"><button id="tournament-edit-players" type="button" class="btn-neutral">← {{ _("Players") }}</button><button id="tournament-create" type="submit">{{ _("Create tournament") }}</button></div>
     </section>
   </form>
+  <section id="tournament-list" class="tournament-past" hidden aria-labelledby="tournament-history-title">
+    <h2 id="tournament-history-title">{{ _("Past tournaments") }}</h2>
+    <div id="tournament-history" class="tournament-history"></div>
+  </section>
   <section id="tournament-dashboard" hidden>
     <div class="tournament-summary"><p id="tournament-summary" class="subtitle"></p><p id="tournament-progress" class="badge" role="status"></p></div>
     <section id="tournament-champion" class="card game-winner" hidden><p class="eyebrow">{{ _("Tournament winner") }}</p><h2 id="tournament-champion-name"></h2></section>

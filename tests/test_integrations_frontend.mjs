@@ -37,15 +37,16 @@ test("home navigation opens Play instead of the removed Overview", () => {
   assert.equal(Object.hasOwn(homeRoutes, "overview"), false);
 });
 
-function navigationContext(path = "/integrations") {
+function navigationContext(path = "/integrations", parent = null) {
   const handlers = {}, frames = [];
   const original = { hidden: false };
   let context, routeEvents = 0;
   const history = { pushState: (state, title, href) => { context.location = new URL(href, context.location.href); } };
   history.replaceState = history.pushState;
   const document = { title: "Oche", getElementById: id => id === "oche-page" ? original : null,
-    addEventListener() {}, body: { appendChild: frame => frames.push(frame) },
+    addEventListener(type, listener) { handlers[type] = listener; }, body: { appendChild: frame => frames.push(frame) },
     createElement: () => ({ hidden: true, listeners: {}, contentDocument: null,
+      remove() { this.removed = true; },
       addEventListener(type, listener) { this.listeners[type] = listener; } }),
   };
   context = vm.createContext({ URL, resolveUrl: canonicalUrl, isHome, persistent, viewKey,
@@ -55,7 +56,8 @@ function navigationContext(path = "/integrations") {
     addEventListener: (type, listener) => { handlers[type] = listener; },
     dispatchEvent: event => { if (event.type === "oche:route") routeEvents++; },
   });
-  context.window = context.parent = document.defaultView = context;
+  context.window = document.defaultView = context;
+  context.parent = parent || context;
   const code = readFileSync(new URL("../app/static/js/navigation.js", import.meta.url), "utf8").replace(/^import .+;\r?\n/gm, "");
   vm.runInContext(code, context);
   return { context, frames, handlers, original, routeEvents: () => routeEvents };
@@ -78,6 +80,29 @@ test("retained navigation updates direct URLs and back navigation preserves the 
   assert.equal(frames.length, 1);
   assert.equal(camera.hidden, false);
   assert.equal(camera.draft, "preserved");
+});
+
+test("tournament links and redirects in embedded Play update the outer URL and return to Play", () => {
+  const shell = navigationContext("/config");
+  shell.context.ocheNavigate("/local");
+  const play = navigationContext("/local", shell.context);
+  let prevented = false;
+  play.handlers.click({ button: 0, target: { closest: () => ({
+    href: "http://localhost:8180/local/tournament", hasAttribute: () => false,
+  }) }, preventDefault() { prevented = true; } });
+  assert.equal(prevented, true);
+  assert.equal(shell.context.location.pathname, "/local/tournament");
+  assert.equal(shell.frames[0].removed, true);
+  const tournament = navigationContext("/local/tournament", shell.context);
+  tournament.context.ocheNavigate("/local/tournament?id=example");
+  assert.equal(shell.context.location.search, "?id=example");
+  tournament.context.ocheNavigate("/local");
+  assert.equal(shell.context.location.pathname, "/local");
+  assert.equal(shell.context.location.search, "");
+  assert.equal(shell.frames.at(-1).src, "http://localhost:8180/local");
+  shell.context.location = new URL("http://localhost:8180/local/tournament?id=example");
+  shell.handlers.popstate();
+  assert.equal(shell.frames.at(-1).src, "http://localhost:8180/local/tournament?id=example");
 });
 
 test("a workspace that finishes loading late opens the latest requested integration", () => {
@@ -532,20 +557,38 @@ test("manual dart entry follows the current human visit and rejects closed or au
 test("tournament polling preserves setup and a completed active detail returns to the list", () => {
   const nodes = new Map();
   const $ = id => {
-    if (!nodes.has(id)) nodes.set(id, { hidden: true });
+    if (!nodes.has(id)) nodes.set(id, { hidden: true, replaceChildren(...children) { this.children = children; } });
     return nodes.get(id);
   };
   const redirects = [];
-  const context = vm.createContext({ $, window: { location: { assign: url => redirects.push(url) } } });
+  const context = vm.createContext({ $, tr: text => text, formatLabels: { single: "Single elimination" },
+    element: (tag, text) => ({ tag, text, children: [], append(...children) { this.children.push(...children); } }),
+    window: { ocheNavigate: url => redirects.push(url) } });
   const source = readFileSync(new URL("tournament.js", core), "utf8");
-  vm.runInContext('let saved = null, creating = true, signature = "";\n' +
+  vm.runInContext('let saved = null, signature = "";\n' +
     source.slice(source.indexOf("function render(result)"), source.indexOf("async function refresh()")), context);
+  context.renderList({ tournaments: [] });
+  assert.equal($('tournament-setup').hidden, false, "setup opens immediately without an active tournament");
   $('tournament-format-step').hidden = false;
   context.renderList({ tournaments: [] });
   context.renderList({ tournaments: [] });
   assert.equal($('tournament-format-step').hidden, false);
   assert.equal($('tournament-list').hidden, true);
-  vm.runInContext('creating = false; saved = { state: "active" };', context);
+  const past = { id: "old", name: "Previous cup", format: "single", players: 2, state: "completed", champion: "Alice" };
+  context.renderList({ tournaments: [past] });
+  assert.equal($('tournament-setup').hidden, false);
+  assert.equal($('tournament-format-step').hidden, false, "history updates preserve the wizard step");
+  assert.equal($('tournament-list').hidden, false);
+  assert.equal($('tournament-history').children[0].href, "/local/tournament?id=old");
+  context.renderList({ tournaments: [{ ...past, id: "current", state: "active" }, past] });
+  assert.equal($('tournament-setup').hidden, true);
+  assert.equal($('tournament-active').hidden, false);
+  assert.equal($('tournament-current').children.length, 1);
+  assert.equal($('tournament-history').children.length, 1);
+  context.renderList({ tournaments: [past] });
+  assert.equal($('tournament-setup').hidden, false);
+  assert.equal($('tournament-active').hidden, true);
+  vm.runInContext('saved = { state: "active" };', context);
   context.render({ tournament: { state: "completed" } });
   assert.deepEqual(redirects, ["/local/tournament"]);
 });

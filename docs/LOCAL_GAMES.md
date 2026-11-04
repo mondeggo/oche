@@ -232,7 +232,9 @@ disabled for detector input to prevent diverging detection and scoring state.
 
 ## Local tournaments
 
-Open **Tournament** beside **Choose a game** in Play. Enter a tournament name and
+Open **Tournament** beside **Choose a game** in Play. When no tournament is running,
+new tournament setup opens directly, with **Past tournaments** listed below a divider.
+If one is running, its card appears above the history instead. Enter a tournament name and
 2–32 distinct player names using the numbered player rows (or **Paste player names**), then choose the format and X01 rules. Each match is
 one 301/501 leg, with manual scoring or the vision engine selected in Play. Only
 one match runs at a time on this board.

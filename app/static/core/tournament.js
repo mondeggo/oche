@@ -3,7 +3,7 @@ import { tr } from "../js/i18n.mjs";
 
 const formatLabels = { single: "Single elimination", double: "Double elimination", swiss: "Swiss rounds", swiss_elimination: "Swiss + elimination" };
 const stageLabels = { swiss: "Swiss rounds", upper: "Upper bracket", lower: "Lower bracket", final: "Grand final", reset: "Grand final reset" };
-let saved = null, busy = false, creating = false, signature = "", generation = 0;
+let saved = null, busy = false, signature = "", generation = 0;
 const format = () => document.querySelector('input[name="tournament-format"]:checked').value;
 const selectedId = new URLSearchParams(window.location.search).get("id");
 const names = () => [...$("tournament-players").querySelectorAll("input")].map(input => input.value.trim());
@@ -95,12 +95,12 @@ async function action(run) {
   busy = true; generation++;
   $("tournament-error").hidden = true;
   $("tournament-setup").inert = $("tournament-dashboard").inert = true;
-  $("tournament-new").disabled = $("tournament-end").disabled = true;
+  $("tournament-end").disabled = true;
   try { await run(); } catch (error) { fail(error); }
   finally {
     busy = false; generation++;
     $("tournament-setup").inert = $("tournament-dashboard").inert = false;
-    $("tournament-new").disabled = $("tournament-end").disabled = false;
+    $("tournament-end").disabled = false;
   }
 }
 $("tournament-setup").addEventListener("submit", event => {
@@ -112,19 +112,12 @@ $("tournament-setup").addEventListener("submit", event => {
       starting_score: Number($("tournament-score").value), double_out: $("tournament-out").value === "double",
       input: $("tournament-input").value,
     });
-    window.location.assign(`/local/tournament?id=${encodeURIComponent(result.tournament.id)}`);
+    window.ocheNavigate(`/local/tournament?id=${encodeURIComponent(result.tournament.id)}`);
   });
-});
-$("tournament-new").addEventListener("click", () => {
-  creating = true;
-  $("tournament-list").hidden = $("tournament-end").hidden = $("tournament-dashboard").hidden = true;
-  $("tournament-list-link").hidden = $("tournament-setup").hidden = false;
-  $("tournament-new").hidden = true; $("tournament-title").textContent = tr("New tournament");
-  step(1); $("tournament-name").focus();
 });
 $("tournament-end").addEventListener("click", () => {
   if (confirm(tr("End this tournament? Played results will be kept, but remaining matches will not be played."))) {
-    action(async () => { await api("/api/tournament/cancel", "POST"); window.location.assign("/local/tournament"); });
+    action(async () => { await api("/api/tournament/cancel", "POST"); window.ocheNavigate("/local/tournament"); });
   }
 });
 function playButton(match, running) {
@@ -140,23 +133,21 @@ $("tournament-dashboard").addEventListener("click", event => {
   if (!button || button.disabled) return;
   action(async () => {
     await api(`/api/tournament/matches/${button.dataset.match}/start`, "POST");
-    window.location.assign("/local");
+    window.ocheNavigate("/local");
   });
 });
 function render(result) {
   if (result.error) { fail(new Error(tr(result.error))); $("tournament-loading").hidden = true; return; }
   $("tournament-loading").hidden = true;
-  if (creating) return;
   // A live detail returns to the list on completion; explicit history links stay reviewable.
   if (saved?.state === "active" && result.tournament?.state === "completed") {
-    window.location.assign("/local/tournament"); return;
+    window.ocheNavigate("/local/tournament"); return;
   }
   saved = result.tournament;
   $("tournament-setup").hidden = true;
   $("tournament-list").hidden = true;
   $("tournament-dashboard").hidden = !saved;
   $("tournament-list-link").hidden = false;
-  $("tournament-new").hidden = true;
   $("tournament-end").hidden = !saved || saved.state !== "active";
   if (!saved) { fail(new Error(tr("Tournament not found."))); return; }
   const nextSignature = JSON.stringify(saved);
@@ -239,14 +230,15 @@ function render(result) {
 function renderList(result) {
   $("tournament-loading").hidden = true;
   if (result.error) { fail(new Error(tr(result.error))); return; }
-  if (creating) return;
-  $("tournament-list").hidden = false;
-  $("tournament-new").hidden = result.tournaments.some(item => item.state === "active");
-  $("tournament-empty").hidden = result.tournaments.length > 0;
+  const active = result.tournaments.filter(item => item.state === "active");
+  const past = result.tournaments.filter(item => item.state !== "active");
+  $("tournament-setup").hidden = active.length > 0;
+  $("tournament-active").hidden = active.length === 0;
+  $("tournament-list").hidden = past.length === 0;
   const nextSignature = JSON.stringify(result.tournaments);
   if (signature === nextSignature) return;
   signature = nextSignature;
-  $("tournament-history").replaceChildren(...result.tournaments.map(item => {
+  const card = item => {
     const link = element("a", undefined, "card tournament-history-item");
     link.href = `/local/tournament?id=${encodeURIComponent(item.id)}`;
     const text = element("div");
@@ -254,7 +246,9 @@ function renderList(result) {
     if (item.champion) text.append(element("p", tr("Winner: {0}", { 0: item.champion }), "tournament-history-winner"));
     link.append(text, element("span", tr(item.state === "active" ? "In progress" : item.state === "completed" ? "Finished" : "Ended"), "badge"), element("span", "→"));
     return link;
-  }));
+  };
+  $("tournament-current").replaceChildren(...active.map(card));
+  $("tournament-history").replaceChildren(...past.map(card));
 }
 async function refresh() {
   if (busy) return;

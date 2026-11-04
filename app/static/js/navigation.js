@@ -5,7 +5,7 @@ import { canonicalUrl as resolveUrl, isHome, persistent, viewKey } from "./route
   const canonicalUrl = href => resolveUrl(href, location.href);
   const internal = url => url.origin === location.origin &&
     (isHome(url.pathname) || url.pathname === '/integrations/cameras' ||
-     /^\/(?:supervisor|play|local|config(?:\/https)?)?$/.test(url.pathname) ||
+     /^\/(?:supervisor|play|local(?:\/tournament)?|config(?:\/https)?)?$/.test(url.pathname) ||
      /^\/panels\/[^/]+$/.test(url.pathname));
   let shell = window;
   try {

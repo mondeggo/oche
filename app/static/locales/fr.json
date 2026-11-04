@@ -1432,5 +1432,6 @@
   "Ended": "Terminé",
   "Suggested": "Suggestion",
   "Dart {0}: suggested {1}": "Fléchette {0} : suggestion {1}",
-  "Enter dart {0}, suggested {1}": "Saisir la fléchette {0}, suggestion {1}"
+  "Enter dart {0}, suggested {1}": "Saisir la fléchette {0}, suggestion {1}",
+  "Past tournaments": "Tournois passés"
 }

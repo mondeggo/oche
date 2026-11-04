@@ -1432,5 +1432,6 @@
   "Ended": "Beendet",
   "Suggested": "Vorschlag",
   "Dart {0}: suggested {1}": "Dart {0}: Vorschlag {1}",
-  "Enter dart {0}, suggested {1}": "Dart {0} eingeben, Vorschlag {1}"
+  "Enter dart {0}, suggested {1}": "Dart {0} eingeben, Vorschlag {1}",
+  "Past tournaments": "Vergangene Turniere"
 }
