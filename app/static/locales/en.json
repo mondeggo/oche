@@ -1301,5 +1301,14 @@
   "Starting…": "Starting…",
   "Clear cache resets engine settings and calibration. Uninstall removes engine releases but keeps settings.": "Clear cache resets engine settings and calibration. Uninstall removes engine releases but keeps settings.",
   "Reset all {name} engine data? This stops the engine and permanently deletes its settings, calibration and logs. You will need to configure and calibrate it again.": "Reset all {name} engine data? This stops the engine and permanently deletes its settings, calibration and logs. You will need to configure and calibrate it again.",
-  "Uninstall {name}? This stops the engine and removes all installed versions and rollback history. Settings and calibration are kept. You can reinstall it from Updates.": "Uninstall {name}? This stops the engine and removes all installed versions and rollback history. Settings and calibration are kept. You can reinstall it from Updates."
+  "Uninstall {name}? This stops the engine and removes all installed versions and rollback history. Settings and calibration are kept. You can reinstall it from Updates.": "Uninstall {name}? This stops the engine and removes all installed versions and rollback history. Settings and calibration are kept. You can reinstall it from Updates.",
+  "{name} setup": "{name} setup",
+  "{name} interactive setup terminal": "{name} interactive setup terminal",
+  "Unable to connect. Check that {name} is running, then reconnect.": "Unable to connect. Check that {name} is running, then reconnect.",
+  "Start OcheCore above, then reconnect.": "Start OcheCore above, then reconnect.",
+  "OcheCore views": "OcheCore views",
+  "OcheCore setup terminal": "OcheCore setup terminal",
+  "Installing {name}…": "Installing {name}…",
+  "Installation failed: {error}": "Installation failed: {error}",
+  "Retry installation": "Retry installation"
 }

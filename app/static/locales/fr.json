@@ -1301,5 +1301,14 @@
   "Starting…": "Démarrage…",
   "Clear cache resets engine settings and calibration. Uninstall removes engine releases but keeps settings.": "Vider le cache réinitialise les paramètres et le calibrage du moteur. La désinstallation supprime ses versions mais conserve les paramètres.",
   "Reset all {name} engine data? This stops the engine and permanently deletes its settings, calibration and logs. You will need to configure and calibrate it again.": "Réinitialiser toutes les données du moteur {name} ? Cela arrête le moteur et supprime définitivement ses paramètres, son calibrage et ses journaux. Vous devrez le configurer et le calibrer à nouveau.",
-  "Uninstall {name}? This stops the engine and removes all installed versions and rollback history. Settings and calibration are kept. You can reinstall it from Updates.": "Désinstaller {name} ? Cela arrête le moteur et supprime toutes les versions installées et l’historique de restauration. Les paramètres et le calibrage sont conservés. Vous pourrez le réinstaller depuis Mises à jour."
+  "Uninstall {name}? This stops the engine and removes all installed versions and rollback history. Settings and calibration are kept. You can reinstall it from Updates.": "Désinstaller {name} ? Cela arrête le moteur et supprime toutes les versions installées et l’historique de restauration. Les paramètres et le calibrage sont conservés. Vous pourrez le réinstaller depuis Mises à jour.",
+  "{name} setup": "Configuration de {name}",
+  "{name} interactive setup terminal": "Terminal de configuration interactif de {name}",
+  "Unable to connect. Check that {name} is running, then reconnect.": "Connexion impossible. Vérifiez que {name} fonctionne, puis reconnectez-vous.",
+  "Start OcheCore above, then reconnect.": "Démarrez OcheCore ci-dessus, puis reconnectez-vous.",
+  "OcheCore views": "Vues OcheCore",
+  "OcheCore setup terminal": "Terminal de configuration OcheCore",
+  "Installing {name}…": "Installation de {name}…",
+  "Installation failed: {error}": "Échec de l’installation : {error}",
+  "Retry installation": "Réessayer l’installation"
 }

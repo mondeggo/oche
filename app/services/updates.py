@@ -19,8 +19,8 @@ from urllib.request import HTTPRedirectHandler, HTTPSHandler, build_opener
 
 import oche_runtime as store
 from app import __version__
-from app.services.release_metadata import is_revision, metadata
 from app.core.integrations import registry
+from app.services.release_metadata import is_revision, metadata
 
 FEED = os.environ.get("OCHE_UPDATE_FEED", "")
 OCHE = ("Oche", "Application, caller & lighting")
@@ -177,8 +177,10 @@ class UpdateManager:
     def submit(self, action, name=None):
         if action != "check" and os.environ.get("OCHE_LAUNCHER") != "1":
             raise ValueError("Updates require the Docker runtime with the stable launcher")
-        if action not in ("check", "update", "rollback", "update-all") or (
+        if action not in ("check", "install", "update", "rollback", "update-all") or (
             action in ("update", "rollback") and name not in module_names()
+        ) or (
+            action == "install" and name not in releases()
         ):
             raise ValueError("Unknown update action or module")
         if not self.lock.acquire(blocking=False):
@@ -192,7 +194,9 @@ class UpdateManager:
             "module": name,
             "action": action,
             "id": uuid.uuid4().hex,
-            "installing": action == "update" and not installed(name, store.read_state(name)),
+            "installing": action == "install" or (
+                action == "update" and not installed(name, store.read_state(name))
+            ),
         }
         threading.Thread(target=self._run, args=(action, name), daemon=True).start()
 
@@ -200,6 +204,11 @@ class UpdateManager:
         try:
             if action == "check":
                 self.check()
+            elif action == "install":
+                # Enabling an integration installs its program without claiming
+                # cameras or changing the engine selected for Play.
+                self.job["message"] = "Checking for the latest release"
+                self.install_missing(name)
             elif action == "update":
                 self.install(name)
             elif action == "update-all":
@@ -326,8 +335,8 @@ class UpdateManager:
     def install_missing(self, name):
         """Install a module that has no release yet, without starting it.
 
-        The installer runs this in a one-off container before Oche starts, so the
-        release lands in the module store with the container's ownership.
+        Used by the initial installer and by background integration installs.
+        Both write into the module store with the container's ownership.
         """
         if installed(name, store.read_state(name)):
             return None

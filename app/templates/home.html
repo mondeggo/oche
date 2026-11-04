@@ -73,7 +73,9 @@
             </div>
             <p class="muted">{{ _(item.description) }}</p>
             <p class="hint" data-engine-detail></p>
+            <p class="hint" role="status" aria-live="polite" data-engine-install-status hidden></p>
             <div class="actions">
+              <button type="button" data-engine-install hidden>{{ _("Install") }}</button>
               <button type="button" data-engine-action="clear-cache">{{ _("Clear cache") }}</button>
               <button type="button" class="danger" data-engine-action="uninstall" disabled>{{ _("Uninstall") }}</button>
             </div>

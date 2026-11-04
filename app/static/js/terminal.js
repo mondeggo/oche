@@ -231,7 +231,7 @@
     sessionError = false;
     reconnect.disabled = true;
     status.textContent = tr("Connecting…");
-    const url = new URL('/autodarts/terminal/ws', location.href);
+    const url = new URL(container.dataset.socket, location.href);
     url.protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
     socket = new WebSocket(url);
     socket.binaryType = 'arraybuffer';
@@ -257,7 +257,7 @@
     };
     socket.onerror = () => {
       sessionError = true;
-      status.textContent = tr("Unable to connect. Check that Autodarts is running, then reconnect.");
+      status.textContent = tr("Unable to connect. Check that {name} is running, then reconnect.", {name: container.dataset.engineLabel});
     };
   }
   terminal.onData(data => {

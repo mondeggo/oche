@@ -43,9 +43,10 @@
   <p id="oc-error" class="hint" role="alert" hidden></p>
 
   <div class="embed-panel">
-    <div class="embed-toggle">
-      <span class="view-toggle-btn active">{{ _("Logs") }}</span>
-      <div id="log-actions">
+    <div class="embed-toggle" role="tablist" aria-label="{{ _('OcheCore views') }}">
+      <button id="oc-setup-tab" class="view-toggle-btn active" type="button" role="tab" aria-selected="true" aria-controls="oc-terminal">{{ _("Setup terminal") }}</button>
+      <button id="oc-logs-tab" class="view-toggle-btn" type="button" role="tab" aria-selected="false" aria-controls="oc-log">{{ _("Logs") }}</button>
+      <div id="log-actions" hidden>
         <div class="btn-row">
           <button id="oc-clear" type="button" class="btn-neutral" title="{{ _('Clear the saved log for this service') }}">{{ _("Clear logs") }}</button>
           <a class="btn-link btn-neutral" href="/ochecore/logs/export" download>{{ _("Export logs") }}</a>
@@ -53,7 +54,8 @@
       </div>
     </div>
     <div class="embed-body">
-      <pre id="oc-log" class="log-box board-log-view" aria-live="off"></pre>
+      <iframe id="oc-terminal" class="board-frame" title="{{ _('OcheCore setup terminal') }}" hidden></iframe>
+      <pre id="oc-log" class="log-box board-log-view" aria-live="off" hidden></pre>
     </div>
   </div>
 </section>
@@ -65,6 +67,27 @@
   const labels = { running: "Running", stopped: "Stopped", nofile: "Not installed" };
   const tones = { running: "badge-green", stopped: "badge-yellow" };
   let busy = false;
+  let currentView = "setup", terminalLoaded = false;
+
+  function showView(view) {
+    currentView = view;
+    const setup = view === "setup";
+    for (const [id, active] of [["oc-setup-tab", setup], ["oc-logs-tab", !setup]]) {
+      $(id).classList.toggle("active", active);
+      $(id).setAttribute("aria-selected", String(active));
+    }
+    $("oc-log").hidden = setup;
+    $("log-actions").hidden = setup;
+    $("oc-terminal").hidden = !setup || !terminalLoaded;
+    if (!setup) refreshLogs();
+  }
+  $("oc-setup-tab").addEventListener("click", () => showView("setup"));
+  $("oc-logs-tab").addEventListener("click", () => showView("logs"));
+  $("oc-terminal").addEventListener("load", () => {
+    terminalLoaded = true;
+    $("oc-terminal").hidden = currentView !== "setup";
+  });
+  $("oc-terminal").src = "/ochecore/terminal";
 
   function show(message = "") {
     $("oc-error").textContent = message;
@@ -84,7 +107,12 @@
     $("oc-stop").disabled = busy || state.status !== "running";
     $("oc-restart").disabled = busy || state.status !== "running";
     $("oc-install").disabled = busy;
-    $("oc-open").href = `http://${location.hostname}:${state.port}/`;
+    const url = new URL(location.href);
+    url.protocol = "http:";
+    url.port = String(state.port);
+    url.pathname = "/";
+    url.search = url.hash = "";
+    $("oc-open").href = url.href;
     $("oc-open").hidden = state.status !== "running";
   }
   async function refresh() {
@@ -92,6 +120,7 @@
     if (response?.ok) render(await response.json());
   }
   async function refreshLogs() {
+    if (currentView !== "logs") return;
     const response = await fetch("/ochecore/logs", { cache: "no-store" }).catch(() => null);
     if (!response?.ok) return;
     const log = $("oc-log");
@@ -113,7 +142,10 @@
     finally { busy = false; await refresh(); await refreshLogs(); }
   }
   for (const button of document.querySelectorAll("[data-action]")) {
-    button.addEventListener("click", () => run(async () => render(await post(`/ochecore/${button.dataset.action}`))));
+    button.addEventListener("click", () => run(async () => {
+      render(await post(`/ochecore/${button.dataset.action}`));
+      $("oc-terminal").contentWindow.location.reload();
+    }));
   }
   // Installing runs as an update job; follow it until it finishes.
   $("oc-install").addEventListener("click", () => run(async () => {

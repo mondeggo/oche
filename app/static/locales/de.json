@@ -1301,5 +1301,14 @@
   "Starting…": "Wird gestartet…",
   "Clear cache resets engine settings and calibration. Uninstall removes engine releases but keeps settings.": "Das Leeren des Caches setzt Engine-Einstellungen und Kalibrierung zurück. Die Deinstallation entfernt Engine-Versionen, behält aber die Einstellungen.",
   "Reset all {name} engine data? This stops the engine and permanently deletes its settings, calibration and logs. You will need to configure and calibrate it again.": "Alle Engine-Daten von {name} zurücksetzen? Dies stoppt die Engine und löscht ihre Einstellungen, Kalibrierung und Protokolle dauerhaft. Sie müssen sie erneut einrichten und kalibrieren.",
-  "Uninstall {name}? This stops the engine and removes all installed versions and rollback history. Settings and calibration are kept. You can reinstall it from Updates.": "{name} deinstallieren? Dies stoppt die Engine und entfernt alle installierten Versionen sowie den Rollback-Verlauf. Einstellungen und Kalibrierung bleiben erhalten. Sie können sie unter Updates erneut installieren."
+  "Uninstall {name}? This stops the engine and removes all installed versions and rollback history. Settings and calibration are kept. You can reinstall it from Updates.": "{name} deinstallieren? Dies stoppt die Engine und entfernt alle installierten Versionen sowie den Rollback-Verlauf. Einstellungen und Kalibrierung bleiben erhalten. Sie können sie unter Updates erneut installieren.",
+  "{name} setup": "{name} einrichten",
+  "{name} interactive setup terminal": "Interaktives Einrichtungsterminal für {name}",
+  "Unable to connect. Check that {name} is running, then reconnect.": "Verbindung nicht möglich. Prüfe, ob {name} läuft, und verbinde dich erneut.",
+  "Start OcheCore above, then reconnect.": "Starte OcheCore oben und verbinde dich erneut.",
+  "OcheCore views": "OcheCore-Ansichten",
+  "OcheCore setup terminal": "OcheCore-Einrichtungsterminal",
+  "Installing {name}…": "{name} wird installiert…",
+  "Installation failed: {error}": "Installation fehlgeschlagen: {error}",
+  "Retry installation": "Installation erneut versuchen"
 }

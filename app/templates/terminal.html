@@ -3,13 +3,13 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{{ _("Autodarts setup") }}</title>
+  <title>{{ _("{name} setup", name=label) }}</title>
   <link rel="stylesheet" href="/static/css/theme.css">
   <script id="oche-translations" type="application/json">{{ translations | tojson }}</script>
   <script src="/static/js/i18n.js"></script>
   <script src="/static/js/theme.js"></script>
   <link rel="stylesheet" href="/static/vendor/xterm/xterm.css">
-  <link rel="stylesheet" href="/static/integrations/autodarts/terminal.css">
+  <link rel="stylesheet" href="/static/css/terminal.css">
 </head>
 <body>
   <div class="terminal-toolbar">
@@ -21,7 +21,7 @@
     </button>
     <button id="terminal-reconnect" type="button">{{ _("Reconnect") }}</button>
   </div>
-  <div id="terminal" aria-label="{{ _('Autodarts interactive setup terminal') }}"></div>
+  <div id="terminal" data-socket="/{{ service }}/terminal/ws" data-engine-label="{{ label }}" aria-label="{{ _('{name} interactive setup terminal', name=label) }}"></div>
   <div id="terminal-touch-keys" class="terminal-touch-keys" role="group" aria-label="{{ _('Terminal keys') }}" hidden>
     <button type="button" data-key="Escape">{{ _("Esc") }}</button>
     <button type="button" data-key="Tab">Tab</button>
@@ -37,6 +37,6 @@
   <script src="/static/vendor/xterm/xterm.js"></script>
   <script src="/static/vendor/xterm/addon-fit.js"></script>
   <script src="/static/vendor/xterm/addon-web-links.js"></script>
-  <script src="/static/integrations/autodarts/terminal.js?v=10"></script>
+  <script src="/static/js/terminal.js?v=11"></script>
 </body>
 </html>

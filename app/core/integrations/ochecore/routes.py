@@ -1,15 +1,29 @@
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, WebSocket
 from fastapi.responses import PlainTextResponse
 
 from app.config import LOG_DIR, load_config
 from app.log_download import log_download
 from app.services import engines
+from app.services.setup_terminal import serve_terminal
 from app.templating import templates
 
 from . import process
+from .terminal import OcheCoreTerminal
 
 router = APIRouter(prefix="/ochecore", tags=["ochecore"])
 pages = APIRouter(include_in_schema=False)
+
+
+@router.get("/terminal")
+async def terminal_page(request: Request):
+    return templates.TemplateResponse(request=request, name="terminal.html", context={
+        "service": "ochecore", "label": "OcheCore",
+    })
+
+
+@router.websocket("/terminal/ws")
+async def terminal_socket(websocket: WebSocket):
+    await serve_terminal(websocket, process, OcheCoreTerminal, "OcheCore")
 
 
 @pages.get("/integrations/ochecore")

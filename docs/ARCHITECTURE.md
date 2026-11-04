@@ -13,7 +13,7 @@ Stable launcher
     ├── HTTPS, persistent settings, panels and updates
     └── app/core/integrations/registry.py
         ├── autodarts/  board software, setup terminal, Camera Enhancer, cloud account, Play on Autodarts
-        └── ochecore/   offline board service and its management page
+        └── ochecore/   offline board service, setup terminal and management page
 ```
 
 Integrations that install and run a program live in their own package under
@@ -25,7 +25,11 @@ a vision engine, and shutdown hooks. The rest of Oche reads only the registry:
 `main.py` mounts what is registered, the sidebar and Settings list it, Updates
 checks it, and Play offers its engines. A switch on the Integrations page turns an
 integration on or off (`integrations.<id>.enabled` in `data/settings.json`);
-switching it off hides what it adds and stops its engine, and keeps its files and
+switching on a missing vision engine submits a verified background installation
+through the existing updater. Integration cards show progress, failures and a
+retry button. Already installed engines are reused. Installation requires the
+Docker launcher and does not start an engine or change Play's camera owner.
+Switching it off hides what it adds and stops its engine, and keeps its files and
 settings. Registration order is fixed by `order`, then id.
 
 Integrations also extend Home and the runtime. Home has slots for their templates
@@ -47,6 +51,12 @@ Autodarts-compatible board API (`GET /api/state`, `WS /api/events?type=state`),
 which core reads through `app/core/board/`. Engine releases are
 installed into `data/modules/<id>`. OcheCore keeps its settings in
 `data/ochecore/board.toml` and listens on the LAN, like Autodarts.
+
+Both engine pages embed the shared setup terminal and link to the engine's HTTP
+UI on the Oche host (Autodarts port 3180, OcheCore port 5180). Each terminal runs
+the engine's `remote` client in its own PTY. The shared transport checks browser
+origins, limits concurrent sessions to four, validates input and resize messages,
+and reaps the client on disconnect; closing setup leaves the daemon running.
 
 `app/main.py` owns the shared HTTP client, runtime startup and shutdown. All darts
 routes access the in-process runtime directly. The application's health check

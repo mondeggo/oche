@@ -4,6 +4,7 @@ from starlette.concurrency import run_in_threadpool
 
 from app.core.integrations import registry
 from app.services import engines
+from app.services.updates import manager
 
 router = APIRouter(tags=["integrations"])
 
@@ -24,7 +25,8 @@ async def _run(action, name):
 
 @router.get("/api/engines")
 def engine_status():
-    return engines.status()
+    job = dict(manager.job)
+    return {**engines.status(), "installation": job if job.get("action") == "install" else None}
 
 
 @router.post("/api/engines/{name}/use")
@@ -51,11 +53,25 @@ def list_integrations():
 
 @router.put("/api/integrations/{name}")
 async def switch_integration(name: str, switch: Switch, request: Request):
-    """Switching an integration on only shows it; switching it off stops its engine.
+    """Enabling a missing vision engine installs it; disabling stops its engine.
 
     An integration that feeds games, like Autodarts Play, joins or leaves the runtime.
     """
     def apply(_):
+        item = registry.get(name)
+        if item is None:
+            raise ValueError("Unknown integration")
+        if switch.enabled and item.engine and item.process and item.release:
+            if not item.process.get_status()["installed"]:
+                job = manager.job
+                # Repeated requests follow an existing install instead of
+                # rejecting the switch or starting a second download.
+                if not (job.get("action") == "install" and job.get("module") == name
+                        and job.get("status") == "running"):
+                    try:
+                        manager.submit("install", name)
+                    except ValueError as error:
+                        raise RuntimeError(str(error)) from error
         registry.set_enabled(name, switch.enabled)
         if not switch.enabled:
             engines.switch_off(name)

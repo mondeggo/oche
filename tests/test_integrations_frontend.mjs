@@ -375,6 +375,57 @@ test("engine maintenance warns before resetting or uninstalling and cancellation
   assert.equal(uninstall.disabled, false);
 });
 
+test("integration installs show progress, allow retries after failure and finish without starting an engine", async () => {
+  const parts = new Map();
+  const part = selector => {
+    if (!parts.has(selector)) parts.set(selector, element());
+    return parts.get(selector);
+  };
+  const reset = element({ engineAction: "clear-cache" });
+  const uninstall = element({ engineAction: "uninstall" });
+  const card = { dataset: { integrationCard: "ochecore" }, querySelector: part,
+    querySelectorAll: () => [reset, uninstall] };
+  const engine = { name: "ochecore", label: "OcheCore", installed: false, enabled: true,
+    scores: false, status: "nofile" };
+  const job = { module: "ochecore", status: "running" };
+  const calls = [];
+  const { polls } = scriptContext("integrations.js", async (path, method, body) => {
+    calls.push({ path, method, body });
+    if (method === "PUT") job.status = "running";
+    return { engines: [engine], installation: job };
+  }, {
+    document: { querySelectorAll: selector => selector === '[data-integration-card]' ? [card] : [] },
+    tr: (message, values = {}) => message.replace(/\{(\w+)\}/g, (_, key) => values[key] ?? key),
+  });
+  const install = part('[data-engine-install]');
+  const progress = part('[data-engine-install-status]');
+  await polls[0]();
+  assert.equal(progress.textContent, "Installing OcheCore…");
+  assert.equal(progress.hidden, false);
+  assert.equal(install.hidden, true);
+  assert.equal(reset.disabled, true);
+  job.status = "error";
+  job.message = "Download failed";
+  await polls[0]();
+  assert.equal(progress.textContent, "Installation failed: Download failed");
+  assert.equal(install.hidden, false);
+  assert.equal(install.textContent, "Retry installation");
+  await install.listeners.click();
+  const retry = calls.find(call => call.method === "PUT");
+  assert.equal(retry.path, "/api/integrations/ochecore");
+  assert.equal(retry.body.enabled, true);
+  assert.equal(progress.textContent, "Installing OcheCore…");
+  job.status = "complete";
+  engine.installed = true;
+  engine.status = "stopped";
+  await polls[0]();
+  assert.equal(progress.hidden, true);
+  assert.equal(install.hidden, true);
+  assert.equal(uninstall.disabled, false);
+  assert.match(part('[data-engine-detail]').textContent, /Stopped/);
+  assert.ok(calls.every(call => !call.path.endsWith('/use')));
+});
+
 test("Play can start the selected stopped engine without changing its radio selection", async () => {
   const nodes = new Map();
   const $ = id => { if (!nodes.has(id)) nodes.set(id, element()); return nodes.get(id); };

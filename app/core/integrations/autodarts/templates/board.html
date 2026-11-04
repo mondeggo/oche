@@ -10,6 +10,9 @@
       <h1>Autodarts</h1>
       <p class="subtitle">{{ _("Manage board detection on the Oche host.") }}</p>
     </div>
+    <div class="page-actions">
+      <a id="ad-open" class="btn-link" target="_blank" rel="noopener noreferrer" hidden>{{ _("Open Autodarts ↗") }}</a>
+    </div>
   </header>
   <p id="ad-unavailable" class="card" role="status" {{ 'hidden' if status.installed }}>{{ status.unavailable_reason or '' }}</p>
 
@@ -118,6 +121,14 @@
     badge.className = 'badge ' + (statusTones[state] || 'badge-red');
     badge.dataset.state = state;
     const running = state === 'running';
+    const open = document.getElementById('ad-open');
+    const url = new URL(location.href);
+    url.protocol = 'http:';
+    url.port = '3180';
+    url.pathname = '/';
+    url.search = url.hash = '';
+    open.href = url.href;
+    open.hidden = !running;
     document.getElementById('btn-start').hidden = running;
     document.getElementById('btn-start').disabled = state === 'nofile';
     document.getElementById('btn-start').title = state === 'nofile' ? (reason || document.getElementById('ad-unavailable').textContent) : '';

@@ -1301,5 +1301,14 @@
   "Starting…": "A iniciar…",
   "Clear cache resets engine settings and calibration. Uninstall removes engine releases but keeps settings.": "Limpar a cache repõe as definições e a calibração do motor. Desinstalar remove as versões do motor, mas mantém as definições.",
   "Reset all {name} engine data? This stops the engine and permanently deletes its settings, calibration and logs. You will need to configure and calibrate it again.": "Repor todos os dados do motor {name}? Isto para o motor e elimina permanentemente as suas definições, calibração e registos. Terá de o configurar e calibrar novamente.",
-  "Uninstall {name}? This stops the engine and removes all installed versions and rollback history. Settings and calibration are kept. You can reinstall it from Updates.": "Desinstalar {name}? Isto para o motor e remove todas as versões instaladas e o histórico de reversão. As definições e a calibração são mantidas. Pode reinstalá-lo em Atualizações."
+  "Uninstall {name}? This stops the engine and removes all installed versions and rollback history. Settings and calibration are kept. You can reinstall it from Updates.": "Desinstalar {name}? Isto para o motor e remove todas as versões instaladas e o histórico de reversão. As definições e a calibração são mantidas. Pode reinstalá-lo em Atualizações.",
+  "{name} setup": "Configuração de {name}",
+  "{name} interactive setup terminal": "Terminal de configuração interativo de {name}",
+  "Unable to connect. Check that {name} is running, then reconnect.": "Não foi possível ligar. Verifique se {name} está em execução e volte a ligar.",
+  "Start OcheCore above, then reconnect.": "Inicie o OcheCore acima e volte a ligar.",
+  "OcheCore views": "Vistas do OcheCore",
+  "OcheCore setup terminal": "Terminal de configuração do OcheCore",
+  "Installing {name}…": "A instalar {name}…",
+  "Installation failed: {error}": "A instalação falhou: {error}",
+  "Retry installation": "Tentar instalar novamente"
 }

@@ -1,5 +1,19 @@
 # Validation
 
+## Engine setup and installation (2026-11-04)
+
+- All 720 Python tests and 82 subtests passed, including both engines' terminal
+  origin/input/session-limit/cleanup checks, PTY client arguments, automatic
+  installation, retries and updater locking.
+- Both JavaScript test files passed, including installation progress, error and
+  retry controls. All four translation catalogues passed their coverage check.
+- Engine pages render the shared setup terminal and links to their HTTP UIs.
+  Existing installed engines are reused; background installation does not start
+  an engine or take cameras away from the selected engine.
+- Real camera setup and a browser session against the engine binaries were not
+  exercised. Python tests ran outside the sandbox because even a minimal FastAPI
+  TestClient request hung on its internal socket communication inside it.
+
 The automated suite covers authentication, reconnect, event normalization, caller
 and voice handling, lighting and simulation, profiles, camera tools,
 terminal boundaries, browser origin checks, HTTPS, release validation, activation

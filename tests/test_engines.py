@@ -134,6 +134,77 @@ def test_switching_integrations_changes_the_sidebar_and_play(tmp_path, monkeypat
         assert client.post("/api/engines/manual/use", json={}).json()["active"] == "manual"
 
 
+@pytest.mark.parametrize("name", ["autodarts", "ochecore"])
+def test_enabling_a_missing_engine_submits_install_and_exposes_progress(tmp_path, name):
+    from app.main import create_app
+
+    registry.set_enabled(name, False)
+    item = registry.get(name)
+    job = {"id": "install-1", "action": "install", "module": name, "status": "running"}
+    with TestClient(create_app(app_settings(tmp_path))) as client, \
+            patch.object(item.process, "get_status", return_value={"installed": False, "status": "nofile"}), \
+            patch.object(item.process, "start") as start, \
+            patch.object(updates.manager, "job", {"status": "idle"}), \
+            patch.object(updates.manager, "submit") as submit:
+        submit.side_effect = lambda *_: setattr(updates.manager, "job", dict(job))
+        assert client.put(f"/api/integrations/{name}", json={"enabled": True}).status_code == 200
+        submit.assert_called_once_with("install", name)
+        assert registry.enabled(name)
+        assert client.get("/api/engines").json()["installation"] == job
+        # A retry while the same download runs follows it, rather than spawning another.
+        assert client.put(f"/api/integrations/{name}", json={"enabled": True}).status_code == 200
+        assert submit.call_count == 1
+        updates.manager.job["status"] = "error"
+        updates.manager.job["message"] = "Download failed"
+        assert client.get("/api/engines").json()["installation"]["message"] == "Download failed"
+        assert client.put(f"/api/integrations/{name}", json={"enabled": True}).status_code == 200
+        assert submit.call_count == 2
+        start.assert_not_called()
+
+
+@pytest.mark.parametrize("name", ["autodarts", "ochecore"])
+def test_enabling_an_installed_engine_does_not_download(tmp_path, name):
+    from app.main import create_app
+
+    registry.set_enabled(name, False)
+    with TestClient(create_app(app_settings(tmp_path))) as client, \
+            patch.object(registry.get(name).process, "get_status", return_value={"installed": True}), \
+            patch.object(updates.manager, "submit") as submit:
+        assert client.put(f"/api/integrations/{name}", json={"enabled": True}).status_code == 200
+        submit.assert_not_called()
+
+
+@pytest.mark.parametrize("reason", ["Another update operation is running", "Updates require the Docker runtime with the stable launcher"])
+def test_rejected_install_leaves_the_integration_switched_off(tmp_path, reason):
+    from app.main import create_app
+
+    registry.set_enabled("ochecore", False)
+    with TestClient(create_app(app_settings(tmp_path))) as client, \
+            patch.object(registry.get("ochecore").process, "get_status", return_value={"installed": False}), \
+            patch.object(updates.manager, "job", {"status": "idle"}), \
+            patch.object(updates.manager, "submit", side_effect=ValueError(reason)):
+        response = client.put("/api/integrations/ochecore", json={"enabled": True})
+        assert response.status_code == 409 and response.json()["detail"] == reason
+        assert not registry.enabled("ochecore")
+
+
+@pytest.mark.parametrize("name,label", [("autodarts", "Autodarts"), ("ochecore", "OcheCore")])
+def test_engine_setup_pages_use_their_own_socket_and_offer_a_web_ui(tmp_path, name, label):
+    from app.main import create_app
+
+    with TestClient(create_app(app_settings(tmp_path))) as client:
+        terminal = client.get(f"/{name}/terminal")
+        assert terminal.status_code == 200
+        assert f'data-socket="/{name}/terminal/ws"' in terminal.text
+        assert f'data-engine-label="{label}"' in terminal.text
+        assert client.get("/static/js/terminal.js").status_code == 200
+        assert client.get("/static/css/terminal.css").status_code == 200
+        path = "/integrations/autodarts/board" if name == "autodarts" else "/integrations/ochecore"
+        page = client.get(path)
+        assert page.status_code == 200
+        assert "Setup terminal" in page.text and f"Open {label} ↗" in page.text
+
+
 def ochecore_feed(version="0.1.5", architecture="amd64", **changes):
     name = f"ochecore-v{version}-linux-{architecture}.tar.gz"
     base = f"https://github.com/mondeggo/OcheCore/releases/download/v{version}/"
@@ -237,7 +308,8 @@ def test_switching_autodarts_off_removes_its_account_and_status_dots(tmp_path, m
         for dot in ("autodarts", "cloud"):
             assert re.search(rf'id="health-{dot}"[^>]*\shidden', home)
         assert not re.search(r'id="health-local"[^>]*\shidden', home)
-        assert client.put("/api/integrations/autodarts", json={"enabled": True}).status_code == 200
+        with patch("app.routers.engines.manager.submit"):
+            assert client.put("/api/integrations/autodarts", json={"enabled": True}).status_code == 200
         assert "auth" in client.get("/api/status").json()
         assert client.get("/api/autodarts/config").json()["client_id"] == "darts-caller"
 

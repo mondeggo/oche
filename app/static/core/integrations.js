@@ -33,7 +33,21 @@ function renderEngines(data) {
     if (engine.enabled && engine.active) parts.push(tr("Used by Play"));
     if (!engine.scores && engine.note) parts.push(tr(engine.note));
     part(card, "engine-detail").textContent = parts.join(" · ");
-    card.querySelector('[data-engine-action="uninstall"]').disabled = working || !engine.installed;
+    const job = data.installation?.module === engine.name ? data.installation : null;
+    const installing = job?.status === "running";
+    const failed = job?.status === "error" && engine.enabled && !engine.installed;
+    const progress = part(card, "engine-install-status");
+    progress.hidden = !installing && !failed;
+    progress.textContent = installing
+      ? tr("Installing {name}…", { name: engine.label })
+      : failed ? tr("Installation failed: {error}", { error: tr(job.message) }) : "";
+    const install = part(card, "engine-install");
+    install.hidden = !engine.enabled || engine.installed || installing;
+    install.disabled = working || data.installation?.status === "running";
+    install.textContent = failed ? tr("Retry installation") : tr("Install");
+    for (const button of card.querySelectorAll("[data-engine-action]")) {
+      button.disabled = working || installing || (button.dataset.engineAction === "uninstall" && !engine.installed);
+    }
   }
 }
 
@@ -48,6 +62,16 @@ async function refresh() {
 }
 
 for (const [name, card] of cards) {
+  part(card, "engine-install").addEventListener("click", async () => {
+    if (working) return;
+    working = true;
+    part(card, "engine-install").disabled = true;
+    error(card);
+    try {
+      await api(`/api/integrations/${name}`, "PUT", { enabled: true });
+    } catch (cause) { error(card, cause.message); }
+    finally { working = false; await refresh(); }
+  });
   for (const button of card.querySelectorAll("[data-engine-action]")) {
     button.addEventListener("click", async () => {
       if (working) return;

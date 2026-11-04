@@ -252,3 +252,33 @@ def test_update_job_distinguishes_first_install(manager, monkeypatch, name, inst
         assert manager.job["installing"] is installing
     finally:
         manager.lock.release()
+
+
+def test_integration_install_is_a_serialized_job_without_starting_engines(manager, monkeypatch):
+    monkeypatch.setenv("OCHE_LAUNCHER", "1")
+    registry.set_enabled("autodarts", False)
+    entry, downloads = autodarts_release()
+    with patch("app.services.updates.threading.Thread"), downloads, offline_autodarts(entry), \
+            patch.object(registry.get("autodarts").process, "start") as start:
+        manager.submit("install", "autodarts")
+        assert manager.job["installing"] and manager.job["status"] == "running"
+        with pytest.raises(ValueError, match="Another update"):
+            manager.submit("install", "autodarts")
+        manager._run("install", "autodarts")
+        assert manager.job["status"] == "complete"
+        assert store.read_state("autodarts")["active"] == "2.1.0"
+        start.assert_not_called()
+    assert not manager.lock.locked()
+
+
+def test_failed_integration_install_reports_error_and_can_be_retried(manager, monkeypatch):
+    monkeypatch.setenv("OCHE_LAUNCHER", "1")
+    with patch("app.services.updates.threading.Thread"), \
+            patch.object(manager, "install_missing", side_effect=ValueError("Download failed")):
+        manager.submit("install", "ochecore")
+        manager._run("install", "ochecore")
+        assert manager.job["status"] == "error" and manager.job["message"] == "Download failed"
+        assert not manager.lock.locked()
+        manager.submit("install", "ochecore")
+        manager._run("install", "ochecore")
+        assert not store.read_state("ochecore").get("active")
