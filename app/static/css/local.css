@@ -293,3 +293,10 @@ button.game-mode .game-tag { border-color: var(--outline); background: var(--lim
 .game-dart-entry:hover:not(:disabled) { background: transparent; transform: none; box-shadow: none; }
 .game-dart-entry small { color: inherit; }
 .game-dart:has(.game-dart-entry:focus-visible) { outline: 3px solid var(--focus-ring); outline-offset: 3px; }
+
+.game-tournament-link { flex: 0 1 290px; min-width: 240px; text-decoration: none; }
+.game-tournament-link:hover { border-color: var(--primary); }
+@media (max-width: 600px) {
+  .game-tournament-link { flex-basis: 100%; }
+}
+a.game-back { border: var(--line-width) solid var(--outline); border-radius: 999px; text-decoration: none; box-shadow: var(--pop-sm); }

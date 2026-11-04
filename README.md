@@ -5,7 +5,8 @@ Autodarts board software as its detection engine, opens Autodarts Play, and conn
 can drive lighting and a caller.
 
 - **Play**: choose a vision engine (Autodarts, OcheCore or manual darts), then a
-  game mode, and play X01 (301/501) on this device. If the chosen engine is stopped,
+  game mode, and play X01 (301/501) on this device. Built-in tournaments support
+  Swiss rounds, single/double elimination, and Swiss-seeded knockout finals. If the chosen engine is stopped,
   use its Start button under Local detection. Only manual darts are offered
   until a vision engine is switched on and installed; OcheCore is listed but cannot
   score until its Autodarts-compatible API exists. Automatic offline scoring with the

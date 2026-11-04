@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}{{ _("Oche - Tournament") }}{% endblock %}
+{% block content %}
+<link rel="stylesheet" href="/static/css/local.css">
+<link rel="stylesheet" href="/static/css/tournament.css">
+<div id="tournament-page">
+  <header class="page-head">
+    <div><a href="/local" class="game-back">← {{ _("Play") }}</a><p class="eyebrow">{{ _("Local play") }}</p><h1 id="tournament-title">{{ _("Tournament") }}</h1><p class="subtitle">{{ _("Your players. Your bracket. All on this device.") }}</p></div>
+    <div class="btn-row"><button id="tournament-new" class="btn-neutral" hidden>{{ _("New tournament") }}</button><button id="tournament-end" class="btn-neutral" hidden>{{ _("End tournament") }}</button></div>
+  </header>
+  <p id="tournament-error" class="card game-error" role="alert" hidden></p>
+  <p id="tournament-loading" role="status">{{ _("Loading tournament…") }}</p>
+  <form id="tournament-setup" hidden>
+    <ol class="tournament-steps" aria-label="{{ _('Tournament setup') }}"><li id="tournament-step-players" aria-current="step">1 · {{ _("Players") }}</li><li id="tournament-step-format">2 · {{ _("Format and rules") }}</li></ol>
+    <section id="tournament-players-step" class="card tournament-form-card">
+      <h2>{{ _("Who is playing?") }}</h2>
+      <label for="tournament-name">{{ _("Tournament name") }}</label><input id="tournament-name" maxlength="80" value="{{ _('Local tournament') }}" required>
+      <label for="tournament-names">{{ _("Player names") }}</label><textarea id="tournament-names" rows="8" maxlength="2000" required aria-describedby="tournament-names-hint"></textarea>
+      <p id="tournament-names-hint" class="hint">{{ _("One player per line. Add 2–32 players, each with a different name.") }}</p>
+      <p id="tournament-player-count" class="hint" aria-live="polite"></p>
+      <button id="tournament-choose-format" type="button">{{ _("Choose format") }} →</button>
+    </section>
+    <section id="tournament-format-step" hidden>
+      <div class="card">
+        <h2>{{ _("How do you want to play?") }}</h2>
+        <fieldset class="tournament-formats"><legend class="sr-only">{{ _("Tournament format") }}</legend>
+          {% for value, title, description in [
+            ('single', _('Single elimination'), _('One loss ends your run. Winners advance to the final.')),
+            ('double', _('Double elimination'), _('A first loss moves you to the lower bracket. A second loss eliminates you.')),
+            ('swiss', _('Swiss rounds'), _('Everyone plays every round against players with similar results.')),
+            ('swiss_elimination', _('Swiss + elimination'), _('Start with Swiss rounds, then seed the top players into a knockout bracket.'))
+          ] %}<label class="tournament-format"><input type="radio" name="tournament-format" value="{{ value }}"{{ ' checked' if value == 'single' }}><span><strong>{{ title }}</strong><small>{{ description }}</small></span></label>{% endfor %}
+        </fieldset>
+        <p id="tournament-format-detail" class="hint"></p>
+        <div class="tournament-fields">
+          <label id="tournament-rounds-field" hidden>{{ _("Swiss rounds") }}<input id="tournament-rounds" type="number" min="1" max="10" value="3" required></label>
+          <label id="tournament-finalists-field" hidden>{{ _("Players in the final bracket") }}<select id="tournament-finalists"></select></label>
+          <label>{{ _("Starting score") }}<select id="tournament-score"><option value="501">501</option><option value="301">301</option></select></label>
+          <label>{{ _("Finish") }}<select id="tournament-out"><option value="double">{{ _("Double out") }}</option><option value="straight">{{ _("Straight out") }}</option></select></label>
+          <label>{{ _("Scoring") }}<select id="tournament-input"><option value="manual">{{ _("Manual") }}</option><option id="tournament-automatic" value="autodarts" disabled>{{ _("Selected vision engine") }}</option></select></label>
+        </div>
+        <p class="hint">{{ _("Each match is one X01 leg. Progress is saved automatically; only one match runs at a time.") }}</p>
+        <p class="hint">{{ _("Choose and start your vision engine in Play before using automatic scoring.") }} <a href="/local">{{ _("Play") }} →</a></p>
+      </div>
+      <div class="btn-row"><button id="tournament-edit-players" type="button" class="btn-neutral">← {{ _("Players") }}</button><button id="tournament-create" type="submit">{{ _("Create tournament") }}</button></div>
+    </section>
+  </form>
+  <section id="tournament-dashboard" hidden>
+    <div class="tournament-summary"><p id="tournament-summary" class="subtitle"></p><p id="tournament-progress" class="badge" role="status"></p></div>
+    <section id="tournament-champion" class="card game-winner" hidden><p class="eyebrow">{{ _("Tournament winner") }}</p><h2 id="tournament-champion-name"></h2></section>
+    <p id="tournament-cancelled" class="card" hidden>{{ _("This tournament has ended. Played results are kept below.") }}</p>
+    <div id="tournament-next" class="card tournament-next" hidden></div>
+    <section id="tournament-standings-section" class="card" hidden>
+      <h2>{{ _("Swiss standings") }}</h2>
+      <p class="hint">{{ _("A win or bye earns 1 point. Ties use opponents’ total points (Buchholz), then registration order. Byes add no opponent points.") }}</p>
+      <p id="tournament-qualification" class="hint" hidden></p>
+      <div class="tournament-table-wrap"><table><thead><tr><th scope="col">#</th><th scope="col">{{ _("Player") }}</th><th scope="col">{{ _("Points") }}</th><th scope="col">{{ _("Played") }}</th><th scope="col">{{ _("Buchholz") }}</th><th scope="col">{{ _("Byes") }}</th></tr></thead><tbody id="tournament-standings"></tbody></table></div>
+    </section>
+    <div id="tournament-brackets"></div>
+  </section>
+</div>
+{% endblock %}
+{% block scripts %}<script type="module" src="/static/core/tournament.js"></script>{% endblock %}

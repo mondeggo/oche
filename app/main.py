@@ -14,6 +14,7 @@ from app import __version__
 from app.config import DATA_DIR, load_config
 from app.core.api.http import create_router as create_core_router
 from app.core.api.local import router as local_router
+from app.core.api.tournaments import router as tournament_router
 from app.core.api.ui import UISettings
 from app.core.api.ui import router as ui_router
 from app.core.api.websocket import router as events_router
@@ -116,7 +117,11 @@ def create_app(
         )
         if request.url.path.startswith(("/api/", "/updates/", "/system/")):
             response.headers["Cache-Control"] = "no-store"
-        elif request.url.path in routes or request.url.path in {"/", "/local"} or request.url.path.startswith("/static/"):
+        elif (
+            request.url.path in routes
+            or request.url.path in {"/", "/local", "/local/tournament"}
+            or request.url.path.startswith("/static/")
+        ):
             response.headers["Cache-Control"] = "no-cache"
         return response
 
@@ -134,6 +139,7 @@ def create_app(
     for router in (
         core_router,
         local_router,
+        tournament_router,
         events_router,
         lighting_router,
         ui_router,
@@ -182,6 +188,12 @@ def create_app(
             request=request,
             name="local.html",
             context={"active_nav": "local", "vision_engines": detection_engines.status()},
+        )
+
+    @application.get("/local/tournament")
+    async def tournament(request: Request):
+        return templates.TemplateResponse(
+            request=request, name="tournament.html", context={"active_nav": "local"}
         )
 
     @application.get("/supervisor")

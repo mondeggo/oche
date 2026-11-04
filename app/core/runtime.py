@@ -15,6 +15,7 @@ from app.core.integrations.wled2.service import WLED2
 from app.core.integrations.wled2.service import Layout as WLED2Layout
 from app.core.local import LocalGames, LocalOptions
 from app.core.profiles import Profiles
+from app.core.tournaments import Tournaments
 
 
 class Runtime:
@@ -26,6 +27,7 @@ class Runtime:
         self.tasks: list[asyncio.Task] = []
         self.lock = asyncio.Lock()
         self.local = LocalGames(settings.data_dir, http, self.bus, settings.local_autodarts_url)
+        self.tournaments = Tournaments(settings.data_dir, self.local)
         self.detection = LocalDetection(http, settings.local_autodarts_url)
         # Game sources come from switched-on integrations, such as Autodarts Play.
         self.sources: dict = {}
@@ -72,6 +74,7 @@ class Runtime:
 
     async def start_local(self, options: LocalOptions) -> dict:
         async with self.lock, self.local.lock:
+            self.tournaments.sync()
             if self.local.active:
                 raise ConnectionProblem("End the current local game before starting another.")
             await self._stop_sources()
@@ -86,10 +89,50 @@ class Runtime:
 
     async def stop_local(self) -> dict:
         async with self.lock, self.local.lock:
+            self.tournaments.sync()
             if self.local.active:
                 self.local.stop()
                 self.start_sources()
             return self.local.status()
+
+    def local_status(self) -> dict:
+        self.tournaments.sync()
+        return self.local.status()
+
+    async def start_tournament_match(self, match_id: str) -> dict:
+        async with self.lock, self.local.lock:
+            options = self.tournaments.match_options(match_id)
+            tournament = self.tournaments.saved
+            game = self.local.saved
+            if self.local.active:
+                if game.tournament_id == tournament.id and game.tournament_match_id == match_id:
+                    return self.local_status()
+                if game.tournament_id == tournament.id and game.frame.winner >= 0:
+                    self.local.stop()
+                else:
+                    raise ConnectionProblem("End the current local game before starting another.")
+            await self._stop_sources()
+            try:
+                self.local.start(options, tournament_id=tournament.id, tournament_match_id=match_id)
+            except Exception:
+                self.start_sources()
+                raise
+            for source in self.sources.values():
+                source.pause()
+            return self.local_status()
+
+    async def cancel_tournament(self) -> dict:
+        async with self.lock, self.local.lock:
+            self.tournaments.sync()
+            saved = self.tournaments.saved
+            if (
+                saved and saved.state == "active" and self.local.active
+                and self.local.saved.tournament_id == saved.id
+            ):
+                self.local.stop()
+                self.start_sources()
+            self.tournaments.cancel()
+            return self.tournaments.status()
 
     async def configure_wled2(self, layout: WLED2Layout) -> None:
         await self.wled2.configure(layout)

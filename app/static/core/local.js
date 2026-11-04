@@ -295,6 +295,8 @@ function renderMatch(value) {
   const turn = frame.turns[0];
   const manual = value.options.input === "manual";
   const won = frame.winner >= 0;
+  $("local-tournament-return").hidden = $("local-tournament-continue").hidden = !value.tournament;
+  $("local-rematch").hidden = $("local-new").hidden = Boolean(value.tournament);
   const player = frame.players[frame.player];
   const bot = !won && isBot(value.options.players[frame.player]);
   $("local-chip-score").textContent = String(value.options.starting_score);
@@ -328,7 +330,7 @@ function renderMatch(value) {
   if (entryButton) entryButton.disabled = working;
   $("local-visit").textContent = turn.busted ? tr("Bust") : turn.points;
   $("local-undo").hidden = !manual;
-  $("local-undo").disabled = working || bot || !turn.throws.length;
+  $("local-undo").disabled = working || bot || !turn.throws.length || (won && Boolean(value.tournament));
   $("local-next").disabled = working || won || bot || !turn.throws.length;
   $("local-stop").disabled = $("local-rematch").disabled = $("local-new").disabled = working;
   const closed = working || won || bot || Boolean(turn.finishedAt);
@@ -526,7 +528,7 @@ $("local-keys").addEventListener("click", event => {
     return result;
   }).then(() => {
     if (!$("local-manual").open) {
-      const target = state.frame.winner >= 0 ? $("local-rematch")
+      const target = state.frame.winner >= 0 ? $(state.tournament ? "local-tournament-continue" : "local-rematch")
         : $("local-darts").querySelector("button") || $("local-next");
       target.focus();
     }
@@ -538,7 +540,10 @@ document.querySelectorAll('input[name="ring"]').forEach(input => input.addEventL
 $("local-undo").addEventListener("click", () => action(() => post("undo")));
 $("local-next").addEventListener("click", () => action(() => post("next")));
 $("local-stop").addEventListener("click", () => {
-  if (confirm(tr("End this game? The score is kept until you start another game."))) action(() => post("stop"));
+  const message = state?.tournament && state.frame.winner < 0
+    ? tr("Abandon this match and replay it from the start? Use Tournament to leave the match in progress.")
+    : tr("End this game? The score is kept until you start another game.");
+  if (confirm(message)) action(() => post("stop"));
 });
 $("local-new").addEventListener("click", () => action(async () => {
   const result = await post("stop");

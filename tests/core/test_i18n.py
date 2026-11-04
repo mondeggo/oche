@@ -30,7 +30,7 @@ def test_language_selection_renders_local_pages(settings, language, label):
         response = client.patch("/api/ui", json={"language": language, "profile_id": "default"})
         assert response.status_code == 200
         assert response.json()["language"] == language
-        for path in ("/", "/local", "/config", "/supervisor", "/autodarts/terminal"):
+        for path in ("/", "/local", "/local/tournament", "/config", "/supervisor", "/autodarts/terminal"):
             page = client.get(path)
             assert page.status_code == 200, path
             assert f'lang="{language}"' in page.text

@@ -20,6 +20,7 @@
   <header class="page-head">
     <div><p class="eyebrow">{{ _("Play") }}</p><h1 id="game-modes-title">{{ _("Choose a game") }}</h1>
     <p class="subtitle">{{ _("Games run on this device. Manual darts work without internet.") }}</p></div>
+    <a href="/local/tournament" class="game-mode game-tournament-link"><span class="game-mode-head"><span class="game-mode-name">{{ _("Tournament") }}</span><span aria-hidden="true">↗</span></span><span class="game-mode-text">{{ _("Swiss rounds, elimination brackets and finals") }}</span></a>
   </header>
   {#- Vision engines come from the integrations that register one; manual darts always work. #}
   <section class="card game-engines" aria-labelledby="game-engine-title">
@@ -125,6 +126,7 @@
     <div class="game-bar-side">
       <div class="game-bar-actions">
       <button id="local-stop" type="button" class="game-back game-exit"><svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 8l-4 4 4 4M6 12h10"/></svg>{{ _("End game") }}</button>
+      <a id="local-tournament-return" class="game-back" href="/local/tournament" hidden>{{ _("Tournament") }}</a>
       </div>
       <ul class="game-chips" aria-label="{{ _('Game') }}">
         <li><h1 id="local-match-title" class="badge game-title">X01</h1></li>
@@ -144,6 +146,7 @@
     <p class="eyebrow">{{ _("Game over") }}</p>
     <p id="local-winner-name" class="game-winner-name"></p>
     <div class="btn-row"><button id="local-rematch" type="button">{{ _("Rematch") }}</button><button id="local-new" type="button" class="btn-neutral">{{ _("New game") }}</button></div>
+    <a id="local-tournament-continue" class="game-back" href="/local/tournament" hidden>{{ _("Continue tournament") }}</a>
   </div>
   <div id="local-stage" class="game-stage">
   <div id="local-side-left" class="game-side"></div>

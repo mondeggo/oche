@@ -10,8 +10,8 @@ The setup screen is one centered column, up to 680 px wide, with one panel: the
 players and, below them, labelled settings (starting score, finish, player names, dartboard and input) with
 full-width choices. A new setup always starts with one player, even after an
 earlier game; **Rematch** keeps the previous players. **Player names** chooses
-how new rows are named: **Random** (default) gives a playful name such as
-"Lucky Otter", with a `[Bot]` prefix for bots; **Numbered** follows the list as
+how new rows are named: **Random** gives a playful name such as
+"Lucky Otter", with a `[Bot]` prefix for bots; **Numbered** (default) follows the list as
 "Player 1", "Bot 2" and so on, renumbering when rows are removed. Switching it
 renames generated names but keeps typed ones; a cleared name becomes a numbered
 player. **Start game**
@@ -49,19 +49,16 @@ with Local Autodarts input, keep the board clear while a bot throws.
 **Dartboard** (Show by default) puts the board in the middle of the game screen,
 sized so the whole game screen fits the window without scrolling: after each
 layout change the page measures any overflow and shrinks the board by that much.
-With manual input the board makes room for the keypad. Phones, and windows too
-short for a 300 px board or for eight players with the keypad, still scroll. Players are seated clockwise around it: player 1 at the
+Manual entry opens from the highlighted dashed outline of the next dart slot.
+Phones, and windows too short for a 300 px board or eight players, still scroll. Players are seated clockwise around it: player 1 at the
 top left, then down the right side and back up the left (with three players, 1 on
 the left and 2 and 3 on the right; with four, 1 and 2 on top and 4 and 3 below),
 with the current visit in a line below the board. The game
 screen uses the full content width, and each side's cards are centered in the
 space between the board and the sidebar or the window edge. Vertically, each side
 spans the board and visit line with equal space above, between and below its
-cards. On wide screens a single player's game uses two columns: the header
-at the top left, then the player and current visit centered in the space left of
-the board and on the board's line; the board sits on the right, centered
-vertically on the window. On windows shorter than
-720 px the player and visit follow the header instead. On narrow screens, and with the board hidden, the players form a row above the board
+cards. On wide screens a single player’s card and current visit sit to the left of
+the board, with the board slightly right of center. On narrow screens, and with the board hidden, the players form a row above the board
 and visit. With Local Autodarts input, a halo around the board shows detection:
 red when stopped or unavailable, yellow while waiting, and green when scoring;
 its tooltip names the state, and details appear under the header. A dart
@@ -74,8 +71,8 @@ edge of the double ring and y pointing up; positions outside ±10 or that are
 not numbers are ignored without rejecting the dart. That orientation and scale
 have not been confirmed against a live board.
 
-Choose **Manual darts** to play without internet. Choose a ring, then tap a
-number, Bull or Miss. **Undo dart** removes the most recent dart in the current
+Choose **Manual darts** to play without internet. Open the next dart slot,
+choose a ring, then tap a number, Bull or Miss in the popup. **Undo dart** removes the most recent dart in the current
 visit; select **Next turn** after removing the darts. **Recent visits**, a floating
 button at the bottom right (icon only on phones), opens a dialog listing up to
 100 visits, newest first. **End game** keeps the last result until another local game is
@@ -233,3 +230,36 @@ the setup choice. Darts in `/api/local` frames include `coords`
 when a position is known.
 Input is `autodarts` (default) or `manual`. Manual throw and undo controls are
 disabled for detector input to prevent diverging detection and scoring state.
+
+## Local tournaments
+
+Open **Tournament** beside **Choose a game** in Play. Enter a tournament name and
+2–32 distinct player names, then choose the format and X01 rules. Each match is
+one 301/501 leg, with manual scoring or the vision engine selected in Play. Only
+one match runs at a time on this board.
+
+- **Single elimination:** one loss eliminates a player. Registration order is the
+  initial seeding; higher seeds receive byes where needed.
+- **Double elimination:** the first loss sends a player to the lower bracket;
+  the second eliminates them. If the lower-bracket champion wins the grand final,
+  a reset final decides the tournament, so the upper-bracket champion also gets
+  two chances.
+- **Swiss rounds:** choose the number of rounds. Players are paired by similar
+  points, avoiding rematches where possible. An odd field gives a bye to the
+  lowest-ranked player among those with the fewest previous byes. A win or bye is
+  worth one point. Rankings use points, then opponents' total points (Buchholz),
+  then registration order; a bye adds no opponent points.
+- **Swiss + elimination:** after the Swiss rounds, the top 2, 4, 8, 16 or 32
+  qualifiers are seeded into a single-elimination final bracket.
+
+Use **Tournament** from a match to leave it in progress, then **Resume match** to
+return. A winning dart saves the tournament result automatically. Completed
+results are final, including for detected games. Ending an unfinished match lets
+you replay it from the start; it does not award a win. **End tournament** cancels
+the remaining matches and retains the played results until a new tournament is
+created. One tournament is stored at a time.
+
+The bracket is saved in `tournament.json` beside `local-game.json`. The local game
+also saves its tournament and match identifiers, so a result can be recovered
+after a restart even if the bracket write was interrupted. These files contain
+player names and use the same private, atomic storage as other local game data.

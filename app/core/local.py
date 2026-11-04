@@ -84,6 +84,8 @@ class SavedLocalGame(BaseModel):
     frame: MatchFrame
     visit_start: int = Field(ge=1, le=501)
     active: bool = True
+    tournament_id: str | None = None
+    tournament_match_id: str | None = None
 
     @model_validator(mode="after")
     def valid_frame(self):
@@ -215,6 +217,10 @@ class LocalGames:
             "options": self.saved.options.model_dump() if self.saved else LocalOptions().model_dump(),
             "game": self.game_state() if self.saved else None,
             "frame": self.saved.frame.model_dump(by_alias=True) if self.saved else None,
+            "tournament": (
+                {"id": self.saved.tournament_id, "match_id": self.saved.tournament_match_id}
+                if self.saved and self.saved.tournament_id else None
+            ),
             "feed": {**self.connection.status(), "monitoring": self.wants_feed(), "error": self.feed_error},
             "detector": {
                 "state": self.detector_state,
@@ -225,7 +231,10 @@ class LocalGames:
             },
         }
 
-    def start(self, options: LocalOptions) -> None:
+    def start(
+        self, options: LocalOptions, *, tournament_id: str | None = None,
+        tournament_match_id: str | None = None,
+    ) -> None:
         if self.active:
             raise ConnectionProblem("End the current local game before starting another.")
         players = [Player(id=str(uuid4()), name=player.name, boardId=BOARD_ID) for player in options.players]
@@ -246,7 +255,10 @@ class LocalGames:
                 "outMode": "Double" if options.double_out else "Straight",
             },
         )
-        self._save(SavedLocalGame(options=options, frame=frame, visit_start=options.starting_score))
+        self._save(SavedLocalGame(
+            options=options, frame=frame, visit_start=options.starting_score,
+            tournament_id=tournament_id, tournament_match_id=tournament_match_id,
+        ))
         self.bot_due = None
         self.reset_detector()
         self._event("board.matches", {"event": "start", "id": frame.id})
@@ -319,6 +331,8 @@ class LocalGames:
 
     def undo(self) -> None:
         saved = self._require_game()
+        if saved.tournament_id and saved.frame.winner >= 0:
+            raise ConnectionProblem("A completed tournament result cannot be changed.")
         self._human_turn()
         if saved.options.input != "manual":
             raise ConnectionProblem("Correct detected darts on the board; manual undo is disabled.")
@@ -474,7 +488,7 @@ class LocalGames:
             self.armed = False
             self.detector_error = "Detection lost a dart. Clear the board and select Next turn."
             return
-        if old != segments[: len(old)]:
+        if old != segments[: len(old)] and not (saved.tournament_id and saved.frame.winner >= 0):
             for index, segment in enumerate(segments[: len(saved.frame.turns[0].throws)]):
                 saved.frame.turns[0].throws[index].segment = segment
                 saved.frame.turns[0].throws[index].coords = positions[index]

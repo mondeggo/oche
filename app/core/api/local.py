@@ -9,7 +9,9 @@ router = APIRouter(prefix="/api/local")
 
 @router.get("")
 async def status(request: Request):
-    return request.app.state.runtime.local.status()
+    runtime = request.app.state.runtime
+    async with runtime.local.lock:
+        return runtime.local_status()
 
 
 @router.post("/start")
@@ -27,7 +29,7 @@ async def throw(dart: LocalDart, request: Request):
     local = request.app.state.runtime.local
     async with local.lock:
         local.throw(dart.segment())
-        return local.status()
+        return request.app.state.runtime.local_status()
 
 
 @router.post("/undo")
@@ -35,7 +37,7 @@ async def undo(request: Request):
     local = request.app.state.runtime.local
     async with local.lock:
         local.undo()
-        return local.status()
+        return request.app.state.runtime.local_status()
 
 
 @router.post("/next")
@@ -43,4 +45,4 @@ async def next_turn(request: Request):
     local = request.app.state.runtime.local
     async with local.lock:
         local.next_turn()
-        return local.status()
+        return request.app.state.runtime.local_status()

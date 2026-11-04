@@ -528,3 +528,23 @@ test("manual dart entry follows the current human visit and rejects closed or au
   nextVisit.frame.turns[0].round++;
   assert.notEqual(context.manualEntry(nextVisit), context.manualEntry(game));
 });
+
+test("tournament polling preserves the format step before a tournament is created", () => {
+  const nodes = new Map();
+  const $ = id => {
+    if (!nodes.has(id)) nodes.set(id, { hidden: true });
+    return nodes.get(id);
+  };
+  let resets = 0;
+  const context = vm.createContext({ $, step: () => { resets++; }, tr: text => text });
+  const source = readFileSync(new URL("tournament.js", core), "utf8");
+  vm.runInContext('let saved = null, creating = false, signature = "";\n' +
+    source.slice(source.indexOf("function render(result)"), source.indexOf("async function refresh()")), context);
+  context.render({ tournament: null });
+  assert.equal(resets, 1);
+  $('tournament-format-step').hidden = false;
+  context.render({ tournament: null });
+  context.render({ tournament: null });
+  assert.equal(resets, 1, "background polling must not reset the wizard or player names");
+  assert.equal($('tournament-format-step').hidden, false);
+});

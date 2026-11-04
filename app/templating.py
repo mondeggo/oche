@@ -64,7 +64,7 @@ def navigation_context(request):
         else integration_pages[path]
         if path in integration_pages
         else "local"
-        if path == "/local"
+        if path in {"/local", "/local/tournament"}
         else "panels"
         if path.startswith("/panels/")
         else (service if service in {"system", "updates"} else "system")
