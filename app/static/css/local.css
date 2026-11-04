@@ -129,7 +129,7 @@ button.game-mode .game-tag { border-color: var(--outline); background: var(--lim
 .game-side .game-player-name { font-size: 1.1rem; }
 .game-side .game-player-score { margin: 8px 0; }
 .game-side .game-player-meta { font-size: .95rem; }
-/* Keep equal space on both sides so solo play shares the same centred board. */
+/* Reserve space on both sides, with a small desktop offset for the solo board below. */
 .game-stage[data-board="true"][data-count="1"] { grid-template-columns: minmax(220px, 1fr) auto minmax(220px, 1fr); }
 .game-stage[data-board="true"][data-count="1"] .game-board { width: max(300px, min(var(--board-fit, 100dvh - 270px), 100cqw - 504px)); }
 .game-side .game-turn { margin-top: 8px; }
@@ -236,6 +236,11 @@ button.game-mode .game-tag { border-color: var(--outline); background: var(--lim
 .game-history :is(th, td) { padding: 8px 12px; border-bottom: 1px dashed var(--border-strong); white-space: nowrap; }
 .game-history th { color: var(--fg-dim); font-family: var(--font-mono); font-size: .72rem; font-weight: 800; text-transform: uppercase; }
 
+/* A slight offset balances the board against the solo player's card and visit. */
+@media (min-width: 1201px) {
+  .game-screen[data-solo="true"] :is(.game-center, .game-turn-head) { transform: translateX(clamp(16px, 3vw, 48px)); }
+}
+
 /* When three columns no longer fit, stack the solo player and board centrally. */
 @media (min-width: 901px) and (max-width: 1200px) {
   .game-stage[data-board="true"][data-count="1"] { grid-template-columns: minmax(0, 1fr); }
@@ -283,8 +288,8 @@ button.game-mode .game-tag { border-color: var(--outline); background: var(--lim
 .game-choice:has(input:disabled):hover span { color: var(--fg-dim); }
 
 /* The next manual dart is the entry point; future slots remain quiet placeholders. */
-.game-dart[data-next="true"] { padding: 0; border-style: solid; border-color: var(--outline); background: var(--lime); box-shadow: var(--pop-sm); }
-.game-dart-entry { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; width: 100%; height: 100%; min-height: 0; padding: 6px 2px; border: 0; border-radius: 0; background: var(--lime); color: var(--on-pop); box-shadow: none; }
-.game-dart-entry:hover:not(:disabled) { background: var(--mint); transform: none; box-shadow: none; }
+.game-dart[data-next="true"] { padding: 0; border-color: var(--primary); }
+.game-dart-entry { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; width: 100%; height: 100%; min-height: 0; padding: 6px 2px; border: 0; border-radius: 0; background: transparent; color: var(--fg-dim); box-shadow: none; }
+.game-dart-entry:hover:not(:disabled) { background: transparent; transform: none; box-shadow: none; }
 .game-dart-entry small { color: inherit; }
 .game-dart:has(.game-dart-entry:focus-visible) { outline: 3px solid var(--focus-ring); outline-offset: 3px; }
