@@ -137,11 +137,8 @@ def test_local_screen_has_no_integration_controls_and_nav_shows_source_status(se
         # Play only offers the vision engines integrations add, never their controls.
         assert "data-integration" not in content
         assert "Play on Autodarts" in page and ">Play<" in page
-        assert (
-            page.index('data-health="autodarts"')
-            < page.index('data-health="local"')
-            < page.index('data-health="cloud"')
-        )
+        assert 'data-health="autodarts"' in page
+        assert 'data-health="local"' not in page and 'data-health="cloud"' not in page
         client.post("/api/local/start", json={"input": "manual"})
         assert client.get("/api/status").json()["local"]["input"] == "manual"
 

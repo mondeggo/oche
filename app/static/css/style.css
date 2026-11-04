@@ -221,7 +221,7 @@ code { font-family: var(--font-mono); font-size: .9em; }
 .nav-item .service-update-dot { margin-left: auto; }
 .sidebar-foot { flex: none; border-top: 1px dashed var(--border-strong); }
 
-/* Process, local detector and cloud status stay on one line, including the icon rail. */
+/* Enabled vision engines and the manual fallback stay on one line, including the icon rail. */
 .sidebar-health { display: flex; flex-wrap: nowrap; justify-content: center; gap: 4px; }
 .health-row { display: inline-flex; align-items: center; gap: 4px; min-height: 28px; padding: 3px 4px; border-radius: 999px; color: var(--fg-dim); font-size: .8rem; font-weight: 600; text-decoration: none; white-space: nowrap; }
 .health-row:hover { background: var(--surface-hover); color: var(--fg); }

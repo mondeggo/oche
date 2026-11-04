@@ -1,5 +1,5 @@
 import { tr } from "./i18n.mjs";
-import { localHealth } from './health.mjs';
+import { engineHealth, localEventsHealth, manualHealth, syncHealthRows } from './health.mjs';
 
 // Sidebar: collapses to an icon rail on wide screens and becomes a drawer on small ones.
 (() => {
@@ -60,11 +60,10 @@ import { localHealth } from './health.mjs';
   labelRail();
 })();
 
-// Sidebar status: core reports local detector readiness; integrations add their dots,
-// each checked by the module it registers.
+// Enabled integrations own their indicators; Manual is shown without a selected engine.
 (() => {
-  const rows = [...document.querySelectorAll('#sidebar-health [data-health]')];
-  if (!rows.length) return;
+  const container = document.getElementById('sidebar-health');
+  if (!container) return;
   const modules = new Map();
   const load = url => {
     if (!modules.has(url)) modules.set(url, import(url));
@@ -81,9 +80,18 @@ import { localHealth } from './health.mjs';
   }
 
   async function check(row, status) {
-    if (!row.dataset.healthModule) return localHealth(status?.local_detection ?? null);
+    if (!status) return ['bad', tr("Status unavailable")];
+    if (row.dataset.health === 'manual') return manualHealth(tr);
+    const engine = status.vision?.engines?.find(engine => engine.name === row.dataset.health);
+    // Inactive or unavailable engines need no event check, and never inherit
+    // the selected engine's detection state.
+    if (engine && (!engine.active || engine.status !== 'running' || !engine.scores)) {
+      return engineHealth(engine, null, null, tr);
+    }
     const module = await load(row.dataset.healthModule);
-    return module.health(row.dataset.health, status, tr);
+    const events = engine && status.local?.active
+      ? localEventsHealth(status.local, tr) : await module.health(row.dataset.health, status, tr);
+    return engine ? engineHealth(engine, status.local_detection, events, tr) : events;
   }
 
   let loading = false;
@@ -93,6 +101,8 @@ import { localHealth } from './health.mjs';
     loading = true;
     try {
       const status = await getJSON('/api/status');
+      const rows = status?.health ? syncHealthRows(container, status.health, tr)
+        : [...container.querySelectorAll('[data-health]')];
       await Promise.all(rows.filter(row => !row.hidden).map(async row => {
         try {
           show(row, ...await check(row, status));

@@ -7,7 +7,8 @@ from app import __version__
 from app.config import load_config
 from app.core.integrations import registry
 from app.i18n import LANGUAGES, catalogue, translate
-from app.navigation import home_routes
+from app.navigation import health_rows, home_routes
+from app.services import engines
 
 
 class IntegrationTemplates(BaseLoader):
@@ -100,12 +101,7 @@ def navigation_context(request):
         "home_slots": _home_slots(switched_on),
         "home_views": [view for item in switched_on for view in item.views],
         "home_routes": {page_id: href for href, page_id in routes.items()},
-        # Every registered dot renders, hidden while its integration is off.
-        "health_rows": sorted(
-            [{"id": "local", "label": "Local", "href": "/local", "module": None, "order": 50, "shown": True}]
-            + [{**vars(row), "shown": item in switched_on} for item in registry.integrations() for row in item.health],
-            key=lambda row: row["order"],
-        ),
+        "health_rows": health_rows(engines.chosen()),
         "nav_registry": [
             {
                 "id": item.id,

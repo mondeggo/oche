@@ -295,7 +295,8 @@ def test_switching_autodarts_off_removes_its_account_and_status_dots(tmp_path, m
         assert {"auth", "cloud"} <= status.keys()
         home = client.get("/integrations").text
         assert 'id="login"' in home and 'data-view="autodarts"' in home
-        assert not re.search(r'id="health-cloud"[^>]*\shidden', home)
+        assert 'id="health-autodarts"' in home
+        assert 'id="health-cloud"' not in home and 'id="health-local"' not in home
         assert client.put("/api/integrations/autodarts", json={"enabled": False}).status_code == 200
         # The runtime drops Autodarts Play as a game source; core keeps local detection.
         status = client.get("/api/status").json()
@@ -305,13 +306,48 @@ def test_switching_autodarts_off_removes_its_account_and_status_dots(tmp_path, m
         home = client.get("/integrations").text
         assert 'id="login"' not in home and 'data-view="autodarts"' not in home
         assert "/static/integrations/autodarts/account.js" not in home
-        for dot in ("autodarts", "cloud"):
-            assert re.search(rf'id="health-{dot}"[^>]*\shidden', home)
-        assert not re.search(r'id="health-local"[^>]*\shidden', home)
+        for dot in ("autodarts", "cloud", "local"):
+            assert f'id="health-{dot}"' not in home
+        assert 'id="health-manual"' in home
         with patch("app.routers.engines.manager.submit"):
             assert client.put("/api/integrations/autodarts", json={"enabled": True}).status_code == 200
         assert "auth" in client.get("/api/status").json()
         assert client.get("/api/autodarts/config").json()["client_id"] == "darts-caller"
+
+
+def test_manual_indicator_follows_selection_and_only_enabled_engines_register_status(tmp_path):
+    from app.main import create_app
+
+    registry.set_enabled("autodarts", False)
+    registry.set_enabled("ochecore", False)
+    with TestClient(create_app(app_settings(tmp_path))) as client:
+        def shown():
+            status = client.get("/api/status").json()
+            rows = [row["id"] for row in status["health"]]
+            page = client.get("/local").text
+            assert re.findall(r'data-health="([^"]+)"', page) == rows
+            return status, rows
+
+        status, rows = shown()
+        assert rows == ["manual"] and status["vision"]["active"] == "manual"
+        # Enable both integrations without downloading or running real engines.
+        with patch("app.routers.engines.manager.submit"), \
+                patch.object(registry.get("autodarts").process, "get_status",
+                             return_value={"installed": False, "status": "nofile"}), \
+                patch.object(registry.get("ochecore").process, "get_status",
+                             return_value={"installed": False, "status": "nofile"}):
+            assert client.put("/api/integrations/autodarts", json={"enabled": True}).status_code == 200
+            assert client.put("/api/integrations/ochecore", json={"enabled": True}).status_code == 200
+            assert client.post("/api/engines/manual/use", json={}).status_code == 200
+            assert shown()[1] == ["manual", "autodarts", "ochecore"]
+            assert client.post("/api/engines/ochecore/use", json={}).status_code == 200
+            status, rows = shown()
+            assert rows == ["autodarts", "ochecore"]
+            assert status["vision"]["active"] == "ochecore"
+            assert client.put("/api/integrations/autodarts", json={"enabled": False}).status_code == 200
+            assert shown()[1] == ["ochecore"]
+            assert client.put("/api/integrations/ochecore", json={"enabled": False}).status_code == 200
+            assert shown()[1] == ["manual"]
 
 
 def test_engine_reset_stops_engine_and_preserves_releases(engines_registry, tmp_path, monkeypatch):

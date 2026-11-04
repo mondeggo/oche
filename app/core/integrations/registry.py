@@ -65,8 +65,9 @@ class Health:
     """A status dot in the sidebar. Its module exports ``health(id, status, tr)``.
 
     ``status`` is the shared /api/status reply (or null when it failed); the
-    function returns ``[tone, text, detail]`` with tone good, warn or bad. Core's
-    local detector dot has order 50.
+    function returns ``[tone, text, detail]`` with tone good, warn, bad or neutral.
+    Engine indicators combine this event status with their process and detection
+    readiness. Only enabled integrations contribute indicators.
     """
 
     id: str

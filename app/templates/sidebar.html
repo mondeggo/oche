@@ -77,9 +77,9 @@
         </select>
       </label>
       <div class="sidebar-health" id="sidebar-health" role="group" aria-label="{{ _('Status') }}">
-        {#- Core reports the local detector; switched-on integrations add their own dots. #}
+        {#- Enabled integrations own their indicators; Manual appears without a selected engine. #}
         {%- for row in health_rows %}
-        <a id="health-{{ row.id }}" class="health-row" href="{{ row.href }}" data-health="{{ row.id }}" data-label="{{ _(row.label) }}"{% if row.module %} data-health-module="{{ row.module }}"{% endif %} data-nav-sync {{ 'hidden' if not row.shown }}><span class="health-dot" aria-hidden="true"></span><span class="nav-text">{{ _(row.label) }}</span></a>
+        <a id="health-{{ row.id }}" class="health-row" href="{{ row.href }}" data-health="{{ row.id }}" data-label="{{ _(row.label) }}"{% if row.module %} data-health-module="{{ row.module }}"{% endif %}><span class="health-dot" aria-hidden="true"></span><span class="nav-text">{{ _(row.label) }}</span></a>
         {%- endfor %}
       </div>
     </div>

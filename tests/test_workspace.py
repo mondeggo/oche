@@ -87,8 +87,8 @@ def test_sidebar_reaches_every_page_and_marks_the_current_one(application, tmp_p
             system = sidebar[sidebar.index('id="sidebar-system"') :]
             assert 'id="nav-link-autodarts"' not in system
             assert '<option value="default" selected>Default</option>' in sidebar
-            for status in ("autodarts", "cloud"):
-                assert f'data-health="{status}"' in sidebar
+            assert 'data-health="autodarts"' in sidebar
+            assert 'data-health="cloud"' not in sidebar and 'data-health="local"' not in sidebar
         assert 'href="/integrations/cameras"' in client.get("/integrations").text.split('id="core-main"')[1]
         # Camera tools and each System page retain their own collapse preferences.
         assert client.post("/config/data", json={"autohide_navbar_on_cameras": True}).status_code == 200

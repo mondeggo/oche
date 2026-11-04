@@ -442,6 +442,7 @@ $("local-engine-start").addEventListener("click", async () => {
   error.hidden = true;
   try {
     renderEngineStart(await api(`/api/engines/${engineChoice()}/use`, "POST"));
+    window.ocheSidebar?.refresh();
   } catch (cause) { error.textContent = cause.message; error.hidden = false; }
   finally { startingEngine = false; $("local-engine-start").disabled = false; await refresh(); }
 });
@@ -454,6 +455,7 @@ document.querySelectorAll('input[name="engine"]').forEach(input => input.addEven
     // Choosing an engine starts it and stops the other one, which shares the cameras.
     await api(`/api/engines/${engineChoice()}/use`, "POST");
     engineSaved = engineChoice();
+    window.ocheSidebar?.refresh();
     await refresh();
   } catch (cause) {
     setRadio("engine", engineSaved);

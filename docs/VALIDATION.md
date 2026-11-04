@@ -1,5 +1,17 @@
 # Validation
 
+## Integration status and manual fallback (2026-11-04)
+
+- All 721 Python tests and 82 subtests passed. Sidebar/API checks cover no enabled
+  engines, both enabled engines, explicit Manual selection, engine selection,
+  and disabling the last engine.
+- Both JavaScript test files passed, covering live indicator replacement,
+  inactive engines, combined service/detection/event health, and local event
+  connections without a cloud dependency. Translation, changed-file Ruff and
+  whitespace checks passed.
+- These are automated checks, not physical camera or cloud-account acceptance.
+  OcheCore still reports unsupported scoring rather than claiming readiness.
+
 ## Engine setup and installation (2026-11-04)
 
 - All 720 Python tests and 82 subtests passed, including both engines' terminal

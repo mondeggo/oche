@@ -19,6 +19,7 @@ from app.core.integrations.wled.service import (
     WLEDConfig,
 )
 from app.core.profiles import ProfileImport
+from app.navigation import health_rows
 from app.services import engines
 
 
@@ -79,7 +80,8 @@ def create_router() -> APIRouter:
         runtime = request.app.state.runtime
         # Local readiness follows the vision engine Play uses.
         await runtime.detection.check(engines.process_status())
-        return runtime.status()
+        vision = engines.status()
+        return {**runtime.status(), "vision": vision, "health": health_rows(vision["active"])}
 
     @router.get("/api/game")
     async def game(request: Request):

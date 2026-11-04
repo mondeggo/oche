@@ -5,9 +5,9 @@ import vm from "node:vm";
 
 import { api, eventEntries, callerTestState, fitPanel } from "../app/static/core/client.mjs";
 import { sourceEnabled } from "../app/static/core/sources.mjs";
-import { localHealth } from "../app/static/js/health.mjs";
-// The Autodarts integration adds the process and cloud dots.
-import { autodartsHealth, cloudHealth } from "../app/core/integrations/autodarts/static/health.mjs";
+import { engineHealth, localEventsHealth, localHealth, manualHealth, syncHealthRows } from "../app/static/js/health.mjs";
+// The Autodarts integration contributes its event health to one engine indicator.
+import { cloudHealth } from "../app/core/integrations/autodarts/static/health.mjs";
 import { boardMarkup, boardPoint, checkout, funnyName, hitKey, playerStats, seats } from "../app/static/core/game.mjs";
 
 function appearanceContext(messages = {}, fetcher = async () => ({ ok: true,
@@ -83,26 +83,25 @@ test("rejected language changes do not reload or claim that the change was saved
   assert.equal(context.reloads, 0);
 });
 
-test("missing and stopped Autodarts are red with a cause and recovery action", () => {
-  const missing = autodartsHealth({ status: "nofile", unavailable_reason: "Native Windows development does not include Autodarts." });
+test("missing and stopped selected engines are red with a recovery action", () => {
+  const missing = engineHealth({ active: true, status: "nofile", unavailable_reason: "Native Windows development does not include Autodarts." });
   assert.equal(missing[0], "bad");
   assert.match(missing[2], /Native Windows/);
-  const stopped = autodartsHealth({ status: "stopped" });
+  const stopped = engineHealth({ active: true, status: "stopped" });
   assert.equal(stopped[0], "bad");
-  assert.match(stopped[2], /Start it/);
-  assert.match(stopped[2], /logs/);
-  assert.equal(autodartsHealth(null)[0], "bad");
+  assert.match(stopped[2], /Start this engine/);
+  assert.equal(engineHealth(null)[0], "bad");
 });
 
-test("cloud setup and connection failures are red instead of grey", () => {
-  for (const [auth, cloud] of [
-    ["unconfigured", "unconfigured"], ["disconnected", "waiting_for_login"],
-    ["authenticated", "unconfigured"], ["authenticated", "reconnecting"],
-    ["authenticated", "stopped"], ["authenticated", "error"],
-    ["authenticated", "degraded"],
+test("cloud setup and reconnection are amber, while connection failures are red", () => {
+  for (const [auth, cloud, expected] of [
+    ["unconfigured", "unconfigured", "warn"], ["disconnected", "waiting_for_login", "warn"],
+    ["authenticated", "unconfigured", "warn"], ["authenticated", "reconnecting", "warn"],
+    ["authenticated", "stopped", "bad"], ["authenticated", "error", "bad"],
+    ["authenticated", "degraded", "bad"],
   ]) {
     const health = cloudHealth({ auth: { state: auth }, cloud: { state: cloud } });
-    assert.equal(health[0], "bad", `${auth}/${cloud}`);
+    assert.equal(health[0], expected, `${auth}/${cloud}`);
     assert.ok(health[2].length > 20);
   }
 });
@@ -137,7 +136,6 @@ test("intentional local-play pause and sign-in approval are explained as warning
 });
 
 test("healthy services stay green and local detection failure is also red", () => {
-  assert.equal(autodartsHealth({ status: "running" })[0], "good");
   assert.equal(cloudHealth({ auth: { state: "authenticated" }, cloud: { state: "connected" } })[0], "good");
   assert.equal(localHealth({ detecting: true, state: "detecting" })[0], "good");
   assert.equal(localHealth({ detecting: false, state: "stopped", reason: "Detection is stopped." })[0], "bad");
@@ -150,6 +148,63 @@ test("source selection distinguishes cloud games from local board players", () =
   assert.equal(sourceEnabled({ run_on_local: false }, "cloud"), true);
   assert.equal(sourceEnabled({ run_on_cloud: false }, "cloud"), false);
   assert.equal(sourceEnabled({ run_on_cloud: false }, "local"), true);
+});
+
+test("engine indicators combine required checks and leave inactive engines grey", () => {
+  const engine = { name: "autodarts", active: true, installed: true, status: "running", scores: true };
+  const detector = { detecting: true, state: "detecting" };
+  const connected = cloudHealth({ auth: { state: "authenticated" }, cloud: { state: "connected" } });
+  assert.equal(engineHealth(engine, detector, connected)[0], "good");
+  assert.equal(engineHealth(engine, detector, ["bad", "Disconnected", "Events failed"])[0], "bad");
+  assert.match(engineHealth(engine, detector, connected)[2], /Service: Running.*Detection: Detecting.*Events: Connected/);
+  assert.equal(engineHealth(engine, { state: "calibrating", detecting: false }, connected)[0], "warn");
+  assert.equal(engineHealth({ ...engine, status: "stopped" }, detector, connected)[0], "bad");
+  assert.equal(engineHealth({ ...engine, active: false, status: "stopped" }, null, null)[0], "neutral");
+  assert.equal(manualHealth()[0], "neutral");
+  const unsupported = engineHealth({ ...engine, name: "ochecore", scores: false,
+    note: "OcheCore can't score games yet." }, detector, connected);
+  assert.equal(unsupported[0], "warn");
+  assert.match(unsupported[2], /can't score games yet/);
+});
+
+test("local engine events work without cloud and intentional pauses do not turn health red", () => {
+  const engine = { active: true, installed: true, status: "running", scores: true };
+  const detector = { detecting: true, state: "detecting" };
+  const local = { active: true, input: "autodarts", detector: { connected: true } };
+  assert.equal(engineHealth(engine, detector, localEventsHealth(local))[0], "good");
+  assert.match(localEventsHealth(local)[2], /without a cloud connection/);
+  assert.equal(localEventsHealth({ ...local, detector: { connected: false } })[0], "warn");
+  assert.equal(localEventsHealth({ ...local, detector: { connected: false, error: "Lost board" } })[0], "bad");
+  assert.equal(engineHealth(engine, detector, localEventsHealth({ ...local, input: "manual" }))[0], "good");
+});
+
+test("live status adds enabled engine rows and removes Manual as the selection changes", () => {
+  class Node {
+    constructor() { this.children = []; this.dataset = {}; this.ownerDocument = { createElement: () => new Node() }; }
+    setAttribute() {}
+    append(...nodes) {
+      for (const node of nodes) { node.remove(); node.parent = this; this.children.push(node); }
+    }
+    insertBefore(node, before) {
+      node.remove();
+      node.parent = this;
+      this.children.splice(before ? this.children.indexOf(before) : this.children.length, 0, node);
+    }
+    remove() { if (this.parent) this.parent.children = this.parent.children.filter(node => node !== this); }
+    querySelectorAll() { return this.children.filter(node => node.dataset.health); }
+    querySelector() { return this.children.find(node => node.className === "nav-text"); }
+  }
+  const container = new Node();
+  const manual = { id: "manual", label: "Manual", href: "/local", module: null };
+  const autodarts = { id: "autodarts", label: "Autodarts", href: "/integrations/autodarts/board", module: "/autodarts.mjs" };
+  assert.deepEqual(syncHealthRows(container, [manual]).map(row => row.dataset.health), ["manual"]);
+  const rows = syncHealthRows(container, [autodarts]);
+  assert.deepEqual(container.children.map(row => row.dataset.health), ["autodarts"]);
+  assert.equal(rows[0].href, autodarts.href);
+  assert.equal(rows[0].dataset.healthModule, autodarts.module);
+  assert.equal(syncHealthRows(container, [manual, autodarts])[1], rows[0]);
+  syncHealthRows(container, [manual]);
+  assert.deepEqual(container.children.map(row => row.dataset.health), ["manual"]);
 });
 
 const panel = (id, matrix) => ({

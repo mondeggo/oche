@@ -59,7 +59,6 @@ integration = register(Integration(
     ),),
     health=(
         Health("autodarts", "Autodarts", "/integrations/autodarts/board", f"{STATIC}/health.mjs", 10),
-        Health("cloud", "Cloud", "/integrations/autodarts", f"{STATIC}/health.mjs", 90),
     ),
     # Autodarts Play reaches Oche as the "cloud" game source.
     source=AutodartsAccount,

@@ -36,9 +36,16 @@ Integrations also extend Home and the runtime. Home has slots for their template
 (`notices` above every view, the Overview `board` heading and `tiles`, and the
 `account` area at the top of Integrations) and their own views with routes,
 titles and scripts; Home sends `/api/status` to those scripts as an `oche:status`
-event. Sidebar status dots are registered too: core reports local detector
-readiness, and each integration's dot is checked by the module it names
-(`health(id, status, tr)`). A `source` factory gives the runtime a game source:
+event. Only enabled integrations contribute sidebar status indicators. Each
+engine combines process, detection and event readiness in one dot; its registered
+module (`health(id, status, tr)`) supplies event health. Autodarts uses cloud
+events outside local games; local play uses the local event connection. An
+unselected engine is grey, and unsupported scoring stays amber rather than
+claiming readiness. A grey Manual indicator appears when Play selects manual
+scoring (also the fallback without enabled engines), and disappears when an
+engine is selected. `/api/status` supplies the engine snapshot and registered
+indicators so retained pages update them without reloading.
+A `source` factory gives the runtime a game source:
 the runtime starts it, pauses it during local games, merges its status into
 `/api/status` and drops it when the integration is switched off. The Autodarts
 integration uses this for the cloud account (`account/`): sign-in, board choice and
