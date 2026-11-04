@@ -100,16 +100,16 @@ export function boardMarkup() {
     const from = index * 18 - 9, to = from + 18;
     const [single, ring] = index % 2 ? ["light", "green"] : ["dark", "red"];
     parts.push(
-      `<path d="${sector(RING.outerBull, RING.tripleIn, from, to)}" class="board-${single}" data-hit="S${number}"/>`,
-      `<path d="${sector(RING.tripleIn, RING.tripleOut, from, to)}" class="board-${ring}" data-hit="T${number}"/>`,
-      `<path d="${sector(RING.tripleOut, RING.doubleIn, from, to)}" class="board-${single}" data-hit="S${number}"/>`,
-      `<path d="${sector(RING.doubleIn, RING.doubleOut, from, to)}" class="board-${ring}" data-hit="D${number}"/>`,
+      `<path d="${sector(RING.outerBull, RING.tripleIn, from, to)}" class="board-${single}" data-hit="S${number}" data-region="I${number}"/>`,
+      `<path d="${sector(RING.tripleIn, RING.tripleOut, from, to)}" class="board-${ring}" data-hit="T${number}" data-region="T${number}"/>`,
+      `<path d="${sector(RING.tripleOut, RING.doubleIn, from, to)}" class="board-${single}" data-hit="S${number}" data-region="O${number}"/>`,
+      `<path d="${sector(RING.doubleIn, RING.doubleOut, from, to)}" class="board-${ring}" data-hit="D${number}" data-region="D${number}"/>`,
     );
     const [x, y] = polar(112, index * 18);
     parts.push(`<text x="${x}" y="${y}" class="board-number">${number}</text>`);
   });
-  parts.push(`<circle r="${RING.outerBull}" class="board-green" data-hit="S25"/>`,
-    `<circle r="${RING.bull}" class="board-red" data-hit="D25"/>`, '<g class="board-darts"></g>');
+  parts.push(`<circle r="${RING.outerBull}" class="board-green" data-hit="S25" data-region="OB"/>`,
+    `<circle r="${RING.bull}" class="board-red" data-hit="D25" data-region="B"/>`, '<g class="board-darts"></g>');
   return parts.join("");
 }
 

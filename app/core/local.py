@@ -1,4 +1,4 @@
-"""Local X01 games, using the same match frames and normalizer as cloud play."""
+"""Local darts games, using the same match frames and normalizer as cloud play."""
 
 import asyncio
 import json
@@ -14,6 +14,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_valida
 from websockets.exceptions import ConnectionClosed
 
 from app.core import bots
+from app.core import football as football_rules
 from app.core.board.detection import BOARD_URL
 from app.core.board.local import LocalBoardConnection
 from app.core.errors import ConnectionProblem
@@ -46,12 +47,23 @@ class LocalOptions(BaseModel):
     players: list[LocalPlayer] = Field(
         default_factory=lambda: [LocalPlayer(name="Player 1")], min_length=1, max_length=8
     )
+    mode: Literal["x01", "football"] = "x01"
+    goals_to_win: Literal[3, 5, 10] = 5
+    football_beginner: bool = False
+    football_kickoff: Literal["outer", "bull", "inner"] = "outer"
+    football_own_goals: bool = False
     starting_score: Literal[301, 501] = 501
     double_out: bool = True
     input: Literal["autodarts", "manual"] = "autodarts"
     bot_speed: Literal["slow", "normal", "fast"] = "normal"
     show_board: bool = True
     random_names: bool = False
+
+    @model_validator(mode="after")
+    def football_players(self) -> "LocalOptions":
+        if self.mode == "football" and len(self.players) != 2:
+            raise ValueError("Football requires exactly two players.")
+        return self
 
     @field_validator("players", mode="before")
     @classmethod
@@ -66,6 +78,14 @@ class LocalDart(BaseModel):
     model_config = ConfigDict(extra="forbid")
     number: int = Field(ge=0, le=25, strict=True)
     multiplier: int = Field(ge=1, le=3, strict=True)
+
+    bed: Literal["inner", "outer"] | None = None
+
+    def coordinates(self) -> Coords | None:
+        if self.bed and 1 <= self.number <= 20 and self.multiplier == 1:
+            x, y = football_rules.position(f"{'I' if self.bed == 'inner' else 'O'}{self.number}")
+            return Coords(x=x, y=y)
+        return None
 
     def segment(self) -> Segment:
         if self.number not in {*range(21), 25} or (self.number == 25 and self.multiplier == 3):
@@ -82,7 +102,9 @@ class SavedLocalGame(BaseModel):
     model_config = ConfigDict(extra="forbid")
     options: LocalOptions
     frame: MatchFrame
-    visit_start: int = Field(ge=1, le=501)
+    visit_start: int = Field(ge=0, le=501)
+    football: football_rules.FootballState | None = None
+    football_visit: football_rules.FootballState | None = None
     active: bool = True
     tournament_id: str | None = None
     tournament_match_id: str | None = None
@@ -99,6 +121,14 @@ class SavedLocalGame(BaseModel):
             or frame.turns[0].player_id != frame.players[frame.player].id
         ):
             raise ValueError("Invalid saved local game frame")
+        if self.options.mode == "football" and (
+            not self.football
+            or not self.football_visit
+            or len(frame.players) != 2
+            or frame.variant != "Football"
+            or frame.game_scores != self.football.goals
+        ):
+            raise ValueError("Invalid saved football state")
         return self
 
 
@@ -155,7 +185,13 @@ class LocalGames:
             if not player.is_bot
         }
         return [
-            0 if turn.busted else turn.points or 0
+            (
+                sum(dart.segment.number * dart.segment.multiplier for dart in turn.throws)
+                if self.saved.options.mode == "football"
+                else 0
+                if turn.busted
+                else turn.points or 0
+            )
             for turn in frame.turns
             if turn.player_id in humans and turn.finished_at
         ]
@@ -219,7 +255,20 @@ class LocalGames:
             "frame": self.saved.frame.model_dump(by_alias=True) if self.saved else None,
             "tournament": (
                 {"id": self.saved.tournament_id, "match_id": self.saved.tournament_match_id}
-                if self.saved and self.saved.tournament_id else None
+                if self.saved and self.saved.tournament_id
+                else None
+            ),
+            "football": (
+                {
+                    **self.saved.football.model_dump(),
+                    "targets": football_rules.targets(
+                        self.saved.football,
+                        self.saved.options.football_beginner,
+                        self.saved.options.football_kickoff,
+                    ),
+                }
+                if self.saved and self.saved.football
+                else None
             ),
             "feed": {**self.connection.status(), "monitoring": self.wants_feed(), "error": self.feed_error},
             "detector": {
@@ -232,33 +281,45 @@ class LocalGames:
         }
 
     def start(
-        self, options: LocalOptions, *, tournament_id: str | None = None,
+        self,
+        options: LocalOptions,
+        *,
+        tournament_id: str | None = None,
         tournament_match_id: str | None = None,
     ) -> None:
         if self.active:
             raise ConnectionProblem("End the current local game before starting another.")
         players = [Player(id=str(uuid4()), name=player.name, boardId=BOARD_ID) for player in options.players]
+        initial_score = 0 if options.mode == "football" else options.starting_score
         frame = MatchFrame(
             id=str(uuid4()),
-            variant="X01",
+            variant="Football" if options.mode == "football" else "X01",
             players=players,
-            turns=[
-                Turn(id=str(uuid4()), playerId=players[0].id, round=0, points=0, score=options.starting_score)
-            ],
+            turns=[Turn(id=str(uuid4()), playerId=players[0].id, round=0, points=0, score=initial_score)],
             set=0,
             leg=0,
             round=0,
             player=0,
-            gameScores=[options.starting_score] * len(players),
-            settings={
+            gameScores=[initial_score] * len(players),
+            state=football_rules.FootballState().model_dump() if options.mode == "football" else {},
+            settings={"goalsToWin": options.goals_to_win}
+            if options.mode == "football"
+            else {
                 "baseScore": options.starting_score,
                 "outMode": "Double" if options.double_out else "Straight",
             },
         )
-        self._save(SavedLocalGame(
-            options=options, frame=frame, visit_start=options.starting_score,
-            tournament_id=tournament_id, tournament_match_id=tournament_match_id,
-        ))
+        self._save(
+            SavedLocalGame(
+                options=options,
+                frame=frame,
+                visit_start=initial_score,
+                football=football_rules.FootballState() if options.mode == "football" else None,
+                football_visit=football_rules.FootballState() if options.mode == "football" else None,
+                tournament_id=tournament_id,
+                tournament_match_id=tournament_match_id,
+            )
+        )
         self.bot_due = None
         self.reset_detector()
         self._event("board.matches", {"event": "start", "id": frame.id})
@@ -288,6 +349,9 @@ class LocalGames:
 
     @staticmethod
     def _score(saved: SavedLocalGame) -> None:
+        if saved.options.mode == "football":
+            LocalGames._score_football(saved)
+            return
         frame, remaining = saved.frame, saved.visit_start
         turn = frame.turns[0]
         turn.busted, turn.finished_at = False, None
@@ -308,6 +372,37 @@ class LocalGames:
         turn.score = remaining
         frame.game_scores[frame.player] = remaining
         if turn.busted or frame.winner >= 0 or len(turn.throws) == 3:
+            turn.finished_at = datetime.now(UTC).isoformat()
+
+    @staticmethod
+    def _score_football(saved: SavedLocalGame) -> None:
+        """Replay this visit from its snapshot so undo and detector corrections are exact."""
+        frame, options = saved.frame, saved.options
+        turn = frame.turns[0]
+        current = saved.football_visit.model_copy(deep=True)
+        current.goal_by = None
+        turn.busted, turn.finished_at = False, None
+        frame.winner = frame.game_winner = -1
+        for dart in turn.throws:
+            football_rules.move(
+                current,
+                football_rules.region(dart),
+                frame.player,
+                options.football_beginner,
+                options.football_kickoff,
+                options.football_own_goals,
+            )
+            if current.goal_by is not None:
+                break
+        saved.football = current
+        frame.state = current.model_dump()
+        frame.game_scores = list(current.goals)
+        turn.score = current.goals[frame.player]
+        turn.points = turn.score - saved.football_visit.goals[frame.player]
+        for index, goals in enumerate(current.goals):
+            if goals >= options.goals_to_win:
+                frame.winner = frame.game_winner = index
+        if current.goal_by is not None or frame.winner >= 0 or len(turn.throws) == 3:
             turn.finished_at = datetime.now(UTC).isoformat()
 
     def throw(
@@ -367,10 +462,19 @@ class LocalGames:
         if not turn.throws:
             raise ConnectionProblem("Throw at least one dart before continuing.")
         turn.finished_at = turn.finished_at or datetime.now(UTC).isoformat()
-        frame.player = (frame.player + 1) % len(frame.players)
+        frame.player = (
+            1 - saved.football.goal_by
+            if saved.football and saved.football.goal_by is not None
+            else (frame.player + 1) % len(frame.players)
+        )
         if frame.player == 0:
             frame.round += 1
         saved.visit_start = frame.game_scores[frame.player]
+        if saved.options.mode == "football":
+            saved.football.goal_by = None
+            saved.football.event = "kickoff" if saved.football.kickoff else "turn"
+            saved.football_visit = saved.football.model_copy(deep=True)
+            frame.state = saved.football.model_dump()
         frame.turns.insert(
             0,
             Turn(
@@ -488,7 +592,13 @@ class LocalGames:
             self.armed = False
             self.detector_error = "Detection lost a dart. Clear the board and select Next turn."
             return
-        if old != segments[: len(old)] and not (saved.tournament_id and saved.frame.winner >= 0):
+        position_changed = saved.options.mode == "football" and any(
+            dart.coords != position
+            for dart, position in zip(saved.frame.turns[0].throws, positions, strict=False)
+        )
+        if (old != segments[: len(old)] or position_changed) and not (
+            saved.tournament_id and saved.frame.winner >= 0
+        ):
             for index, segment in enumerate(segments[: len(saved.frame.turns[0].throws)]):
                 saved.frame.turns[0].throws[index].segment = segment
                 saved.frame.turns[0].throws[index].coords = positions[index]
@@ -518,8 +628,19 @@ class LocalGames:
         if turn.finished_at:
             self.next_turn(bot=True)
             return
-        aim = bots.target(turn.score, 3 - len(turn.throws), self.saved.options.double_out)
-        segment, coords = bots.throw(aim, level, self.random)
+        if self.saved.options.mode == "football":
+            options = self.saved.options
+            aim = football_rules.bot_target(
+                self.saved.football,
+                self.saved.frame.player,
+                options.football_beginner,
+                options.football_kickoff,
+                options.football_own_goals,
+            )
+            segment, coords = football_rules.throw_at(aim, level, self.random)
+        else:
+            aim = bots.target(turn.score, 3 - len(turn.throws), self.saved.options.double_out)
+            segment, coords = bots.throw(aim, level, self.random)
         self.throw(segment, bot=True, coords=coords)
 
     async def run_bots(self) -> None:

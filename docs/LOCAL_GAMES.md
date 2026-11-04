@@ -4,13 +4,12 @@ Open **Play on Oche** in the sidebar (`/local`) and choose a game mode. The firs
 mode is one-leg X01: 301 or 501, single in, straight or double out, and one to
 eight players sharing the board. Bull is 25; double bull is 50 and counts as a
 double for checkout. A bust restores the score from the beginning of the visit.
-Other modes are listed as **Coming soon** and cannot be started yet. The **Arcade**
-category groups planned Football, Pac-Man and Mario 64 games.
+The **Arcade** category includes playable Football. Other modes, including
+Pac-Man and Mario 64, are marked **Coming soon** and cannot be started yet.
 
 The setup screen is one centered column, up to 680 px wide, with one panel: the
 players and, below them, labelled settings (starting score, finish, player names, dartboard and input) with
-full-width choices. A new setup always starts with one player, even after an
-earlier game; **Rematch** keeps the previous players. **Player names** chooses
+full-width choices. A new X01 setup starts with one player, and Football with two; **Rematch** keeps the previous players. **Player names** chooses
 how new rows are named: **Random** gives a playful name such as
 "Lucky Otter", with a `[Bot]` prefix for bots; **Numbered** (default) follows the list as
 "Player 1", "Bot 2" and so on, renumbering when rows are removed. Switching it
@@ -272,3 +271,38 @@ Checkout suggestions appear in the remaining dart slots as muted **Suggested**
 labels. They update after each throw or undo and disappear when the visit ends.
 Actual darts retain their scored appearance; selecting the next manual slot still
 opens score entry without automatically applying the suggestion.
+
+## Football
+
+Choose **Arcade → Football**. Two players share a ball on a soccer pitch mapped to
+all 82 dartboard regions. Each turn has up to three darts. Player 1 attacks the
+right goal (D6); Player 2 attacks the left goal (D11). First to 3, 5 (default), or
+10 goals wins. Fixed and adaptive bots can also play; remove a player row to add a bot.
+
+The ball starts at the bullseye. Kick-off requires the outer bull by default;
+setup can allow either bull, or either bull plus any inner single. A missed
+kick-off uses a dart; the next dart can try again. After kick-off, strict movement
+allows only regions sharing an edge; Beginner additionally allows diagonal
+neighbours between adjacent numbered regions and adjacent rings. For example,
+inner S17 can move to inner S3, inner S2, T17 or outer bull; Beginner adds T3 and
+T2. Inner and outer singles are distinct. Sideways and backward moves are legal.
+Hitting the same region, a non-neighbour, or missing uses a dart without moving
+the ball. The next player continues from the current ball position.
+
+Only a legal move into the opponent's goal scores. **Own goals**, off by default,
+lets a legal move into your own goal score for your opponent; with it off, your
+goal remains an ordinary boundary region. A goal ends the visit immediately,
+resets the ball to the bullseye, and gives the conceding player a fresh turn once
+darts are cleared / **Next turn** is selected. An own goal can therefore give the
+same player consecutive turns. Remaining darts from the scoring visit are unused.
+
+Manual input includes **Inner single** / **Outer single**. Detection needs hit
+coordinates for singles; without them, Oche reports an error rather than guessing
+the region. Bull, triple and double regions need only their scored segment. The
+small dartboard highlights legal targets, while the pitch shows the ball's region.
+Undo and detected corrections replay the current visit, including goals and own
+goals. Game state, scores, ball position and the visit snapshot survive restarts.
+
+This is Oche's custom soccer rule set, using the left/right D11–D6 field idea from
+[GLD's football darts description](https://gldproducts.com/blogs/all/how-to-play-football-darts).
+It does not use that article's American-football downs, touchdowns or extra points.

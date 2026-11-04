@@ -13,6 +13,7 @@
 {% block title %}{{ _("Oche - Play") }}{% endblock %}
 {% block content %}
 <link rel="stylesheet" href="/static/css/local.css">
+<link rel="stylesheet" href="/static/css/football.css">
 <div id="game-page" class="game-page" data-view="modes">
 <p id="local-error" class="card game-error" role="alert" hidden></p>
 
@@ -66,7 +67,7 @@
   </div>
   <h2 class="game-group">{{ _("Arcade") }}</h2>
   <div class="game-modes">
-    {{ mode(_("Football"), "arcade", _("Arcade"), _("Score goals with your darts")) }}
+    {{ mode(_("Football"), "football", _("Arcade"), _("Score goals with your darts"), True) }}
     {{ mode("Pac-Man", "arcade", _("Arcade"), _("Clear the maze and avoid the ghosts")) }}
     {{ mode("Mario 64", "arcade", _("Arcade"), _("Explore worlds and collect stars")) }}
   </div>
@@ -76,7 +77,7 @@
   <header class="page-head">
     <div><button id="local-back" type="button" class="game-back"><svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>{{ _("Game modes") }}</button>
     <h1 id="local-setup-title">X01</h1>
-    <p class="subtitle">{{ _("One leg · Single in · Saved on this device") }}</p></div>
+    <p id="local-setup-description" class="subtitle">{{ _("One leg · Single in · Saved on this device") }}</p></div>
   </header>
   <section class="card game-setup-panel" aria-labelledby="local-players-title">
     <div class="card-head"><h2 id="local-players-title">{{ _("Players") }}</h2><span id="local-player-count" class="badge"></span></div>
@@ -87,16 +88,27 @@
     </div>
     <div class="game-settings" role="group" aria-labelledby="local-options-title">
       <h2 id="local-options-title">{{ _("Settings") }}</h2>
+      <p id="local-football-rules" class="hint" hidden></p>
       <div class="game-options">
-        <fieldset class="game-option"><legend>{{ _("Starting score") }}</legend>
+        <fieldset id="local-goals-option" class="game-option" hidden><legend>{{ _("Goals to win") }}</legend>
+          <div class="game-choices">{{ choice("goals", "3", "3") }}{{ choice("goals", "5", "5", True) }}{{ choice("goals", "10", "10") }}</div></fieldset>
+        <fieldset id="local-kickoff-option" class="game-option" hidden><legend>{{ _("Kick-off target") }}</legend>
+          <div class="game-choices">{{ choice("kickoff", "outer", _("Outer bull"), True) }}{{ choice("kickoff", "bull", _("Either bull")) }}{{ choice("kickoff", "inner", _("Bull or inner single")) }}</div></fieldset>
+        <fieldset id="local-movement-option" class="game-option" hidden><legend>{{ _("Movement") }}</legend>
+          <div class="game-choices">{{ choice("movement", "strict", _("Strict"), True) }}{{ choice("movement", "beginner", _("Beginner")) }}</div>
+          <p class="hint">{{ _("Strict: shared edges. Beginner: diagonals also count. Invalid hits use a dart without moving the ball.") }}</p></fieldset>
+        <fieldset id="local-own-goals-option" class="game-option" hidden><legend>{{ _("Own goals") }}</legend>
+          <div class="game-choices">{{ choice("own-goals", "off", _("Off"), True) }}{{ choice("own-goals", "on", _("On")) }}</div>
+          <p class="hint">{{ _("A legal move into your own goal scores for your opponent. Otherwise it is a normal boundary region.") }}</p></fieldset>
+        <fieldset id="local-score-option" class="game-option"><legend>{{ _("Starting score") }}</legend>
           <div class="game-choices">{{ choice("score", "501", "501", True) }}{{ choice("score", "301", "301") }}</div></fieldset>
-        <fieldset class="game-option"><legend>{{ _("Finish") }}</legend>
+        <fieldset id="local-out-option" class="game-option"><legend>{{ _("Finish") }}</legend>
           <div class="game-choices">{{ choice("out", "double", _("Double out"), True) }}{{ choice("out", "straight", _("Straight out")) }}</div>
           <p class="hint">{{ _("Double out ends the leg on a double or the bull.") }}</p></fieldset>
         <fieldset class="game-option"><legend>{{ _("Player names") }}</legend>
           <div class="game-choices">{{ choice("names", "numbered", _("Numbered"), True) }}{{ choice("names", "random", _("Random")) }}</div>
           <p class="hint">{{ _("Numbered names follow the list: Player 1, Player 2 and so on. Names you type are kept.") }}</p></fieldset>
-        <fieldset class="game-option"><legend>{{ _("Dartboard") }}</legend>
+        <fieldset id="local-board-option" class="game-option"><legend>{{ _("Dartboard") }}</legend>
           <div class="game-choices">{{ choice("board", "show", _("Show"), True) }}{{ choice("board", "hide", _("Hide")) }}</div>
           <p class="hint">{{ _("Shows where each dart of the visit lands.") }}</p></fieldset>
       </div>
@@ -153,6 +165,8 @@
     <div class="btn-row"><button id="local-rematch" type="button">{{ _("Rematch") }}</button><button id="local-new" type="button" class="btn-neutral">{{ _("New game") }}</button></div>
     <a id="local-tournament-continue" class="game-back" href="/local/tournament" hidden>{{ _("Tournaments") }}</a>
   </div>
+  <div class="local-arena">
+  {% include "football.html" %}
   <div id="local-stage" class="game-stage">
   <div id="local-side-left" class="game-side"></div>
   <div id="local-center" class="game-center">
@@ -172,12 +186,16 @@
   </div>
   <div id="local-side-right" class="game-side"></div>
   </div>
+  </div>
   <dialog id="local-manual" class="game-dialog game-pad" aria-labelledby="local-manual-title">
     <form method="dialog" class="card-head"><h2 id="local-manual-title">{{ _('Enter a dart') }}</h2><button type="submit" class="icon-button" aria-label="{{ _('Close') }}">✕</button></form>
     <p id="local-manual-error" class="game-error" role="alert" hidden></p>
     <div class="game-rings" role="radiogroup" aria-label="{{ _('Ring') }}">
       {{ choice("ring", "1", _("Single"), True) }}{{ choice("ring", "2", _("Double")) }}{{ choice("ring", "3", _("Triple")) }}
     </div>
+    <fieldset id="local-single-bed" class="game-option" hidden><legend>{{ _("Single region") }}</legend>
+      <div class="game-choices">{{ choice("single-bed", "inner", _("Inner single"), True) }}{{ choice("single-bed", "outer", _("Outer single")) }}</div>
+    </fieldset>
     <div id="local-keys" class="game-keys">
       {%- for number in range(1, 21) %}<button type="button" class="btn-neutral" data-number="{{ number }}">{{ number }}</button>{% endfor -%}
       <button type="button" class="btn-neutral game-key-wide" data-number="25">{{ _("Bull") }}</button>
@@ -188,7 +206,7 @@
   <dialog id="local-history-dialog" class="game-dialog game-history" aria-labelledby="local-history-title">
     <form method="dialog">
       <div class="card-head"><h2 id="local-history-title">{{ _("Recent visits") }}</h2><button type="submit" class="icon-button" aria-label="{{ _('Close') }}">✕</button></div>
-      <div class="game-history-wrap"><table><thead><tr><th>{{ _("Round") }}</th><th>{{ _("Player") }}</th><th>{{ _("Darts") }}</th><th>{{ _("Score") }}</th><th>{{ _("Remaining") }}</th></tr></thead><tbody id="local-history"></tbody></table></div>
+      <div class="game-history-wrap"><table><thead><tr><th>{{ _("Round") }}</th><th>{{ _("Player") }}</th><th>{{ _("Darts") }}</th><th>{{ _("Score") }}</th><th id="local-history-score-label">{{ _("Remaining") }}</th></tr></thead><tbody id="local-history"></tbody></table></div>
       <p id="local-history-empty" class="hint">{{ _("No visits yet.") }}</p>
     </form>
   </dialog>

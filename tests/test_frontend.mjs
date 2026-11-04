@@ -8,6 +8,7 @@ import { sourceEnabled } from "../app/static/core/sources.mjs";
 import { engineHealth, localEventsHealth, localHealth, manualHealth, syncHealthRows } from "../app/static/js/health.mjs";
 // The Autodarts integration contributes its event health to one engine indicator.
 import { cloudHealth } from "../app/core/integrations/autodarts/static/health.mjs";
+import { dartRegion, pitchPosition } from "../app/static/core/football.mjs";
 import { boardMarkup, boardPoint, checkout, funnyName, hitKey, playerStats, seats } from "../app/static/core/game.mjs";
 
 function appearanceContext(messages = {}, fetcher = async () => ({ ok: true,
@@ -678,5 +679,22 @@ test("missing compatible modules stay installable across refreshes and submit in
     target[key] = original;
     await refresh();
     assert.equal(install().disabled, false);
+  }
+});
+
+
+test("football pitch and board distinguish inner/outer singles and align D11/D6 goals", () => {
+  const single = coords => ({ segment: { number: 17, multiplier: 1 }, coords });
+  assert.equal(dartRegion(single({ x: 0, y: 65 / 170 })), "I17");
+  assert.equal(dartRegion(single({ x: 0, y: 135 / 170 })), "O17");
+  assert.equal(dartRegion({ segment: { number: 25, multiplier: 1 } }), "OB");
+  assert.equal(dartRegion({ segment: { number: 25, multiplier: 2 } }), "B");
+  assert.deepEqual(pitchPosition("B"), [500, 320]);
+  assert.ok(pitchPosition("D11")[0] < 70);
+  assert.ok(pitchPosition("D6")[0] > 930);
+  assert.ok(Math.abs(pitchPosition("D11")[1] - 320) < 0.001);
+  const markup = boardMarkup();
+  for (const region of ["I17", "O17", "T17", "D17", "B", "OB"]) {
+    assert.equal(markup.split(`data-region="${region}"`).length - 1, 1);
   }
 });

@@ -28,7 +28,7 @@ async def stop(request: Request):
 async def throw(dart: LocalDart, request: Request):
     local = request.app.state.runtime.local
     async with local.lock:
-        local.throw(dart.segment())
+        local.throw(dart.segment(), coords=dart.coordinates())
         return request.app.state.runtime.local_status()
 
 
