@@ -274,34 +274,79 @@ opens score entry without automatically applying the suggestion.
 
 ## Football
 
-Choose **Arcade → Football**. Two players share a ball on a soccer pitch mapped to
-all 82 dartboard regions. Each turn has up to three darts. Player 1 attacks the
-right goal (D6); Player 2 attacks the left goal (D11). First to 3, 5 (default), or
-10 goals wins. Fixed and adaptive bots can also play; remove a player row to add a bot.
+Choose **Arcade → Football**. Two players share a ball across all 82 dartboard
+cells: bulls, inner singles, trebles, outer singles and doubles. Fixed and adaptive
+bots can also play. D6 is the right goal and D11 the left; the goal labels sit in
+the goal boxes, outside the playing field.
 
-The ball starts at the bullseye. Kick-off requires the outer bull by default;
-setup can allow either bull, or either bull plus any inner single. A missed
-kick-off uses a dart; the next dart can try again. After kick-off, strict movement
-allows only regions sharing an edge; Beginner additionally allows diagonal
-neighbours between adjacent numbered regions and adjacent rings. For example,
-inner S17 can move to inner S3, inner S2, T17 or outer bull; Beginner adds T3 and
-T2. Inner and outer singles are distinct. Sideways and backward moves are legal.
-Hitting the same region, a non-neighbour, or missing uses a dart without moving
-the ball. The next player continues from the current ball position.
+### Setup and bull-up
 
-Only a legal move into the opponent's goal scores. **Own goals**, off by default,
-lets a legal move into your own goal score for your opponent; with it off, your
-goal remains an ordinary boundary region. A goal ends the visit immediately,
-resets the ball to the bullseye, and gives the conceding player a fresh turn once
-darts are cleared / **Next turn** is selected. An own goal can therefore give the
-same player consecutive turns. Remaining darts from the scoring visit are unused.
+- **Goals:** first to 3 or 5 (default).
+- **Rounds:** 10, 16, or a custom 2–200 rounds. Choose penalties, golden goal, or a
+  draw as the tiebreaker. Optional stoppage time randomly adds 0–2 complete rounds
+  per half; the allowances are saved with the game.
+- **Kick-off:** outer bull only (default), either bull, or either bull plus any inner single.
+- **Movement:** strict shared edges (default), or beginner diagonals as well.
+- **Own goals:** off by default.
 
-Manual input includes **Inner single** / **Outer single**. Detection needs hit
-coordinates for singles; without them, Oche reports an error rather than guessing
-the region. Bull, triple and double regions need only their scored segment. The
-small dartboard highlights legal targets, while the pitch shows the ball's region.
-Undo and detected corrections replay the current visit, including goals and own
-goals. Game state, scores, ball position and the visit snapshot survive restarts.
+Both players throw one dart for the bull-up. The closest starts; equal distances
+(within 0.01 mm) repeat the bull-up. Manual input asks for the measured distance
+from the centre in millimetres; vision uses the hit coordinates. The ball starts
+at the centre regardless of where the winning bull-up dart lands.
+
+### Play and goals
+
+Each visit allows three darts. A missed opening dart consumes a dart but the next
+dart can still attempt kick-off. Once opened, the bull is an ordinary cell. Only
+neighbouring cells move the ball; misses, the same cell, and non-neighbours leave
+it still. Sideways and backward movement is allowed. Numbered sectors wrap around
+(20 neighbours 5). Strict inner S17 neighbours inner S3, inner S2, T17 and outer
+bull; beginner mode also allows T3 and T2. Players share the ball and continue
+from its position on their next turn.
+
+Player 1 initially attacks D6 and Player 2 D11. A legal move onto the attacking
+goal scores. With own goals off, hitting your own goal leaves the ball still.
+With own goals on, a legal move onto it scores for the opponent. A goal forfeits
+remaining darts, resets the ball to the centre, and gives the conceding player
+the next kick-off. Own goals can give the same player an extra visit. A round
+ends once both players have had at least one visit; an extra own-goal visit does
+not by itself advance the clock.
+
+### Half-time and full-time
+
+In Goals mode, half-time is due when either player reaches 2 of 3, or 3 of 5 goals.
+In Rounds mode it is due at the midpoint, after any first-half stoppage rounds.
+Always finish the current round first, then reset the ball, swap goals and let
+the player who did not start the game kick off the second half. Odd round counts
+put the extra round in the second half. Reaching the winning goal ends Goals mode
+immediately, even if half-time was pending.
+
+Rounds map to 90 minutes: 10 rounds show 9′, 18′, … 45′, then 54′, … 90′. Each half
+maps separately to 45 minutes for odd counts. Added rounds show 45+1′, 90+2′, etc.
+Half-time, full-time and final-minute notices appear on the pitch. After the final
+round and stoppage time, the higher score wins; ties use the selected tiebreaker:
+
+- **Penalties:** one dart each directly at the assigned goal double, without moving
+  the ball through neighbouring cells. Both players shoot before a result is
+  decided. Repeat tied pairs until one scores and the other misses. Penalty totals
+  are shown separately from match goals.
+- **Golden goal:** resume from a centre kick-off; the next goal wins.
+- **Draw:** end the match with equal scores.
+
+Transitions occur after removing darts or selecting **Next turn**, preserving
+undo during the current visit. State, distances, half, clock and scores survive
+restarts.
+
+### Input and layout
+
+Manual scoring distinguishes inner and outer singles. Vision maps coordinates
+to cells and pauses for confirmation within 1.5 mm of a wire. Confirm the actual
+cell in the manual scoring dialog; repeated detector snapshots retain the
+confirmation. Without coordinates, singles and bull-up cannot be guessed.
+
+The pitch and reference dartboard scale to available viewport height; small
+screens place the compact board and input controls below the pitch. The board
+highlights playable targets, and the pitch shows the ball's cell.
 
 This is Oche's custom soccer rule set, using the left/right D11–D6 field idea from
 [GLD's football darts description](https://gldproducts.com/blogs/all/how-to-play-football-darts).

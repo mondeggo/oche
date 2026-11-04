@@ -2,7 +2,7 @@
   <div class="football-scoreboard">
     {% for side in [0, 1] %}
     <div id="football-team-{{ side }}" class="football-team" data-team="{{ side }}">
-      <div><p id="football-name-{{ side }}" class="football-name"></p><p class="football-direction">{{ _('Attacks D6 →') if side == 0 else _('← Attacks D11') }}</p></div>
+      <div><p id="football-name-{{ side }}" class="football-name"></p><p id="football-direction-{{ side }}" class="football-direction">{{ _('Attacks D6 →') if side == 0 else _('← Attacks D11') }}</p></div>
       <strong id="football-score-{{ side }}" class="football-score">0</strong>
     </div>
     {% endfor %}
@@ -19,11 +19,11 @@
         <path d="M500 50V590"/><circle cx="500" cy="320" r="80"/>
         <path d="M50 170H190V470H50 M950 170H810V470H950 M50 245H105V395H50 M950 245H895V395H950"/>
         <path d="M190 255Q250 320 190 385 M810 255Q750 320 810 385"/>
-        <rect id="football-goal-left" x="20" y="270" width="30" height="100"/>
-        <rect id="football-goal-right" x="950" y="270" width="30" height="100"/>
+        <rect id="football-goal-left" x="5" y="270" width="45" height="100"/>
+        <rect id="football-goal-right" x="950" y="270" width="45" height="100"/>
       </g>
       <g fill="#d6f1dc"><circle cx="500" cy="320" r="4"/><circle cx="150" cy="320" r="4"/><circle cx="850" cy="320" r="4"/></g>
-      <g class="football-goal-labels" fill="#effff4" text-anchor="middle"><text x="85" y="230">D11</text><text x="915" y="230">D6</text></g>
+      <g class="football-goal-labels" fill="#effff4" text-anchor="middle"><text x="27" y="326">D11</text><text x="973" y="326">D6</text></g>
       <polygon id="football-attack" class="football-attack" points="500,320 950,270 950,370" visibility="hidden"/>
       <g id="football-ball" class="football-ball" transform="translate(500 320)">
         <circle r="18" fill="#f7f9f6" stroke="#102b21" stroke-width="2"/>
@@ -32,7 +32,13 @@
     </svg>
   </div>
   <div class="football-guidance" aria-live="polite">
+    <p id="football-clock" class="football-clock"></p>
     <p id="football-message" class="football-message"></p>
     <p id="football-target" class="football-target"></p>
+    <div id="football-bullup-entry" hidden>
+      <label for="football-distance">{{ _("Distance from bull centre (mm)") }}</label>
+      <div class="btn-row"><input id="football-distance" type="number" min="0" max="1700" step="0.1" inputmode="decimal"><button id="football-bullup-submit" type="button">{{ _("Record distance") }}</button></div>
+    </div>
+    <button id="football-confirm" type="button" hidden>{{ _("Confirm hit near wire") }}</button>
   </div>
 </section>

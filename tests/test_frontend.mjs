@@ -690,8 +690,8 @@ test("football pitch and board distinguish inner/outer singles and align D11/D6 
   assert.equal(dartRegion({ segment: { number: 25, multiplier: 1 } }), "OB");
   assert.equal(dartRegion({ segment: { number: 25, multiplier: 2 } }), "B");
   assert.deepEqual(pitchPosition("B"), [500, 320]);
-  assert.ok(pitchPosition("D11")[0] < 70);
-  assert.ok(pitchPosition("D6")[0] > 930);
+  assert.deepEqual(pitchPosition("D11"), [27, 320]);
+  assert.deepEqual(pitchPosition("D6"), [973, 320]);
   assert.ok(Math.abs(pitchPosition("D11")[1] - 320) < 0.001);
   const markup = boardMarkup();
   for (const region of ["I17", "O17", "T17", "D17", "B", "OB"]) {

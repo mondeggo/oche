@@ -19,7 +19,18 @@ class FootballState(BaseModel):
     kickoff: bool = True
     goals: list[int] = Field(default_factory=lambda: [0, 0], min_length=2, max_length=2)
     goal_by: Literal[0, 1] | None = None
-    event: Literal["kickoff", "moved", "invalid", "goal", "own_goal", "turn"] = "kickoff"
+    event: str = "kickoff"
+    phase: Literal["bullup", "play", "golden", "penalties", "finished"] = "play"
+    starter: int = 0
+    half: int = 1
+    rounds: int = 0
+    visits: list[int] = Field(default_factory=lambda: [0, 0])
+    bullup: list[float | None] = Field(default_factory=lambda: [None, None])
+    penalties: list[bool | None] = Field(default_factory=lambda: [None, None])
+    penalty_score: list[int] = Field(default_factory=lambda: [0, 0])
+    added: list[int] = Field(default_factory=lambda: [0, 0])
+    halftime_due: bool = False
+    winner: int = -1
 
     @field_validator("ball")
     @classmethod
@@ -49,6 +60,12 @@ def neighbours(region: str, beginner: bool = False) -> list[str]:
 
 
 def targets(state: FootballState, beginner: bool, kickoff: str) -> list[str]:
+    if state.phase == "bullup":
+        return ["B", "OB"]
+    if state.phase == "penalties":
+        return list(GOALS)
+    if state.phase == "finished":
+        return []
     if not state.kickoff:
         return neighbours(state.ball, beginner)
     return (
@@ -82,9 +99,13 @@ def move(
     if hit not in targets(state, beginner, kickoff):
         state.event = "invalid"
         return
+    attack = goal_for(state, player)
+    if not own_goals and hit == goal_for(state, 1 - player):
+        state.event = "invalid"
+        return
     state.ball, state.kickoff, state.event = hit, False, "moved"
-    if hit == GOALS[player] or (own_goals and hit == GOALS[1 - player]):
-        scorer = player if hit == GOALS[player] else 1 - player
+    if hit == attack or (own_goals and hit == goal_for(state, 1 - player)):
+        scorer = player if hit == attack else 1 - player
         state.goals[scorer] += 1
         state.goal_by = scorer
         state.ball, state.kickoff = "B", True
@@ -102,13 +123,18 @@ def position(region: str) -> tuple[float, float]:
 
 def bot_target(state: FootballState, player: int, beginner: bool, kickoff: str, own_goals: bool) -> str:
     """Choose the first step of a shortest legal route, avoiding optional own goals."""
+    if state.phase == "bullup":
+        return "B"
+    if state.phase == "penalties":
+        return goal_for(state, player)
+    attack = goal_for(state, player)
     queue = deque((hit, hit) for hit in targets(state, beginner, kickoff))
     seen = set()
     while queue:
         hit, first = queue.popleft()
-        if hit == GOALS[player]:
+        if hit == attack:
             return first
-        if hit in seen or (own_goals and hit == GOALS[1 - player]):
+        if hit in seen or hit == goal_for(state, 1 - player):
             continue
         seen.add(hit)
         queue.extend((neighbour, first) for neighbour in neighbours(hit, beginner))
@@ -120,3 +146,123 @@ def throw_at(target: str, level: float, rng) -> tuple:
     spread = bots.spread(level)
     x, y = rng.gauss(x * 170, spread), rng.gauss(y * 170, spread)
     return bots.segment_at(x, y), Coords(x=max(-10, min(10, x / 170)), y=max(-10, min(10, y / 170)))
+
+
+def goal_for(state: FootballState, player: int) -> str:
+    return GOALS[player if state.half == 1 else 1 - player]
+
+
+def near_wire(coords: Coords | None, tolerance: float = 1.5) -> bool:
+    """Ask for confirmation within 1.5 mm of a circular or radial wire."""
+    if coords is None:
+        return False
+    radius = math.hypot(coords.x, coords.y) * 170
+    if min(abs(radius - wire) for wire in (6.35, 15.9, 99, 107, 162, 170)) <= tolerance:
+        return True
+    angle = math.degrees(math.atan2(coords.x, coords.y))
+    delta = abs((angle % 18) - 9)
+    return 15.9 < radius < 170 and radius * math.sin(math.radians(delta)) <= tolerance
+
+
+def strike(state: FootballState, dart: Dart, player: int, options) -> None:
+    if state.phase == "bullup":
+        if dart.coords is None:
+            raise ConnectionProblem("Enter the bull-up distance from the centre in millimetres.")
+        state.bullup[player] = math.hypot(dart.coords.x, dart.coords.y) * 170
+        return
+    hit = region(dart)
+    if state.phase == "penalties":
+        state.penalties[player] = hit == goal_for(state, player)
+        state.penalty_score[player] += int(state.penalties[player])
+        if all(result is not None for result in state.penalties) and state.penalties[0] != state.penalties[1]:
+            state.winner = 0 if state.penalties[0] else 1
+            state.phase, state.event = "finished", "fulltime"
+        return
+    move(state, hit, player, options.football_beginner, options.football_kickoff, options.football_own_goals)
+    if state.goal_by is not None:
+        if state.phase == "golden" or (
+            options.football_format == "goals" and max(state.goals) >= options.goals_to_win
+        ):
+            state.winner = state.goal_by
+            state.phase, state.event = "finished", "fulltime"
+        elif (
+            options.football_format == "goals"
+            and state.half == 1
+            and max(state.goals) >= math.ceil(options.goals_to_win / 2)
+        ):
+            state.halftime_due = True
+
+
+def advance(state: FootballState, player: int, options) -> int:
+    """Close a visit; transitions happen after darts are removed, never mid-visit."""
+    if state.phase == "bullup":
+        if any(distance is None for distance in state.bullup):
+            return 1 - player
+        if math.isclose(*state.bullup, abs_tol=0.01):
+            state.bullup = [None, None]
+            state.event = "bullup_tie"
+            return 0
+        state.starter = 0 if state.bullup[0] < state.bullup[1] else 1
+        state.phase, state.event = "play", "kickoff"
+        return state.starter
+    if state.phase == "penalties":
+        if all(result is not None for result in state.penalties):
+            state.penalties = [None, None]
+        return 1 - player
+    next_player = 1 - state.goal_by if state.goal_by is not None else 1 - player
+    state.visits[player] += 1
+    state.goal_by = None
+    state.event = "kickoff" if state.kickoff else "turn"
+    if all(state.visits):
+        state.visits = [0, 0]
+        state.rounds += 1
+        half_rounds = options.football_rounds // 2
+        first_end = half_rounds + state.added[0]
+        final_end = options.football_rounds + sum(state.added)
+        halftime = state.half == 1 and (
+            state.halftime_due if options.football_format == "goals" else state.rounds >= first_end
+        )
+        if halftime:
+            state.half = 2
+            state.ball, state.kickoff, state.event = "B", True, "halftime"
+            return 1 - state.starter
+        if options.football_format == "rounds" and state.phase == "play" and state.rounds >= final_end:
+            if state.goals[0] != state.goals[1] or options.football_tiebreak == "draw":
+                state.phase, state.event = "finished", "fulltime"
+                state.winner = (
+                    -1 if state.goals[0] == state.goals[1] else int(state.goals[1] > state.goals[0])
+                )
+            else:
+                state.phase = options.football_tiebreak
+                state.event = "fulltime"
+                state.ball, state.kickoff = "B", True
+                return state.starter
+    return next_player
+
+
+def clock(state: FootballState, options) -> str:
+    if state.phase == "bullup":
+        return "0′"
+    if options.football_format != "rounds":
+        return str(state.rounds + 1)
+    if state.event == "halftime":
+        return "45′"
+    first = options.football_rounds // 2
+    second = options.football_rounds - first
+    completed = state.rounds if state.half == 1 else state.rounds - first - state.added[0]
+    base, length = (0, first) if state.half == 1 else (45, second)
+    if state.phase in {"finished", "golden", "penalties"}:
+        return "90′"
+    if completed >= length:
+        return f"{base + 45}+{completed - length + 1}′"
+    return f"{base + round((completed + 1) * 45 / length)}′"
+
+
+def playable_targets(state: FootballState, player: int, options) -> list[str]:
+    if state.phase == "penalties":
+        return [goal_for(state, player)]
+    return [
+        hit
+        for hit in targets(state, options.football_beginner, options.football_kickoff)
+        if options.football_own_goals or hit != goal_for(state, 1 - player)
+    ]

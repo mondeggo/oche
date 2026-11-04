@@ -138,7 +138,8 @@ function configureMode(mode) {
   $("local-setup-title").textContent = football ? tr("Football") : "X01";
   $("local-setup-description").textContent = football ? tr("Two players · Three darts per turn · Saved on this device") : tr("One leg · Single in · Saved on this device");
   for (const id of ["score", "out", "board"]) $("local-" + id + "-option").hidden = football;
-  for (const id of ["goals", "kickoff", "movement", "own-goals"]) $("local-" + id + "-option").hidden = !football;
+  for (const id of ["goals", "kickoff", "movement", "own-goals", "format", "rounds", "tiebreak", "stoppage"]) $("local-" + id + "-option").hidden = !football;
+  footballSettings();
   $("local-football-rules").hidden = !football;
   $("local-football-rules").textContent = tr("Move the shared ball between neighbouring regions. Player 1 attacks D6; Player 2 attacks D11. After a goal, the conceding player kicks off with three fresh darts.");
   while ($("local-players").children.length > maxPlayers()) $("local-players").lastElementChild.remove();
@@ -159,6 +160,12 @@ function prefill(value) {
   setRadio("speed", options.bot_speed);
   setRadio("board", options.show_board ? "show" : "hide");
   setRadio("goals", options.goals_to_win || 5);
+  setRadio("football-format", options.football_format || "goals");
+  setRadio("football-rounds", [10, 16].includes(options.football_rounds || 10) ? String(options.football_rounds || 10) : "custom");
+  $("football-custom-rounds").value = options.football_rounds || 10;
+  setRadio("football-tiebreak", options.football_tiebreak || "penalties");
+  setRadio("football-stoppage", options.football_stoppage ? "on" : "off");
+  footballSettings();
   setRadio("kickoff", options.football_kickoff || "outer");
   setRadio("movement", options.football_beginner ? "beginner" : "strict");
   setRadio("own-goals", options.football_own_goals ? "on" : "off");
@@ -192,7 +199,7 @@ function renderDetector(value) {
 }
 
 /* Game screen */
-function dartSlot(dart, index, latest, next = false, hint = null, football = false) {
+function dartSlot(dart, index, latest, next = false, hint = null, football = false, bullup = false) {
   const slot = document.createElement("li");
   slot.className = "game-dart";
   if (!dart) {
@@ -227,7 +234,7 @@ function dartSlot(dart, index, latest, next = false, hint = null, football = fal
     }
     return slot;
   }
-  const name = football ? (dartRegion(dart) ? regionLabel(dartRegion(dart)) : tr("Miss")) : dart.segment.name === "MISS" ? tr("Miss")
+  const name = bullup && dart.coords ? `${(Math.hypot(dart.coords.x, dart.coords.y) * 170).toFixed(1)} mm` : football ? (dartRegion(dart) ? regionLabel(dartRegion(dart)) : tr("Miss")) : dart.segment.name === "MISS" ? tr("Miss")
     : dart.segment.number === 25 ? (dart.segment.multiplier === 2 ? tr("Bull") : "25") : dart.segment.name;
   const points = document.createElement("small");
   points.textContent = football ? "" : String(dart.segment.number * dart.segment.multiplier);
@@ -316,6 +323,8 @@ function placeStage(count, board) {
 let dartsRevision = "";
 let entryVisit = null;
 function manualEntry(value) {
+  if (value?.football?.pending) return JSON.stringify(value.football.pending);
+  if (["bullup", "finished"].includes(value?.football?.phase)) return null;
   if (!value?.active || value.options.input !== "manual" || value.frame.winner >= 0
     || isBot(value.options.players[value.frame.player])) return null;
   const turn = value.frame.turns[0];
@@ -332,15 +341,15 @@ function renderMatch(value) {
   $("local-history-score-label").textContent = football ? tr("Goals") : tr("Remaining");
   const turn = frame.turns[0];
   const manual = value.options.input === "manual";
-  const won = frame.winner >= 0;
+  const won = frame.winner >= 0 || value.football?.phase === "finished";
   if (value.tournament) $("local-tournament-return").href = `/local/tournament?id=${encodeURIComponent(value.tournament.id)}`;
   $("local-tournament-return").hidden = $("local-tournament-continue").hidden = !value.tournament;
   $("local-rematch").hidden = $("local-new").hidden = Boolean(value.tournament);
   const player = frame.players[frame.player];
   const bot = !won && isBot(value.options.players[frame.player]);
-  $("local-chip-score").textContent = football ? tr("First to {0} goals", { 0: value.options.goals_to_win }) : String(value.options.starting_score);
+  $("local-chip-score").textContent = football ? (value.options.football_format === "rounds" ? tr("{0} rounds", { 0: value.options.football_rounds }) : tr("First to {0} goals", { 0: value.options.goals_to_win })) : String(value.options.starting_score);
   $("local-chip-out").textContent = football ? tr(value.options.football_beginner ? "Beginner" : "Strict") : tr(value.options.double_out ? "Double out" : "Straight out");
-  $("local-chip-round").textContent = tr("Round {0}", { 0: frame.round + 1 });
+  $("local-chip-round").textContent = football && value.options.football_format === "rounds" ? value.football.clock : tr("Round {0}", { 0: frame.round + 1 });
   $("local-winner").hidden = !won;
   placeStage(frame.players.length, football || value.options.show_board);
   $("local-turn").hidden = $("local-turn-head").hidden = won;
@@ -350,7 +359,7 @@ function renderMatch(value) {
   $("local-detector").parentElement.hidden = value.options.show_board && !manual;
   $("local-next").title = manual || bot ? ""
     : tr("Detected visits advance when you remove the darts. Use Next turn after clearing the board to finish an interrupted visit.");
-  if (won) $("local-winner-name").textContent = tr("{0} wins!", { 0: frame.players[frame.winner].name });
+  if (won) $("local-winner-name").textContent = frame.winner < 0 ? tr("Draw") : tr("{0} wins!", { 0: frame.players[frame.winner].name });
   $("local-phase").textContent = bot ? tr(turn.busted ? "{0} · Bust" : "{0} is throwing…", { 0: player.name })
     : turn.busted ? tr("{0} · Bust — remove darts", { 0: player.name })
     : tr("{0} to throw", { 0: player.name });
@@ -360,24 +369,24 @@ function renderMatch(value) {
   const dartsSignature = JSON.stringify([turn.throws, entry, route, football]);
   if (dartsSignature !== dartsRevision) {
     dartsRevision = dartsSignature;
-    $("local-darts").replaceChildren(...[0, 1, 2].map(index => dartSlot(turn.throws[index], index,
+    $("local-darts").replaceChildren(...(value.football && ["bullup", "penalties"].includes(value.football.phase) ? [0] : [0, 1, 2]).map(index => dartSlot(turn.throws[index], index,
       index === turn.throws.length - 1, entry !== null && index === turn.throws.length,
-      route?.[index - turn.throws.length], football)));
+      route?.[index - turn.throws.length], football, value.football?.phase === "bullup")));
   }
   const entryButton = $("local-darts").querySelector("button");
   if (entryButton) entryButton.disabled = working;
   $("local-visit").textContent = turn.busted ? tr("Bust") : turn.points;
   $("local-undo").hidden = !manual;
   $("local-undo").disabled = working || bot || !turn.throws.length || (won && Boolean(value.tournament));
-  $("local-next").disabled = working || won || bot || !turn.throws.length;
+  $("local-next").disabled = working || won || bot || !turn.throws.length || Boolean(value.football?.pending);
   $("local-stop").disabled = $("local-rematch").disabled = $("local-new").disabled = working;
-  const closed = working || won || bot || Boolean(turn.finishedAt);
+  const closed = working || bot || ((won || Boolean(turn.finishedAt)) && !value.football?.pending);
   const triple = radio("ring") === "3";
   for (const key of $("local-keys").querySelectorAll("button")) {
     if (key.dataset.number === "25") key.textContent = football ? tr(radio("ring") === "1" ? "Outer bull" : "Bullseye") : tr("Bull");
     key.disabled = closed || (triple && key.dataset.number === "25");
   }
-  const signature = JSON.stringify(frame);
+  const signature = JSON.stringify([frame, value.football]);
   if (signature === revision) return;
   revision = signature;
   // Only redraw on changes so the blinking animation is not restarted by every poll.
@@ -413,10 +422,21 @@ function fitBoard(force = false) {
   const root = document.documentElement;
   const wide = matchMedia("(min-width: 901px)").matches;
   const key = [innerWidth, innerHeight, $("main").clientWidth, $("local-match").hidden, board.hidden,
-    $("local-winner").hidden, $("local-detector-detail").hidden, $("local-stage").dataset.count].join();
+    $("local-winner").hidden, $("local-detector-detail").hidden, $("local-stage").dataset.count, state?.football?.phase, state?.football?.pending, state?.football?.event, state?.frame?.turns[0]?.finishedAt].join();
   if (!force && key === fitted) return;
   fitted = key;
-  if (state?.options.mode === "football" || $("local-match").hidden || board.hidden || !wide) {
+  if (state?.options.mode === "football" && !$("local-match").hidden) {
+    const arena = $("local-football").parentElement;
+    const available = innerHeight - arena.getBoundingClientRect().top - scrollY - parseFloat(getComputedStyle($("main")).paddingBottom) - 4;
+    const compact = innerWidth <= 700;
+    const extra = $("local-football").offsetHeight - $("local-football").querySelector(".football-field").offsetHeight;
+    const controls = compact ? $("local-stage").offsetHeight + 8 : 0;
+    arena.style.setProperty("--football-field-height", `${Math.max(90, available - extra - controls)}px`);
+    arena.style.setProperty("--football-board-size", `${Math.max(100, Math.min(250, available - 155))}px`);
+    board.style.removeProperty("--board-fit");
+    return;
+  }
+  if ($("local-match").hidden || board.hidden || !wide) {
     board.style.removeProperty("--board-fit");
     return;
   }
@@ -475,6 +495,10 @@ function setupOptions() {
   return {
     mode: selectedMode,
     goals_to_win: Number(radio("goals")),
+    football_format: radio("football-format"),
+    football_rounds: radio("football-rounds") === "custom" ? Number($("football-custom-rounds").value) : Number(radio("football-rounds")),
+    football_tiebreak: radio("football-tiebreak"),
+    football_stoppage: radio("football-stoppage") === "on",
     football_kickoff: radio("kickoff"),
     football_beginner: radio("movement") === "beginner",
     football_own_goals: radio("own-goals") === "on",
@@ -574,7 +598,7 @@ $("local-keys").addEventListener("click", event => {
   const multiplier = key.dataset.number === "0" ? 1 : Number(radio("ring"));
   $("local-manual-error").hidden = true;
   action(async () => {
-    const result = await post("throw", { number: Number(key.dataset.number), multiplier,
+    const result = await post(state.football?.pending ? "football/confirm" : "throw", { number: Number(key.dataset.number), multiplier,
       bed: state.options.mode === "football" && multiplier === 1 && Number(key.dataset.number) < 21 && Number(key.dataset.number) > 0 ? radio("single-bed") : null });
     $("local-manual").close();
     return result;
@@ -627,3 +651,24 @@ addEventListener("resize", () => fitBoard(true));
 // Also refit when the content width changes, such as when the sidebar collapses.
 new ResizeObserver(() => fitBoard()).observe($("main"));
 refresh();
+
+function footballSettings() {
+  const football = selectedMode === "football", rounds = radio("football-format") === "rounds";
+  $("local-goals-option").hidden = !football || rounds;
+  for (const id of ["rounds", "tiebreak", "stoppage"]) $("local-" + id + "-option").hidden = !football || !rounds;
+  $("football-custom-rounds").parentElement.hidden = radio("football-rounds") !== "custom";
+}
+for (const name of ["football-format", "football-rounds"]) document.querySelectorAll(`input[name="${name}"]`).forEach(input => input.addEventListener("change", footballSettings));
+$("football-bullup-submit").addEventListener("click", () => {
+  const input = $("football-distance");
+  if (!input.value || !input.reportValidity() || working) return;
+  action(() => post("throw", { number: 25, multiplier: 1, distance_mm: Number(input.value) })).then(() => { input.value = ""; });
+});
+$("football-confirm").addEventListener("click", () => {
+  entryVisit = manualEntry(state);
+  setRadio("ring", "1");
+  $("local-manual-title").textContent = tr("Confirm hit near wire");
+  $("local-manual-error").hidden = true;
+  renderMatch(state);
+  $("local-manual").showModal();
+});

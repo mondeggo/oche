@@ -46,3 +46,11 @@ async def next_turn(request: Request):
     async with local.lock:
         local.next_turn()
         return request.app.state.runtime.local_status()
+
+
+@router.post("/football/confirm")
+async def confirm_football(dart: LocalDart, request: Request):
+    local = request.app.state.runtime.local
+    async with local.lock:
+        local.confirm_football(dart)
+        return request.app.state.runtime.local_status()

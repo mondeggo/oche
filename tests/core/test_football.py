@@ -15,7 +15,18 @@ from app.main import create_app
 def game(tmp_path, **options):
     local = LocalGames(tmp_path, None, EventBus())
     local.start(LocalOptions(mode="football", players=["Alice", "Bob"], input="manual", **options))
+    bullup(local)
     return local
+
+
+def bullup(local):
+    for distance in (4, 10):
+        local.throw(
+            LocalDart(number=25, multiplier=1).segment(),
+            coords=football.Coords(x=0, y=distance / 170),
+            detected=local.saved.options.input == "autodarts",
+        )
+        local.next_turn(bot=True)
 
 
 def hit(local, target):
@@ -131,20 +142,24 @@ def test_own_goal_option_and_same_player_gets_new_turn(tmp_path, own_goals):
         assert local.saved.frame.player == 1
         assert local.saved.football.kickoff
     else:
-        assert local.saved.football.ball == "D6"
-        hit(local, "D10")  # Sideways along the boundary remains legal.
-        assert local.saved.football.ball == "D10"
+        assert local.saved.football.ball == "O6"
+        hit(local, "O10")
+        assert local.saved.football.ball == "O10"
 
 
 def test_only_correct_goal_scores_and_a_full_game_finishes(tmp_path):
     local = game(tmp_path, goals_to_win=3)
     for goal in range(3):
+        direction = "6" if local.saved.football.half == 1 else "11"
+        if goal == 2:
+            visit(local, "MISS", "MISS", "MISS")  # Complete the round before half-time.
+            direction = "11"
         if goal:
-            visit(local, "OB", "I6", "T6")  # Conceding player moves toward their own goal.
-            hit(local, "O6")
+            visit(local, "OB", "I" + direction, "T" + direction)
+            hit(local, "O" + direction)
         else:
             at_right_goal(local)
-        hit(local, "D6")
+        hit(local, "D" + direction)
         assert local.saved.football.goals == [goal + 1, 0]
         if goal < 2:
             local.next_turn()
@@ -161,6 +176,7 @@ def test_detected_coordinates_corrections_and_takeout(tmp_path):
     local = game(tmp_path)
     local.stop()
     local.start(LocalOptions(mode="football", players=["A", "B"], input="autodarts"))
+    bullup(local)
 
     def board(*darts, status="Throw", event="Throw detected"):
         return {"status": status, "event": event, "numThrows": len(darts), "throws": list(darts)}
@@ -207,9 +223,17 @@ def test_player_validation_and_manual_api(settings):
         )
         assert response.status_code == 200
         assert response.json()["football"]["ball"] == "B"
+        for distance in (4, 10):
+            response = client.post(
+                "/api/local/throw", json={"number": 25, "multiplier": 1, "distance_mm": distance}
+            )
+            assert response.status_code == 200, response.text
+            response = client.post("/api/local/next", json={})
+            assert response.status_code == 200, response.text
         client.post("/api/local/throw", json={"number": 25, "multiplier": 1})
         assert client.post("/api/local/throw", json={"number": 6, "multiplier": 1}).status_code == 409
         response = client.post("/api/local/throw", json={"number": 6, "multiplier": 1, "bed": "inner"})
+        assert response.status_code == 200, response.text
         assert response.json()["football"]["ball"] == "I6"
 
 
@@ -230,19 +254,223 @@ def test_bots_choose_legal_forward_targets():
 
 def test_own_goal_can_win_for_opponent_and_undo_restores_both_scores(tmp_path):
     local = game(tmp_path, goals_to_win=3, football_own_goals=True)
-    for count in range(3):
-        visit(local, "OB", "I6", "T6")
-        hit(local, "O6")
-        hit(local, "D6")
-        # After the own goal Bob takes another turn; send Alice back to her attacking side.
-        assert local.saved.football.goal_by == 0
-        if count < 2:
-            local.next_turn()
-            assert local.saved.frame.player == 1
-            visit(local, "MISS", "MISS", "MISS")
+    local.saved.football.goals = [2, 0]
+    local.saved.football_visit.goals = [2, 0]
+    local.saved.frame.game_scores = [2, 0]
+    visit(local, "OB", "I6", "T6")
+    hit(local, "O6")
+    hit(local, "D6")
     assert local.saved.frame.winner == 0
     assert local.saved.frame.player == 1
     local.undo()
     assert local.saved.frame.winner == -1
     assert local.saved.football.goals == [2, 0]
     assert local.saved.football.ball == "O6"
+
+
+def test_bullup_closest_ties_undo_and_persistence(tmp_path):
+    local = LocalGames(tmp_path, None, EventBus())
+    local.start(LocalOptions(mode="football", players=["A", "B"], input="manual"))
+    assert local.saved.football.phase == "bullup"
+    for distance in (8, 8):
+        dart = LocalDart(number=25, multiplier=1, distance_mm=distance)
+        local.throw(dart.segment(), coords=dart.coordinates())
+        local.next_turn()
+    assert local.saved.football.event == "bullup_tie"
+    dart = LocalDart(number=25, multiplier=1, distance_mm=12)
+    local.throw(dart.segment(), coords=dart.coordinates())
+    local.undo()
+    assert local.saved.football.bullup == [None, None]
+    local.throw(dart.segment(), coords=dart.coordinates())
+    local.next_turn()
+    dart = LocalDart(number=25, multiplier=1, distance_mm=2)
+    local.throw(dart.segment(), coords=dart.coordinates())
+    reloaded = LocalGames(tmp_path, None, EventBus())
+    reloaded.next_turn()
+    assert reloaded.saved.frame.player == reloaded.saved.football.starter == 1
+    assert reloaded.saved.football.phase == "play"
+
+
+def empty_round(local):
+    for _ in range(2):
+        visit(local, "MISS", "MISS", "MISS")
+
+
+@pytest.mark.parametrize("tiebreak", ["draw", "golden", "penalties"])
+def test_rounds_halftime_and_tiebreaks(tmp_path, tiebreak):
+    local = game(tmp_path, football_format="rounds", football_rounds=2, football_tiebreak=tiebreak)
+    empty_round(local)
+    state = local.saved.football
+    assert state.half == 2 and state.event == "halftime"
+    assert state.ball == "B" and local.saved.frame.player == 1
+    assert football.goal_for(state, 0) == "D11"
+    empty_round(local)
+    assert local.saved.football.phase == ("finished" if tiebreak == "draw" else tiebreak)
+    if tiebreak == "draw":
+        with pytest.raises(ConnectionProblem, match="finished"):
+            hit(local, "OB")
+    elif tiebreak == "penalties":
+        hit(local, "D11")
+        assert local.saved.frame.winner == -1
+        local.next_turn()
+        hit(local, "MISS")
+        assert local.saved.frame.winner == 0
+        local.undo()
+        assert local.saved.frame.winner == -1
+        hit(local, "D6")
+        local.next_turn()
+        assert local.saved.football.penalties == [None, None]
+        hit(local, "MISS")
+        local.next_turn()
+        hit(local, "D6")
+        assert local.saved.frame.winner == 1
+    else:
+        visit(local, "OB", "I11", "T11")
+        visit(local, "O11", "MISS", "MISS")
+        hit(local, "D11")
+        assert local.saved.frame.winner == 0
+
+
+def test_clock_stoppage_and_odd_rounds(tmp_path):
+    local = game(tmp_path, football_format="rounds", football_rounds=5, football_tiebreak="draw")
+    # Persist a deterministic allowance for both halves.
+    local.saved.football.added = [1, 2]
+    local.saved.football_visit.added = [1, 2]
+    assert football.clock(local.saved.football, local.saved.options) == "22′"
+    empty_round(local)
+    assert football.clock(local.saved.football, local.saved.options) == "45′"
+    empty_round(local)
+    assert football.clock(local.saved.football, local.saved.options) == "45+1′"
+    empty_round(local)
+    assert local.saved.football.half == 2
+    for _ in range(4):
+        empty_round(local)
+    assert football.clock(local.saved.football, local.saved.options) == "90+2′"
+    empty_round(local)
+    assert local.saved.football.phase == "finished"
+    assert local.saved.football.rounds == 8
+
+
+def test_goals_halftime_waits_for_round_end(tmp_path):
+    local = game(tmp_path, goals_to_win=3)
+    local.saved.football.goals = [1, 0]
+    local.saved.football_visit.goals = [1, 0]
+    local.saved.frame.game_scores = [1, 0]
+    at_right_goal(local)
+    hit(local, "D6")
+    assert local.saved.football.halftime_due
+    local.next_turn()
+    assert local.saved.football.half == 1
+    visit(local, "MISS", "MISS", "MISS")
+    assert local.saved.football.half == 2
+    assert local.saved.frame.player == 1
+    assert local.saved.football.ball == "B"
+
+
+def test_wire_detection_confirmation_and_repeat_snapshots(tmp_path):
+    local = game(tmp_path)
+    local.saved.options.input = "autodarts"
+    local.armed = True
+    raw = {
+        "status": "Throw",
+        "numThrows": 1,
+        "throws": [
+            {"segment": {"number": 25, "multiplier": 1, "name": "S25"}, "coords": {"x": 0, "y": 15.9 / 170}}
+        ],
+    }
+    local.consume_board(raw)
+    assert local.saved.football_pending is not None
+    assert not local.saved.frame.turns[0].throws
+    local.confirm_football(LocalDart(number=25, multiplier=1))
+    assert local.saved.football.ball == "OB"
+    assert local.saved.football_pending is None
+    local.consume_board(raw)
+    assert len(local.saved.frame.turns[0].throws) == 1
+    assert local.saved.football_pending is None
+    assert football.near_wire(football.Coords(x=0, y=99 / 170))
+    assert not football.near_wire(football.Coords(x=0, y=65 / 170))
+
+
+def test_wraparound_and_own_goal_blocked():
+    assert "I5" in football.neighbours("I20")
+    state = football.FootballState(ball="O11", kickoff=False)
+    football.move(state, "D11", 0, False, "outer", False)
+    assert state.ball == "O11" and state.goals == [0, 0]
+
+
+def test_wire_confirmation_survives_restart_and_board_clear(tmp_path):
+    local = game(tmp_path)
+    local.saved.options.input = "autodarts"
+    local.armed = True
+    raw = {
+        "status": "Throw",
+        "numThrows": 1,
+        "throws": [
+            {"segment": {"number": 25, "multiplier": 1, "name": "S25"}, "coords": {"x": 0, "y": 15.9 / 170}}
+        ],
+    }
+    local.consume_board(raw)
+    reloaded = LocalGames(tmp_path, None, EventBus())
+    reloaded.armed = True
+    reloaded.consume_board({"status": "Ready", "numThrows": 0})
+    assert reloaded.saved.football_pending
+    reloaded.confirm_football(LocalDart(number=25, multiplier=1))
+    assert reloaded.saved.football.ball == "OB"
+    assert len(reloaded.saved.frame.turns[0].throws) == 1
+
+
+def test_rounds_score_winner_and_extra_own_goal_visit(tmp_path):
+    local = game(tmp_path, football_format="rounds", football_rounds=2, football_own_goals=True)
+    # Alice scores an own goal in her first visit: she gets another visit in this round.
+    local.saved.football.ball = local.saved.football_visit.ball = "O11"
+    local.saved.football.kickoff = local.saved.football_visit.kickoff = False
+    hit(local, "D11")
+    local.next_turn()
+    assert local.saved.frame.player == 0 and local.saved.football.rounds == 0
+    visit(local, "MISS", "MISS", "MISS")
+    assert local.saved.football.rounds == 0
+    visit(local, "MISS", "MISS", "MISS")
+    assert local.saved.football.half == 2 and local.saved.football.rounds == 1
+    empty_round(local)
+    assert local.saved.football.phase == "finished" and local.saved.frame.winner == 1
+
+
+def test_vision_coordinates_define_the_cell(tmp_path):
+    local = game(tmp_path)
+    local.saved.options.input = "autodarts"
+    local.armed = True
+    # Segment metadata disagrees, but the coordinates are in the outer bull.
+    local.consume_board(
+        {
+            "status": "Throw",
+            "numThrows": 1,
+            "throws": [
+                {"segment": {"number": 6, "multiplier": 2, "name": "D6"}, "coords": {"x": 0, "y": 11 / 170}}
+            ],
+        }
+    )
+    assert local.saved.football.ball == "OB"
+
+
+def test_forfeited_dart_near_wire_does_not_block_goal(tmp_path):
+    local = game(tmp_path)
+    local.saved.options.input = "autodarts"
+    local.armed = True
+    local.saved.football.ball = local.saved.football_visit.ball = "O6"
+    local.saved.football.kickoff = local.saved.football_visit.kickoff = False
+    local.consume_board(
+        {
+            "status": "Throw",
+            "numThrows": 2,
+            "throws": [
+                {"segment": {"number": 6, "multiplier": 2, "name": "D6"}, "coords": {"x": 166 / 170, "y": 0}},
+                {
+                    "segment": {"number": 25, "multiplier": 1, "name": "S25"},
+                    "coords": {"x": 0, "y": 15.9 / 170},
+                },
+            ],
+        }
+    )
+    assert local.saved.football.goals == [1, 0]
+    assert local.saved.football_pending is None
+    assert len(local.saved.frame.turns[0].throws) == 1
