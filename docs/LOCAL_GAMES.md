@@ -320,7 +320,7 @@ the player who did not start the game kick off the second half. Odd round counts
 put the extra round in the second half. Reaching the winning goal ends Goals mode
 immediately, even if half-time was pending.
 
-Rounds map to 90 minutes: 10 rounds show 9′, 18′, … 45′, then 54′, … 90′. Each half
+Rounds map to 90 minutes with a saved, slightly varied duration per round (±20% weighting). The clock advances in minutes and seconds at round boundaries, with each half ending exactly at 45 or 90 minutes. Each half
 maps separately to 45 minutes for odd counts. Added rounds show 45+1′, 90+2′, etc.
 Half-time, full-time and final-minute notices appear on the pitch. After the final
 round and stoppage time, the higher score wins; ties use the selected tiebreaker:
@@ -360,6 +360,8 @@ The manual-entry and wire-confirmation popup has a clickable round board, includ
 distinct inner/outer singles, plus a Miss button. **Use keypad** retains the existing
 number buttons as an alternative. Vision coordinates remain in the original round
 board coordinate system.
+
+Goal nets sit immediately beyond the D6/D11 scoring cells and follow the morph. A compact match scoreboard shows both scores and the round-based clock (Goals mode shows the round count). The reference dartboard starts hidden; **Show dartboard** reveals it, while manual entry always keeps its round-board input.
 
 The pitch and reference dartboard scale to available viewport height; small
 screens place the compact board and input controls below the pitch.

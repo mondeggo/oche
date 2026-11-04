@@ -28,6 +28,7 @@ class FootballState(BaseModel):
     bullup: list[float | None] = Field(default_factory=lambda: [None, None])
     penalties: list[bool | None] = Field(default_factory=lambda: [None, None])
     penalty_score: list[int] = Field(default_factory=lambda: [0, 0])
+    clock_seconds: list[list[int]] = Field(default_factory=list)
     added: list[int] = Field(default_factory=lambda: [0, 0])
     halftime_due: bool = False
     winner: int = -1
@@ -240,6 +241,20 @@ def advance(state: FootballState, player: int, options) -> int:
     return next_player
 
 
+def clock_schedule(rounds: int, rng) -> list[list[int]]:
+    """Save varied round endpoints, with each half ending at exactly 45 minutes."""
+    result = []
+    for count in (rounds // 2, rounds - rounds // 2):
+        weights = [rng.uniform(0.8, 1.2) for _ in range(count)]
+        elapsed = 0.0
+        ticks = []
+        for weight in weights:
+            elapsed += weight
+            ticks.append(round(2700 * elapsed / sum(weights)))
+        result.append(ticks)
+    return result
+
+
 def clock(state: FootballState, options) -> str:
     if state.phase == "bullup":
         return "0′"
@@ -255,6 +270,9 @@ def clock(state: FootballState, options) -> str:
         return "90′"
     if completed >= length:
         return f"{base + 45}+{completed - length + 1}′"
+    if state.clock_seconds:
+        seconds = base * 60 + state.clock_seconds[state.half - 1][completed]
+        return f"{seconds // 60:02d}:{seconds % 60:02d}"
     return f"{base + round((completed + 1) * 45 / length)}′"
 
 

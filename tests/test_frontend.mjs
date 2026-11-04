@@ -8,7 +8,7 @@ import { sourceEnabled } from "../app/static/core/sources.mjs";
 import { engineHealth, localEventsHealth, localHealth, manualHealth, syncHealthRows } from "../app/static/js/health.mjs";
 // The Autodarts integration contributes its event health to one engine indicator.
 import { cloudHealth } from "../app/core/integrations/autodarts/static/health.mjs";
-import { CELLS, ORDER as FOOTBALL_ORDER, cellOutline, cellPosition, cellDart, pitchPoint } from "../app/static/core/football-pitch.mjs";
+import { CELLS, ORDER as FOOTBALL_ORDER, cellOutline, cellPosition, cellDart, pitchPoint, goalNet } from "../app/static/core/football-pitch.mjs";
 import { dartRegion, pitchPosition } from "../app/static/core/football.mjs";
 import { boardMarkup, boardPoint, checkout, funnyName, hitKey, playerStats, seats } from "../app/static/core/game.mjs";
 
@@ -753,4 +753,17 @@ test("rectangular cells cover the pitch exactly and input retains the original s
     assert.ok(cellPosition(cell).every(Number.isFinite));
   }
   assert.ok(Math.abs(totalArea - 900 * 540) < 1e-6);
+});
+
+
+test("goal nets stay outside the goal doubles throughout the morph", () => {
+  for (const morph of [0, .5, 1]) for (const side of ["left", "right"]) {
+    const net = goalNet(side, morph), angle = side === "right" ? 81 : 261;
+    const [, x, y, back] = net.match(/^M([^,]+),([^ ]+) H([^ ]+)/).map((value, i) => i ? Number(value) : value);
+    const edge = pitchPoint(170, angle, morph);
+    assert.ok(Math.abs(x - edge[0]) < 1e-8);
+    assert.ok(y < 320);
+    assert.ok(side === "right" ? back > x : back < x);
+    assert.ok(back > 0 && back < 1000);
+  }
 });

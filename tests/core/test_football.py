@@ -333,6 +333,8 @@ def test_rounds_halftime_and_tiebreaks(tmp_path, tiebreak):
 
 def test_clock_stoppage_and_odd_rounds(tmp_path):
     local = game(tmp_path, football_format="rounds", football_rounds=5, football_tiebreak="draw")
+    local.saved.football.clock_seconds = []  # Legacy saves retain their evenly spaced clock.
+    local.saved.football_visit.clock_seconds = []
     # Persist a deterministic allowance for both halves.
     local.saved.football.added = [1, 2]
     local.saved.football_visit.added = [1, 2]
@@ -484,3 +486,22 @@ def test_pitch_inspection_uses_the_backend_neighbour_graph(tmp_path, beginner):
     assert graph["I17"] == football.neighbours("I17", beginner)
     assert ("T3" in graph["I17"]) == beginner
     assert "I5" in graph["I20"]
+
+
+def test_varied_match_clock_is_monotonic_bounded_and_saved(tmp_path):
+    for rounds in (2, 5, 10, 16, 200):
+        schedule = football.clock_schedule(rounds, random.Random(12))
+        assert [len(half) for half in schedule] == [rounds // 2, rounds - rounds // 2]
+        for half in schedule:
+            assert half[-1] == 2700
+            assert all(a < b for a, b in zip([0, *half[:-1]], half, strict=True))
+    ticks = football.clock_schedule(10, random.Random(12))[0]
+    assert len({b - a for a, b in zip([0, *ticks[:-1]], ticks, strict=True)}) > 1
+    local = game(tmp_path, football_format="rounds", football_rounds=10)
+    first = local.status()["football"]["clock"]
+    assert ":" in first
+    reloaded = LocalGames(tmp_path, None, EventBus())
+    assert reloaded.status()["football"]["clock"] == first
+    assert reloaded.saved.football.clock_seconds == local.saved.football.clock_seconds
+    empty_round(local)
+    assert local.status()["football"]["clock"] > first

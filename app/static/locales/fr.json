@@ -1516,5 +1516,7 @@
   "Choose a dart on the round board": "Choisissez un lancer sur la cible ronde",
   "Exploring {0}: {1}": "Voisines de {0} : {1}",
   "Use keypad": "Utiliser le clavier",
-  "Use round board": "Utiliser la cible ronde"
+  "Use round board": "Utiliser la cible ronde",
+  "Show dartboard": "Afficher la cible",
+  "Hide dartboard": "Masquer la cible"
 }

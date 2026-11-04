@@ -7,6 +7,7 @@ import { dartRegion, regionLabel, renderFootball } from "./football.mjs";
 
 let selectedMode = "x01";
 let footballKeypad = false;
+let footballBoard = false;
 const maxPlayers = () => selectedMode === "football" ? 2 : 8;
 const SVG = "http://www.w3.org/2000/svg";
 const DETECTOR = { stopped: "Stopped", waiting: "Waiting", waiting_for_clear: "Clear the board",
@@ -357,7 +358,10 @@ function renderMatch(value) {
   $("local-chip-out").textContent = football ? tr(value.options.football_beginner ? "Beginner" : "Strict") : tr(value.options.double_out ? "Double out" : "Straight out");
   $("local-chip-round").textContent = football && value.options.football_format === "rounds" ? value.football.clock : tr("Round {0}", { 0: frame.round + 1 });
   $("local-winner").hidden = !won;
-  placeStage(frame.players.length, football || value.options.show_board);
+  placeStage(frame.players.length, football ? footballBoard : value.options.show_board);
+  $("local-football").parentElement.dataset.reference = String(footballBoard);
+  $("football-board-toggle").textContent = tr(footballBoard ? "Hide dartboard" : "Show dartboard");
+  $("football-board-toggle").setAttribute("aria-pressed", String(footballBoard));
   $("local-turn").hidden = $("local-turn-head").hidden = won;
   const entry = manualEntry(value);
   if ($("local-manual").open && entry !== entryVisit) $("local-manual").close();
@@ -691,3 +695,5 @@ $("football-input-toggle").addEventListener("click", () => { footballKeypad = !f
 $("football-input-miss").addEventListener("click", () => {
   if (!working && $("local-manual").open && manualEntry(state) === entryVisit) submitManualDart({ number: 0, multiplier: 1 });
 });
+
+$("football-board-toggle").addEventListener("click", () => { footballBoard = !footballBoard; renderMatch(state); fitBoard(true); });

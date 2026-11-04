@@ -1516,5 +1516,7 @@
   "Choose a dart on the round board": "Escolha um dardo no alvo redondo",
   "Exploring {0}: {1}": "Vizinhas de {0}: {1}",
   "Use keypad": "Usar teclado",
-  "Use round board": "Usar alvo redondo"
+  "Use round board": "Usar alvo redondo",
+  "Show dartboard": "Mostrar alvo",
+  "Hide dartboard": "Ocultar alvo"
 }

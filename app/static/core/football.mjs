@@ -1,7 +1,7 @@
 import { $ } from "./client.mjs";
 import { tr } from "../js/i18n.mjs";
 
-import { ORDER, CELLS, cellPath, cellPosition } from "./football-pitch.mjs";
+import { ORDER, CELLS, cellPath, cellPosition, goalNet } from "./football-pitch.mjs";
 export function regionLabel(region) {
   if (region === "B") return tr("Bullseye");
   if (region === "OB") return tr("Outer bull");
@@ -23,6 +23,8 @@ function drawPitch() {
   if (!pitchState) return;
   const { football: game, frame, options } = pitchState;
   const finished = Boolean(frame.turns[0].finishedAt) || game.phase === "finished";
+  $("football-net-left").setAttribute("d", goalNet("left", morph));
+  $("football-net-right").setAttribute("d", goalNet("right", morph));
   const selected = inspected || game.ball;
   const targets = inspected
     ? game.neighbours[inspected].filter(cell => options.football_own_goals || cell !== game.attacks[1 - frame.player])
@@ -154,6 +156,7 @@ export function renderFootball(value) {
   }
   if (game.pending) $("football-target").textContent = tr("Hit near a wire. Confirm its cell before play continues.");
   const targets = penalties ? [game.attacks[frame.player]] : game.targets.filter(region => value.options.football_own_goals || region !== game.attacks[1 - frame.player]);
+  $("football-match-clock").textContent = value.options.football_format === "rounds" ? game.clock : tr("Round {0}", { 0: game.rounds + 1 });
   drawPitch();
   if (!finished && game.phase !== "finished") for (const region of targets) {
     for (const node of $("local-board-svg").querySelectorAll(`[data-region="${region}"]`)) node.dataset.target = "true";

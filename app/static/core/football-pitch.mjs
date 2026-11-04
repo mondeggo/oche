@@ -53,3 +53,17 @@ export function cellDart(region) {
   return { number: Number(region.slice(1)), multiplier: { I: 1, T: 3, O: 1, D: 2 }[region[0]],
     bed: region[0] === "I" ? "inner" : region[0] === "O" ? "outer" : null };
 }
+
+
+export function goalNet(side, morph = 1) {
+  const angle = side === "right" ? 90 : 270, direction = side === "right" ? 1 : -1;
+  const points = [pitchPoint(170, angle - 9, morph), pitchPoint(170, angle + 9, morph)];
+  const top = Math.min(points[0][1], points[1][1]), bottom = Math.max(points[0][1], points[1][1]);
+  const front = points[0][0], back = front + direction * 38;
+  let path = `M${front},${top} H${back} V${bottom} H${front}`;
+  for (let i = 1; i < 5; i++) {
+    const x = front + direction * 38 * i / 5, y = top + (bottom - top) * i / 5;
+    path += ` M${x},${top} V${bottom} M${front},${y} H${back}`;
+  }
+  return path;
+}

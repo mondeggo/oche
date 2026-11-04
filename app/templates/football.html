@@ -1,17 +1,19 @@
 <section id="local-football" class="football" aria-label="{{ _('Football pitch') }}" hidden>
-  <div class="football-scoreboard">
+  <div class="football-scoreboard football-broadcast">
     {% for side in [0, 1] %}
     <div id="football-team-{{ side }}" class="football-team" data-team="{{ side }}">
       <div><p id="football-name-{{ side }}" class="football-name"></p><p id="football-direction-{{ side }}" class="football-direction">{{ _('Attacks D6 →') if side == 0 else _('← Attacks D11') }}</p></div>
       <strong id="football-score-{{ side }}" class="football-score">0</strong>
     </div>
     {% endfor %}
+    <div class="football-score-centre"><span class="football-score-dash">–</span><span id="football-match-clock" class="football-match-clock" aria-live="polite"></span></div>
   </div>
   <div class="football-field">
     <svg viewBox="0 0 1000 640" role="group" aria-labelledby="football-pitch-title football-pitch-description">
       <title id="football-pitch-title">{{ _("Football pitch") }}</title>
       <desc id="football-pitch-description">{{ _("D11 is the left goal. D6 is the right goal.") }}</desc>
       <rect width="1000" height="640" rx="24" fill="#365e18"/>
+      <g class="football-nets" fill="none" stroke="#edf7e6" stroke-width="1.5" pointer-events="none" aria-hidden="true"><path id="football-net-left"/><path id="football-net-right"/></g>
       <g id="football-cells" role="group" aria-label="{{ _('Explore board cells') }}"></g>
       <g id="football-cell-labels" class="football-cell-labels" aria-hidden="true"></g>
       <polygon id="football-attack" class="football-attack" points="500,320 950,270 950,370" visibility="hidden" pointer-events="none"/>
@@ -22,6 +24,7 @@
     </svg>
   </div>
   <div class="football-map-controls">
+    <button id="football-board-toggle" type="button" class="btn-neutral" aria-pressed="false">{{ _("Show dartboard") }}</button>
     <label for="football-morph">{{ _("Board → pitch") }}</label>
     <input id="football-morph" type="range" min="0" max="100" value="100" aria-label="{{ _('Board to pitch shape') }}">
     <button id="football-follow" type="button" class="btn-neutral" disabled>{{ _("Follow ball") }}</button>

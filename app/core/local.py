@@ -309,6 +309,9 @@ class LocalGames:
             football_rules.FootballState(
                 phase="bullup",
                 event="bullup",
+                clock_seconds=football_rules.clock_schedule(options.football_rounds, self.random)
+                if options.football_format == "rounds"
+                else [],
                 added=[self.random.randint(0, 2) for _ in range(2)]
                 if options.football_stoppage and options.football_format == "rounds"
                 else [0, 0],

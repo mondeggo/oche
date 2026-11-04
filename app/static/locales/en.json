@@ -1516,5 +1516,7 @@
   "Choose a dart on the round board": "Choose a dart on the round board",
   "Exploring {0}: {1}": "Exploring {0}: {1}",
   "Use keypad": "Use keypad",
-  "Use round board": "Use round board"
+  "Use round board": "Use round board",
+  "Show dartboard": "Show dartboard",
+  "Hide dartboard": "Hide dartboard"
 }
