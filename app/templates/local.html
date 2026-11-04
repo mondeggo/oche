@@ -164,7 +164,9 @@
   </div>
   <div id="local-side-right" class="game-side"></div>
   </div>
-  <section id="local-manual" class="card game-pad" aria-label="{{ _('Enter a dart') }}" hidden>
+  <dialog id="local-manual" class="game-dialog game-pad" aria-labelledby="local-manual-title">
+    <form method="dialog" class="card-head"><h2 id="local-manual-title">{{ _('Enter a dart') }}</h2><button type="submit" class="icon-button" aria-label="{{ _('Close') }}">✕</button></form>
+    <p id="local-manual-error" class="game-error" role="alert" hidden></p>
     <div class="game-rings" role="radiogroup" aria-label="{{ _('Ring') }}">
       {{ choice("ring", "1", _("Single"), True) }}{{ choice("ring", "2", _("Double")) }}{{ choice("ring", "3", _("Triple")) }}
     </div>
@@ -173,7 +175,7 @@
       <button type="button" class="btn-neutral game-key-wide" data-number="25">{{ _("Bull") }}</button>
       <button type="button" class="btn-neutral game-key-wide" data-number="0">{{ _("Miss") }}</button>
     </div>
-  </section>
+  </dialog>
   <button id="local-history-open" type="button" class="game-back game-history-open" aria-haspopup="dialog" aria-label="{{ _('Recent visits') }}"><svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 2.6-6.4L3 8M3 3v5h5M12 7v5l3 2"/></svg><span>{{ _("Recent visits") }}</span></button>
   <dialog id="local-history-dialog" class="game-dialog game-history" aria-labelledby="local-history-title">
     <form method="dialog">

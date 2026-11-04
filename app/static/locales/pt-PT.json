@@ -1347,5 +1347,7 @@
   "Player colours": "Cores dos jogadores",
   "Player name filter": "Filtro por nome do jogador",
   "Finish the current lighting edit first.": "Conclua primeiro a edição atual da iluminação.",
-  "Your WLED setups have been combined. Lights imported onto an existing controller are paused; review them before enabling. The original Visual WLED file is kept.": "As suas configurações WLED foram combinadas. As luzes importadas para um controlador existente estão em pausa; reveja-as antes de as ativar. O ficheiro Visual WLED original foi mantido."
+  "Your WLED setups have been combined. Lights imported onto an existing controller are paused; review them before enabling. The original Visual WLED file is kept.": "As suas configurações WLED foram combinadas. As luzes importadas para um controlador existente estão em pausa; reveja-as antes de as ativar. O ficheiro Visual WLED original foi mantido.",
+  "Enter": "Inserir",
+  "Enter dart {0}": "Inserir dardo {0}"
 }

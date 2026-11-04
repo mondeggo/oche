@@ -158,7 +158,7 @@ function renderDetector(value) {
   const label = manual ? tr("Manual input") : tr(DETECTOR[detector.state] || "Waiting");
   for (const id of ["local-detector", "local-setup-detector"]) {
     $(id).textContent = label;
-    $(id).className = `badge ${manual ? "" : TONE[detector.state] || ""}`.trim();
+    $(id).className = `badge ${manual ? "badge-green" : TONE[detector.state] || ""}`.trim();
   }
   const board = $("local-board");
   board.dataset.halo = manual || !value.active ? "" : HALO[detector.state] || "";
@@ -170,13 +170,28 @@ function renderDetector(value) {
 }
 
 /* Game screen */
-function dartSlot(dart, index, latest) {
+function dartSlot(dart, index, latest, next = false) {
   const slot = document.createElement("li");
   slot.className = "game-dart";
   if (!dart) {
     slot.dataset.empty = "true";
     slot.textContent = String(index + 1);
     slot.setAttribute("aria-label", tr("Dart {0}: not thrown", { 0: index + 1 }));
+    if (next) {
+      slot.dataset.next = "true";
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "game-dart-entry";
+      button.setAttribute("aria-label", tr("Enter dart {0}", { 0: index + 1 }));
+      button.setAttribute("aria-haspopup", "dialog");
+      button.setAttribute("aria-controls", "local-manual");
+      const number = document.createElement("span");
+      number.textContent = String(index + 1);
+      const label = document.createElement("small");
+      label.textContent = tr("Enter");
+      button.append(number, label);
+      slot.replaceChildren(button);
+    }
     return slot;
   }
   const name = dart.segment.name === "MISS" ? tr("Miss")
@@ -265,6 +280,16 @@ function placeStage(count, board) {
   if ($("local-turn").parentElement !== home) home.append($("local-turn"));
 }
 
+let dartsRevision = "";
+let entryVisit = null;
+function manualEntry(value) {
+  if (!value?.active || value.options.input !== "manual" || value.frame.winner >= 0
+    || isBot(value.options.players[value.frame.player])) return null;
+  const turn = value.frame.turns[0];
+  if (turn.finishedAt || turn.throws.length >= 3) return null;
+  return JSON.stringify([value.frame.id, turn.id, turn.playerId, turn.round, turn.throws]);
+}
+
 function renderMatch(value) {
   const frame = value.frame;
   const turn = frame.turns[0];
@@ -278,7 +303,8 @@ function renderMatch(value) {
   $("local-winner").hidden = !won;
   placeStage(frame.players.length, value.options.show_board);
   $("local-turn").hidden = $("local-turn-head").hidden = won;
-  $("local-manual").hidden = !manual || won;
+  const entry = manualEntry(value);
+  if ($("local-manual").open && entry !== entryVisit) $("local-manual").close();
   // With the board shown, its halo replaces the detection badge.
   $("local-detector").parentElement.hidden = value.options.show_board && !manual;
   $("local-next").title = manual || bot ? ""
@@ -292,7 +318,14 @@ function renderMatch(value) {
     : checkout(frame.gameScores[frame.player], 3 - turn.throws.length, value.options.double_out);
   $("local-checkout").hidden = !route;
   $("local-checkout").textContent = route ? tr("Checkout: {0}", { 0: route.map(dart => tr(dart)).join(" · ") }) : "";
-  $("local-darts").replaceChildren(...[0, 1, 2].map(index => dartSlot(turn.throws[index], index, index === turn.throws.length - 1)));
+  const dartsSignature = JSON.stringify([turn.throws, entry]);
+  if (dartsSignature !== dartsRevision) {
+    dartsRevision = dartsSignature;
+    $("local-darts").replaceChildren(...[0, 1, 2].map(index => dartSlot(turn.throws[index], index,
+      index === turn.throws.length - 1, entry !== null && index === turn.throws.length)));
+  }
+  const entryButton = $("local-darts").querySelector("button");
+  if (entryButton) entryButton.disabled = working;
   $("local-visit").textContent = turn.busted ? tr("Bust") : turn.points;
   $("local-undo").hidden = !manual;
   $("local-undo").disabled = working || bot || !turn.throws.length;
@@ -337,7 +370,7 @@ function fitBoard(force = false) {
   const board = $("local-board");
   const root = document.documentElement;
   const wide = matchMedia("(min-width: 901px)").matches;
-  const key = [innerWidth, innerHeight, $("main").clientWidth, $("local-match").hidden, board.hidden, $("local-manual").hidden,
+  const key = [innerWidth, innerHeight, $("main").clientWidth, $("local-match").hidden, board.hidden,
     $("local-winner").hidden, $("local-detector-detail").hidden, $("local-stage").dataset.count].join();
   if (!force && key === fitted) return;
   fitted = key;
@@ -345,8 +378,6 @@ function fitBoard(force = false) {
     board.style.removeProperty("--board-fit");
     return;
   }
-  const pad = $("local-manual");
-  $("local-match").style.setProperty("--pad-space", pad.hidden ? "0px" : `${pad.offsetHeight + 16}px`);
   board.style.setProperty("--board-fit", "10000px");
   const overflow = root.scrollHeight - root.clientHeight;
   const size = board.getBoundingClientRect().width;
@@ -364,6 +395,7 @@ function render(value) {
     fitBoard();
   } else {
     revision = "";
+    if ($("local-manual").open) $("local-manual").close();
     show(choosing ? "setup" : "modes");
   }
   $("local-start").disabled = working;
@@ -373,6 +405,10 @@ function render(value) {
 function fail(cause) {
   $("local-error").textContent = tr(cause.message);
   $("local-error").hidden = false;
+  if ($("local-manual").open) {
+    $("local-manual-error").textContent = tr(cause.message);
+    $("local-manual-error").hidden = false;
+  }
 }
 
 async function action(run) {
@@ -469,12 +505,32 @@ $("local-setup").addEventListener("submit", event => {
   event.preventDefault();
   action(() => post("start", setupOptions()));
 });
+$("local-darts").addEventListener("click", event => {
+  if (!event.target.closest(".game-dart-entry") || working) return;
+  entryVisit = manualEntry(state);
+  if (entryVisit === null) return;
+  setRadio("ring", "1");
+  $("local-manual-title").textContent = tr("Enter dart {0}", { 0: state.frame.turns[0].throws.length + 1 });
+  $("local-manual-error").hidden = true;
+  renderMatch(state);
+  $("local-manual").showModal();
+});
 $("local-keys").addEventListener("click", event => {
   const key = event.target.closest("button[data-number]");
-  if (!key || key.disabled) return;
+  if (!key || key.disabled || !$("local-manual").open || manualEntry(state) !== entryVisit) return;
   const multiplier = key.dataset.number === "0" ? 1 : Number(radio("ring"));
-  setRadio("ring", "1");
-  action(() => post("throw", { number: Number(key.dataset.number), multiplier }));
+  $("local-manual-error").hidden = true;
+  action(async () => {
+    const result = await post("throw", { number: Number(key.dataset.number), multiplier });
+    $("local-manual").close();
+    return result;
+  }).then(() => {
+    if (!$("local-manual").open) {
+      const target = state.frame.winner >= 0 ? $("local-rematch")
+        : $("local-darts").querySelector("button") || $("local-next");
+      target.focus();
+    }
+  });
 });
 document.querySelectorAll('input[name="ring"]').forEach(input => input.addEventListener("change", () => {
   if (state?.active) renderMatch(state);

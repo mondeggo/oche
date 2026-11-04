@@ -498,3 +498,33 @@ test("changing WLED views saves both drafts before loading and never discards a 
   assert.equal(message.hidden, false);
   assert.equal(outgoing.inert, false);
 });
+
+test("manual dart entry follows the current human visit and rejects closed or automatic turns", () => {
+  const source = readFileSync(new URL("local.js", core), "utf8");
+  const context = vm.createContext({ isBot: player => Boolean(player?.bot || player?.auto) });
+  vm.runInContext(source.slice(source.indexOf("function manualEntry("), source.indexOf("function renderMatch(")), context);
+  const game = { active: true, options: { input: "manual", players: [{ name: "Player 1" }] },
+    frame: { id: "match", winner: -1, player: 0,
+      turns: [{ id: "visit", playerId: "player", round: 0, throws: [] }] } };
+  const entry = context.manualEntry(game);
+  assert.notEqual(entry, null);
+  assert.equal(context.manualEntry(structuredClone(game)), entry, "polling preserves the open popup");
+  game.frame.turns[0].throws.push({ segment: { number: 20, multiplier: 3 } });
+  assert.notEqual(context.manualEntry(game), entry, "a new dart invalidates a stale popup");
+  for (const change of [
+    value => { value.active = false; },
+    value => { value.options.input = "autodarts"; },
+    value => { value.options.players[0].bot = 3; },
+    value => { value.options.players[0].auto = "medium"; },
+    value => { value.frame.winner = 0; },
+    value => { value.frame.turns[0].finishedAt = "finished"; },
+    value => { value.frame.turns[0].throws = [{}, {}, {}]; },
+  ]) {
+    const closed = structuredClone(game);
+    change(closed);
+    assert.equal(context.manualEntry(closed), null);
+  }
+  const nextVisit = structuredClone(game);
+  nextVisit.frame.turns[0].round++;
+  assert.notEqual(context.manualEntry(nextVisit), context.manualEntry(game));
+});

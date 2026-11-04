@@ -8,7 +8,7 @@ export function localHealth(detector, tr = defaultTranslate) {
 }
 
 export function manualHealth(tr = defaultTranslate) {
-  return ["neutral", tr("Manual scoring"),
+  return ["good", tr("Manual scoring"),
     tr("Darts are entered manually. Select a vision engine in Play for automatic scoring.")];
 }
 
