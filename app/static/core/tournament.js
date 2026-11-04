@@ -5,7 +5,41 @@ const formatLabels = { single: "Single elimination", double: "Double elimination
 const stageLabels = { swiss: "Swiss rounds", upper: "Upper bracket", lower: "Lower bracket", final: "Grand final", reset: "Grand final reset" };
 let saved = null, busy = false, creating = false, signature = "", generation = 0;
 const format = () => document.querySelector('input[name="tournament-format"]:checked').value;
-const names = () => $("tournament-names").value.split(/\r?\n/).map(name => name.trim()).filter(Boolean);
+const selectedId = new URLSearchParams(window.location.search).get("id");
+const names = () => [...$("tournament-players").querySelectorAll("input")].map(input => input.value.trim());
+const validNames = players => players.length >= 2 && players.length <= 32 && players.every(name => name.length > 0 && name.length <= 60)
+  && new Set(players.map(name => name.toLocaleLowerCase())).size === players.length;
+function renderRoster() {
+  const rows = [...$("tournament-players").children];
+  rows.forEach((row, index) => {
+    const input = row.querySelector("input"), label = tr("Player {0}", { 0: index + 1 });
+    input.placeholder = label; input.setAttribute("aria-label", label);
+    if (input.dataset.auto === "true") input.value = label;
+    const remove = row.querySelector("button"); remove.disabled = rows.length <= 2;
+    remove.setAttribute("aria-label", tr("Remove {0}", { 0: input.value || label }));
+  });
+  $("tournament-add-player").disabled = rows.length >= 32;
+  $("tournament-player-count").textContent = tr("{0} of {1}", { 0: rows.length, 1: 32 });
+}
+function addPlayer(name) {
+  if (names().length >= 32) return;
+  const row = element("li"), input = element("input"), remove = element("button", "×", "game-remove btn-neutral");
+  input.maxLength = 60; input.required = true; input.value = name || "";
+  input.dataset.auto = String(name === undefined);
+  input.addEventListener("input", () => { input.dataset.auto = "false"; renderRoster(); });
+  remove.type = "button";
+  remove.addEventListener("click", () => { row.remove(); renderRoster(); });
+  row.append(input, remove); $("tournament-players").append(row); renderRoster();
+}
+$("tournament-add-player").addEventListener("click", () => { addPlayer(); $("tournament-players").lastElementChild.querySelector("input").focus(); });
+$("tournament-import").addEventListener("click", () => {
+  const players = $("tournament-names").value.split(/\r?\n/).map(name => name.trim()).filter(Boolean);
+  if (!validNames(players)) { fail(new Error(tr("Enter 2–32 different player names, up to 60 characters each."))); return; }
+  $("tournament-error").hidden = true;
+  $("tournament-players").replaceChildren(); players.forEach(addPlayer);
+  $("tournament-names").closest("details").open = false;
+});
+addPlayer(); addPlayer();
 function element(tag, text, className) {
   const node = document.createElement(tag);
   if (text !== undefined) node.textContent = text;
@@ -35,16 +69,11 @@ function updateFormat() {
     : swiss ? tr("Pairings avoid repeat opponents where possible. Byes go to the lowest-ranked player who has had the fewest byes.")
       : tr("Registration order sets the initial seeds. Byes advance players automatically when the bracket is uneven.");
 }
-$("tournament-names").addEventListener("input", () => {
-  $("tournament-names").setCustomValidity("");
-  $("tournament-player-count").textContent = tr("{0} players", { 0: names().length });
-});
 $("tournament-choose-format").addEventListener("click", () => {
   const players = names();
-  const valid = players.length >= 2 && players.length <= 32 && players.every(name => name.length <= 60)
-    && new Set(players.map(name => name.toLocaleLowerCase())).size === players.length;
-  $("tournament-names").setCustomValidity(valid ? "" : tr("Enter 2–32 different player names, up to 60 characters each."));
-  if (!$("tournament-name").reportValidity() || !$("tournament-names").reportValidity()) return;
+  if (!$("tournament-name").reportValidity()) return;
+  if (!validNames(players)) { fail(new Error(tr("Enter 2–32 different player names, up to 60 characters each."))); return; }
+  $("tournament-error").hidden = true;
   $("tournament-rounds").max = String(Math.min(10, players.length - 1));
   $("tournament-rounds").value = String(Math.min(players.length - 1, Math.ceil(Math.log2(players.length))));
   $("tournament-finalists").replaceChildren();
@@ -58,7 +87,7 @@ $("tournament-choose-format").addEventListener("click", () => {
   updateFormat();
   document.querySelector('input[name="tournament-format"]:checked').focus();
 });
-$("tournament-edit-players").addEventListener("click", () => { step(1); $("tournament-names").focus(); });
+$("tournament-edit-players").addEventListener("click", () => { step(1); $("tournament-players").querySelector("input").focus(); });
 document.querySelectorAll('input[name="tournament-format"]').forEach(input => input.addEventListener("change", updateFormat));
 
 async function action(run) {
@@ -83,17 +112,19 @@ $("tournament-setup").addEventListener("submit", event => {
       starting_score: Number($("tournament-score").value), double_out: $("tournament-out").value === "double",
       input: $("tournament-input").value,
     });
-    creating = false; signature = ""; render(result);
+    window.location.assign(`/local/tournament?id=${encodeURIComponent(result.tournament.id)}`);
   });
 });
 $("tournament-new").addEventListener("click", () => {
-  creating = true; $("tournament-setup").hidden = false; $("tournament-dashboard").hidden = true;
+  creating = true;
+  $("tournament-list").hidden = $("tournament-end").hidden = $("tournament-dashboard").hidden = true;
+  $("tournament-list-link").hidden = $("tournament-setup").hidden = false;
   $("tournament-new").hidden = true; $("tournament-title").textContent = tr("New tournament");
   step(1); $("tournament-name").focus();
 });
 $("tournament-end").addEventListener("click", () => {
   if (confirm(tr("End this tournament? Played results will be kept, but remaining matches will not be played."))) {
-    action(async () => render(await api("/api/tournament/cancel", "POST")));
+    action(async () => { await api("/api/tournament/cancel", "POST"); window.location.assign("/local/tournament"); });
   }
 });
 function playButton(match, running) {
@@ -114,17 +145,20 @@ $("tournament-dashboard").addEventListener("click", event => {
 });
 function render(result) {
   if (result.error) { fail(new Error(tr(result.error))); $("tournament-loading").hidden = true; return; }
-  saved = result.tournament;
   $("tournament-loading").hidden = true;
   if (creating) return;
-  $("tournament-setup").hidden = Boolean(saved);
-  $("tournament-dashboard").hidden = !saved;
-  $("tournament-new").hidden = !saved || saved.state === "active";
-  $("tournament-end").hidden = !saved || saved.state !== "active";
-  if (!saved) {
-    if (signature !== "empty") { step(1); signature = "empty"; }
-    return;
+  // A live detail returns to the list on completion; explicit history links stay reviewable.
+  if (saved?.state === "active" && result.tournament?.state === "completed") {
+    window.location.assign("/local/tournament"); return;
   }
+  saved = result.tournament;
+  $("tournament-setup").hidden = true;
+  $("tournament-list").hidden = true;
+  $("tournament-dashboard").hidden = !saved;
+  $("tournament-list-link").hidden = false;
+  $("tournament-new").hidden = true;
+  $("tournament-end").hidden = !saved || saved.state !== "active";
+  if (!saved) { fail(new Error(tr("Tournament not found."))); return; }
   const nextSignature = JSON.stringify(saved);
   if (nextSignature === signature) return;
   signature = nextSignature;
@@ -202,12 +236,32 @@ function render(result) {
   }
   $("tournament-brackets").replaceChildren(...sections);
 }
+function renderList(result) {
+  $("tournament-loading").hidden = true;
+  if (result.error) { fail(new Error(tr(result.error))); return; }
+  if (creating) return;
+  $("tournament-list").hidden = false;
+  $("tournament-new").hidden = result.tournaments.some(item => item.state === "active");
+  $("tournament-empty").hidden = result.tournaments.length > 0;
+  const nextSignature = JSON.stringify(result.tournaments);
+  if (signature === nextSignature) return;
+  signature = nextSignature;
+  $("tournament-history").replaceChildren(...result.tournaments.map(item => {
+    const link = element("a", undefined, "card tournament-history-item");
+    link.href = `/local/tournament?id=${encodeURIComponent(item.id)}`;
+    const text = element("div");
+    text.append(element("h2", item.name), element("p", [tr(formatLabels[item.format]), tr("{0} players", { 0: item.players })].join(" · "), "hint"));
+    if (item.champion) text.append(element("p", tr("Winner: {0}", { 0: item.champion }), "tournament-history-winner"));
+    link.append(text, element("span", tr(item.state === "active" ? "In progress" : item.state === "completed" ? "Finished" : "Ended"), "badge"), element("span", "→"));
+    return link;
+  }));
+}
 async function refresh() {
   if (busy) return;
   const current = generation;
   try {
-    const result = await api("/api/tournament");
-    if (!busy && current === generation) render(result);
+    const result = await api(selectedId ? `/api/tournament/history/${encodeURIComponent(selectedId)}` : "/api/tournament/history");
+    if (!busy && current === generation) (selectedId ? render : renderList)(result);
   } catch (error) { fail(error); $("tournament-loading").hidden = true; }
 }
 api("/api/engines").then(data => {

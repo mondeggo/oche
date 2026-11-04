@@ -5,19 +5,28 @@
 <link rel="stylesheet" href="/static/css/tournament.css">
 <div id="tournament-page">
   <header class="page-head">
-    <div><a href="/local" class="game-back">← {{ _("Play") }}</a><p class="eyebrow">{{ _("Local play") }}</p><h1 id="tournament-title">{{ _("Tournament") }}</h1><p class="subtitle">{{ _("Your players. Your bracket. All on this device.") }}</p></div>
-    <div class="btn-row"><button id="tournament-new" class="btn-neutral" hidden>{{ _("New tournament") }}</button><button id="tournament-end" class="btn-neutral" hidden>{{ _("End tournament") }}</button></div>
+    <div><a href="/local" class="game-back">← {{ _("Play") }}</a><p class="eyebrow">{{ _("Local play") }}</p><h1 id="tournament-title">{{ _("Tournaments") }}</h1><p class="subtitle">{{ _("Your players. Your bracket. All on this device.") }}</p></div>
+    <div class="btn-row"><a id="tournament-list-link" href="/local/tournament" class="game-back" hidden>← {{ _("Tournaments") }}</a><button id="tournament-new" class="btn-neutral" hidden>{{ _("New tournament") }}</button><button id="tournament-end" class="btn-neutral" hidden>{{ _("End tournament") }}</button></div>
   </header>
   <p id="tournament-error" class="card game-error" role="alert" hidden></p>
   <p id="tournament-loading" role="status">{{ _("Loading tournament…") }}</p>
+  <section id="tournament-list" hidden aria-label="{{ _('Tournaments') }}">
+    <p id="tournament-empty" class="card" hidden>{{ _("No tournaments yet. Create one to get started.") }}</p>
+    <div id="tournament-history" class="tournament-history"></div>
+  </section>
   <form id="tournament-setup" hidden>
     <ol class="tournament-steps" aria-label="{{ _('Tournament setup') }}"><li id="tournament-step-players" aria-current="step">1 · {{ _("Players") }}</li><li id="tournament-step-format">2 · {{ _("Format and rules") }}</li></ol>
     <section id="tournament-players-step" class="card tournament-form-card">
       <h2>{{ _("Who is playing?") }}</h2>
       <label for="tournament-name">{{ _("Tournament name") }}</label><input id="tournament-name" maxlength="80" value="{{ _('Local tournament') }}" required>
-      <label for="tournament-names">{{ _("Player names") }}</label><textarea id="tournament-names" rows="8" maxlength="2000" required aria-describedby="tournament-names-hint"></textarea>
-      <p id="tournament-names-hint" class="hint">{{ _("One player per line. Add 2–32 players, each with a different name.") }}</p>
-      <p id="tournament-player-count" class="hint" aria-live="polite"></p>
+      <div class="tournament-roster-head"><h3>{{ _("Players") }}</h3><span id="tournament-player-count" class="badge" aria-live="polite"></span></div>
+      <ol id="tournament-players" class="game-roster"></ol>
+      <button id="tournament-add-player" type="button" class="game-add">+ {{ _("Add player") }}</button>
+      <details class="tournament-paste"><summary>{{ _("Paste player names") }}</summary>
+        <label for="tournament-names">{{ _("Player names") }}</label><textarea id="tournament-names" rows="5" maxlength="2000" aria-describedby="tournament-names-hint"></textarea>
+        <p id="tournament-names-hint" class="hint">{{ _("One player per line. Add 2–32 players, each with a different name.") }}</p>
+        <button id="tournament-import" type="button" class="btn-neutral">{{ _("Use these names") }}</button>
+      </details>
       <button id="tournament-choose-format" type="button">{{ _("Choose format") }} →</button>
     </section>
     <section id="tournament-format-step" hidden>

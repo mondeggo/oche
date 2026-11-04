@@ -1421,5 +1421,16 @@
   "This tournament match is not available.": "Dieses Turniermatch ist nicht verfügbar.",
   "Finish the preceding matches first.": "Beende zuerst die vorherigen Matches.",
   "A completed tournament result cannot be changed.": "Ein abgeschlossenes Turnierergebnis kann nicht geändert werden.",
-  "Abandon this match and replay it from the start? Use Tournament to leave the match in progress.": "Dieses Match abbrechen und von vorne spielen? Mit Turnier kannst du das laufende Match verlassen."
+  "Abandon this match and replay it from the start? Use Tournament to leave the match in progress.": "Dieses Match abbrechen und von vorne spielen? Mit Turnier kannst du das laufende Match verlassen.",
+  "Tournaments": "Turniere",
+  "No tournaments yet. Create one to get started.": "Noch keine Turniere. Erstelle eines, um loszulegen.",
+  "Paste player names": "Spielernamen einfügen",
+  "Use these names": "Diese Namen verwenden",
+  "Tournament not found.": "Turnier nicht gefunden.",
+  "Winner: {0}": "Sieger: {0}",
+  "In progress": "Läuft",
+  "Ended": "Beendet",
+  "Suggested": "Vorschlag",
+  "Dart {0}: suggested {1}": "Dart {0}: Vorschlag {1}",
+  "Enter dart {0}, suggested {1}": "Dart {0} eingeben, Vorschlag {1}"
 }

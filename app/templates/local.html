@@ -20,7 +20,7 @@
   <header class="page-head">
     <div><p class="eyebrow">{{ _("Play") }}</p><h1 id="game-modes-title">{{ _("Choose a game") }}</h1>
     <p class="subtitle">{{ _("Games run on this device. Manual darts work without internet.") }}</p></div>
-    <a href="/local/tournament" class="game-mode game-tournament-link"><span class="game-mode-head"><span class="game-mode-name">{{ _("Tournament") }}</span><span aria-hidden="true">↗</span></span><span class="game-mode-text">{{ _("Swiss rounds, elimination brackets and finals") }}</span></a>
+    <a href="/local/tournament" class="game-back game-tournament-link">{{ _("Tournament") }} <span aria-hidden="true">↗</span></a>
   </header>
   {#- Vision engines come from the integrations that register one; manual darts always work. #}
   <section class="card game-engines" aria-labelledby="game-engine-title">
@@ -138,7 +138,6 @@
     </div>
     <div id="local-turn-head" class="game-turn-head">
       <p id="local-phase" class="game-phase" role="status"></p>
-      <p id="local-checkout" class="game-checkout" hidden></p>
     </div>
   </header>
   <p id="local-detector-detail" class="hint game-detail" role="status"></p>
@@ -146,7 +145,7 @@
     <p class="eyebrow">{{ _("Game over") }}</p>
     <p id="local-winner-name" class="game-winner-name"></p>
     <div class="btn-row"><button id="local-rematch" type="button">{{ _("Rematch") }}</button><button id="local-new" type="button" class="btn-neutral">{{ _("New game") }}</button></div>
-    <a id="local-tournament-continue" class="game-back" href="/local/tournament" hidden>{{ _("Continue tournament") }}</a>
+    <a id="local-tournament-continue" class="game-back" href="/local/tournament" hidden>{{ _("Tournaments") }}</a>
   </div>
   <div id="local-stage" class="game-stage">
   <div id="local-side-left" class="game-side"></div>

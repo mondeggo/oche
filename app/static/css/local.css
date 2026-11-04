@@ -191,7 +191,6 @@ button.game-mode .game-tag { border-color: var(--outline); background: var(--lim
 .game-turn-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px 12px; margin: 0; text-align: center; }
 .game-phase { margin: 0; font-family: var(--font-display); font-size: 1.2rem; font-weight: 400; }
 .game-phase[data-bust="true"] { color: var(--danger-bright); }
-.game-checkout { margin: 0; padding: 3px 12px; border: var(--line-width) solid var(--outline); border-radius: 999px; background: var(--yellow); color: var(--on-pop); font-weight: 800; font-variant-numeric: tabular-nums; box-shadow: 0 2px 0 var(--pop-color); }
 /* Dart tiles keep one fixed size, thrown or not, so the visit never shifts. */
 .game-visit { display: grid; grid-template-columns: minmax(0, 1fr) 88px auto; gap: 10px; }
 .game-darts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 0; padding: 0; list-style: none; }
@@ -294,9 +293,8 @@ button.game-mode .game-tag { border-color: var(--outline); background: var(--lim
 .game-dart-entry small { color: inherit; }
 .game-dart:has(.game-dart-entry:focus-visible) { outline: 3px solid var(--focus-ring); outline-offset: 3px; }
 
-.game-tournament-link { flex: 0 1 290px; min-width: 240px; text-decoration: none; }
+.game-tournament-link { display: inline-flex; align-items: center; gap: 16px; align-self: center; white-space: nowrap; }
 .game-tournament-link:hover { border-color: var(--primary); }
-@media (max-width: 600px) {
-  .game-tournament-link { flex-basis: 100%; }
-}
+.game-dart[data-hint="true"] { color: var(--fg-dim); background: transparent; }
+.game-dart[data-hint="true"] span { font-size: 1.35rem; opacity: .75; }
 a.game-back { border: var(--line-width) solid var(--outline); border-radius: 999px; text-decoration: none; box-shadow: var(--pop-sm); }

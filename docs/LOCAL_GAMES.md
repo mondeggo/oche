@@ -20,8 +20,7 @@ content area; the note about pausing cloud game events sits under **Input**. The
 on the left, above rounded details: the game
 (X01), the input (or, with the board hidden, the detection status), the starting
 score, the finish and the round. It shows each player's remaining score (centered and sized to fill the card),
-three-dart average and last visit. Who is throwing, with a checkout suggestion when the
-remaining score can be finished with the darts left, sits in the header row,
+three-dart average and last visit. Who is throwing sits in the header row,
 level with **End game** and centered over the board (below the badges on narrow
 screens). The current visit is a plain line of three fixed-size dart tiles (the
 newest one underlined), the visit total, **Undo dart** and **Next turn**. With Local Autodarts input, the
@@ -234,7 +233,7 @@ disabled for detector input to prevent diverging detection and scoring state.
 ## Local tournaments
 
 Open **Tournament** beside **Choose a game** in Play. Enter a tournament name and
-2–32 distinct player names, then choose the format and X01 rules. Each match is
+2–32 distinct player names using the numbered player rows (or **Paste player names**), then choose the format and X01 rules. Each match is
 one 301/501 leg, with manual scoring or the vision engine selected in Play. Only
 one match runs at a time on this board.
 
@@ -256,10 +255,17 @@ Use **Tournament** from a match to leave it in progress, then **Resume match** t
 return. A winning dart saves the tournament result automatically. Completed
 results are final, including for detected games. Ending an unfinished match lets
 you replay it from the start; it does not award a win. **End tournament** cancels
-the remaining matches and retains the played results until a new tournament is
-created. One tournament is stored at a time.
+the remaining matches and retains the played results. The tournament list keeps
+completed and ended events alongside the active tournament; select an event to
+review its standings and bracket. Creating another tournament preserves this history.
 
-The bracket is saved in `tournament.json` beside `local-game.json`. The local game
+Tournament history is saved in `tournament.json` beside `local-game.json`. Existing
+single-tournament saves are carried over automatically. The local game
 also saves its tournament and match identifiers, so a result can be recovered
 after a restart even if the bracket write was interrupted. These files contain
 player names and use the same private, atomic storage as other local game data.
+
+Checkout suggestions appear in the remaining dart slots as muted **Suggested**
+labels. They update after each throw or undo and disappear when the visit ends.
+Actual darts retain their scored appearance; selecting the next manual slot still
+opens score entry without automatically applying the suggestion.

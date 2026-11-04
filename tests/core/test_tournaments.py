@@ -279,3 +279,65 @@ def test_new_tournament_can_follow_completed_final_without_losing_winner(setting
         assert response.status_code == 200
         assert response.json()["tournament"]["id"] != data["id"]
         assert not client.get("/api/local").json()["active"]
+
+
+def test_history_migrates_old_save_and_retains_results(tmp_path):
+    manager = tournament(tmp_path, 2)
+    finish(manager, ready(manager)[0]["id"])
+    first = manager.saved
+    # Simulate the file produced before tournament history existed.
+    manager.path.write_text(first.model_dump_json(), encoding="utf-8")
+    manager = Tournaments(tmp_path, manager.local)
+    assert manager.listing()["tournaments"][0]["champion"] == "Player 1"
+    manager.create(TournamentOptions(name="Next cup", players=["Alice", "Bob"]))
+    second_id = manager.saved.id
+    manager.cancel()
+    manager.create(TournamentOptions(name="Current cup", players=["Alice", "Bob"]))
+    current_id = manager.saved.id
+    reloaded = Tournaments(tmp_path, manager.local)
+    listing = reloaded.listing()["tournaments"]
+    assert [item["id"] for item in listing] == [current_id, second_id, first.id]
+    assert [item["state"] for item in listing] == ["active", "cancelled", "completed"]
+    old = reloaded.status(first.id)["tournament"]
+    assert old["champion"] == first.champion
+    assert all(not match["ready"] and not match["running"] for match in old["matches"])
+    assert reloaded.saved.id == current_id
+    assert reloaded.status("missing")["tournament"] is None
+    with pytest.raises(ConnectionProblem, match="not available"):
+        reloaded.match_options(first.matches[0].id)
+
+
+def test_failed_history_write_preserves_previous_events(tmp_path, monkeypatch):
+    manager = tournament(tmp_path, 2)
+    manager.cancel()
+    original = manager.path.read_bytes()
+    original_id = manager.saved.id
+
+    def failed_write(*args):
+        raise ConnectionProblem("Disk full")
+
+    monkeypatch.setattr("app.core.tournaments.write_private_json", failed_write)
+    with pytest.raises(ConnectionProblem, match="Disk full"):
+        manager.create(TournamentOptions(players=["Alice", "Bob"]))
+    assert manager.path.read_bytes() == original
+    assert manager.saved.id == original_id
+    assert len(manager.listing()["tournaments"]) == 1
+
+
+def test_history_api_syncs_final_and_preserves_detail(settings):
+    app = create_app(settings, transport=httpx.MockTransport(lambda request: httpx.Response(503)))
+    with TestClient(app) as client:
+        assert client.get("/api/tournament/history").json()["tournaments"] == []
+        body = {"players": ["Alice", "Bob"], "starting_score": 301, "double_out": False}
+        first = client.post("/api/tournament", json=body).json()["tournament"]
+        client.post(f"/api/tournament/matches/{first['matches'][0]['id']}/start", json={})
+        checkout_first(app.state.runtime.local)
+        # The list itself must recover a just-finished result from the local game.
+        listing = client.get("/api/tournament/history").json()["tournaments"]
+        assert listing[0]["state"] == "completed"
+        assert listing[0]["champion"] == "Alice"
+        assert client.post("/api/tournament", json=body).status_code == 200
+        assert len(client.get("/api/tournament/history").json()["tournaments"]) == 2
+        old = client.get(f"/api/tournament/history/{first['id']}").json()["tournament"]
+        assert old["state"] == "completed"
+        assert old["matches"][0]["completed"]

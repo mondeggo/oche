@@ -1,5 +1,6 @@
 """Saved local tournaments. Match slots form a bracket; Swiss rounds use standings."""
 
+import json
 import math
 from pathlib import Path
 from typing import Literal
@@ -271,20 +272,32 @@ class Tournaments:
         self.path = directory / "tournament.json"
         self.local = local
         self.saved: SavedTournament | None = None
+        self.history: list[SavedTournament] = []
         self.error: str | None = None
         try:
             if self.path.exists():
-                self.saved = SavedTournament.model_validate_json(self.path.read_text(encoding="utf-8"))
-                # Check references at load time before serving a damaged bracket.
-                matches = {match.id: match for match in self.saved.matches}
-                for match in self.saved.matches:
-                    participants(match, matches)
-        except (OSError, ValueError, KeyError, RecursionError):
+                data = json.loads(self.path.read_text(encoding="utf-8"))
+                # Older installations saved a single tournament in this file.
+                records = data["tournaments"] if "tournaments" in data else [data]
+                self.history = [SavedTournament.model_validate(record) for record in records]
+                if len({item.id for item in self.history}) != len(self.history):
+                    raise ValueError("Duplicate tournament IDs")
+                if any(item.state == "active" for item in self.history[:-1]):
+                    raise ValueError("An older tournament is still active")
+                for saved in self.history:
+                    matches = {match.id: match for match in saved.matches}
+                    for match in saved.matches:
+                        participants(match, matches)
+                self.saved = self.history[-1] if self.history else None
+        except (OSError, ValueError, KeyError, TypeError, RecursionError):
             self.saved = None
+            self.history = []
             self.error = "Cannot load the saved tournament. Restore tournament.json before continuing."
 
     def _save(self, saved: SavedTournament) -> None:
-        write_private_json(self.path, saved.model_dump(mode="json"))
+        history = [item for item in self.history if item.id != saved.id] + [saved]
+        write_private_json(self.path, {"tournaments": [item.model_dump(mode="json") for item in history]})
+        self.history = history
         self.saved = saved
 
     def create(self, options: TournamentOptions) -> None:
@@ -354,11 +367,34 @@ class Tournaments:
         saved.state = "cancelled"
         self._save(saved)
 
-    def status(self) -> dict:
+    def listing(self) -> dict:
         self.sync()
-        if not self.saved:
+        return {
+            "tournaments": [
+                {
+                    "id": saved.id,
+                    "name": saved.options.name,
+                    "format": saved.options.format,
+                    "players": len(saved.players),
+                    "state": saved.state,
+                    "champion": next(
+                        (player.name for player in saved.players if player.id == saved.champion), None
+                    ),
+                }
+                for saved in reversed(self.history)
+            ],
+            "error": self.error,
+        }
+
+    def status(self, tournament_id: str | None = None) -> dict:
+        self.sync()
+        saved = (
+            self.saved
+            if tournament_id is None
+            else next((item for item in self.history if item.id == tournament_id), None)
+        )
+        if not saved:
             return {"tournament": None, "error": self.error}
-        saved = self.saved
         matches = {match.id: match for match in saved.matches}
         game = self.local.saved
         result = saved.model_dump(mode="json")
@@ -370,6 +406,7 @@ class Tournaments:
             item["running"] = bool(
                 game
                 and game.active
+                and saved.state == "active"
                 and game.tournament_id == saved.id
                 and game.tournament_match_id == match.id
                 and not match.completed

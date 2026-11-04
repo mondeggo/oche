@@ -1421,5 +1421,16 @@
   "This tournament match is not available.": "This tournament match is not available.",
   "Finish the preceding matches first.": "Finish the preceding matches first.",
   "A completed tournament result cannot be changed.": "A completed tournament result cannot be changed.",
-  "Abandon this match and replay it from the start? Use Tournament to leave the match in progress.": "Abandon this match and replay it from the start? Use Tournament to leave the match in progress."
+  "Abandon this match and replay it from the start? Use Tournament to leave the match in progress.": "Abandon this match and replay it from the start? Use Tournament to leave the match in progress.",
+  "Tournaments": "Tournaments",
+  "No tournaments yet. Create one to get started.": "No tournaments yet. Create one to get started.",
+  "Paste player names": "Paste player names",
+  "Use these names": "Use these names",
+  "Tournament not found.": "Tournament not found.",
+  "Winner: {0}": "Winner: {0}",
+  "In progress": "In progress",
+  "Ended": "Ended",
+  "Suggested": "Suggested",
+  "Dart {0}: suggested {1}": "Dart {0}: suggested {1}",
+  "Enter dart {0}, suggested {1}": "Enter dart {0}, suggested {1}"
 }

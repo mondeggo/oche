@@ -14,6 +14,20 @@ async def status(request: Request):
         return runtime.tournaments.status()
 
 
+@router.get("/history")
+async def history(request: Request):
+    runtime = request.app.state.runtime
+    async with runtime.local.lock:
+        return runtime.tournaments.listing()
+
+
+@router.get("/history/{tournament_id}")
+async def detail(tournament_id: str, request: Request):
+    runtime = request.app.state.runtime
+    async with runtime.local.lock:
+        return runtime.tournaments.status(tournament_id)
+
+
 @router.post("")
 async def create(options: TournamentOptions, request: Request):
     runtime = request.app.state.runtime

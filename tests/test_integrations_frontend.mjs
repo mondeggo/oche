@@ -529,22 +529,55 @@ test("manual dart entry follows the current human visit and rejects closed or au
   assert.notEqual(context.manualEntry(nextVisit), context.manualEntry(game));
 });
 
-test("tournament polling preserves the format step before a tournament is created", () => {
+test("tournament polling preserves setup and a completed active detail returns to the list", () => {
   const nodes = new Map();
   const $ = id => {
     if (!nodes.has(id)) nodes.set(id, { hidden: true });
     return nodes.get(id);
   };
-  let resets = 0;
-  const context = vm.createContext({ $, step: () => { resets++; }, tr: text => text });
+  const redirects = [];
+  const context = vm.createContext({ $, window: { location: { assign: url => redirects.push(url) } } });
   const source = readFileSync(new URL("tournament.js", core), "utf8");
-  vm.runInContext('let saved = null, creating = false, signature = "";\n' +
+  vm.runInContext('let saved = null, creating = true, signature = "";\n' +
     source.slice(source.indexOf("function render(result)"), source.indexOf("async function refresh()")), context);
-  context.render({ tournament: null });
-  assert.equal(resets, 1);
   $('tournament-format-step').hidden = false;
-  context.render({ tournament: null });
-  context.render({ tournament: null });
-  assert.equal(resets, 1, "background polling must not reset the wizard or player names");
+  context.renderList({ tournaments: [] });
+  context.renderList({ tournaments: [] });
   assert.equal($('tournament-format-step').hidden, false);
+  assert.equal($('tournament-list').hidden, true);
+  vm.runInContext('creating = false; saved = { state: "active" };', context);
+  context.render({ tournament: { state: "completed" } });
+  assert.deepEqual(redirects, ["/local/tournament"]);
+});
+
+test("checkout hints remain unthrown slots and preserve manual entry", () => {
+  function node(tag) {
+    return { tag, dataset: {}, attributes: {}, children: [],
+      setAttribute(key, value) { this.attributes[key] = value; },
+      append(...children) { this.children.push(...children); },
+      replaceChildren(...children) { this.children = children; },
+      get firstElementChild() { return this.children[0]; } };
+  }
+  const tr = (text, values = {}) => text.replace(/\{(\d+)\}/g, (_, key) => values[key]);
+  const context = vm.createContext({ document: { createElement: node }, tr });
+  const source = readFileSync(new URL("local.js", core), "utf8");
+  vm.runInContext(source.slice(source.indexOf("function dartSlot("), source.indexOf("function playerCard(")), context);
+  const next = context.dartSlot(null, 1, false, true, "T20");
+  assert.equal(next.dataset.empty, "true");
+  assert.equal(next.dataset.next, "true");
+  assert.equal(next.dataset.ring, undefined);
+  assert.equal(next.firstElementChild.tag, "button");
+  assert.equal(next.firstElementChild.attributes["aria-haspopup"], "dialog");
+  assert.equal(next.firstElementChild.attributes["aria-label"], "Enter dart 2, suggested T20");
+  assert.equal(next.firstElementChild.children[0].textContent, "T20");
+  const future = context.dartSlot(null, 2, false, false, "D20");
+  assert.equal(future.firstElementChild.tag, "span");
+  assert.equal(future.children[1].textContent, "Suggested");
+  const actual = context.dartSlot({ segment: { name: "S20", number: 20, multiplier: 1 } }, 0, true, false, "T20");
+  assert.equal(actual.dataset.hint, undefined);
+  assert.equal(actual.dataset.empty, undefined);
+  assert.equal(actual.firstElementChild.textContent, "S20");
+  const cleared = context.dartSlot(null, 1, false, true);
+  assert.equal(cleared.dataset.hint, undefined);
+  assert.equal(cleared.firstElementChild.children[0].textContent, "2");
 });

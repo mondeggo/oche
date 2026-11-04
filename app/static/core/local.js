@@ -170,7 +170,7 @@ function renderDetector(value) {
 }
 
 /* Game screen */
-function dartSlot(dart, index, latest, next = false) {
+function dartSlot(dart, index, latest, next = false, hint = null) {
   const slot = document.createElement("li");
   slot.className = "game-dart";
   if (!dart) {
@@ -186,11 +186,22 @@ function dartSlot(dart, index, latest, next = false) {
       button.setAttribute("aria-haspopup", "dialog");
       button.setAttribute("aria-controls", "local-manual");
       const number = document.createElement("span");
-      number.textContent = String(index + 1);
+      number.textContent = hint ? tr(hint) : String(index + 1);
       const label = document.createElement("small");
-      label.textContent = tr("Enter");
+      label.textContent = hint ? tr("Suggested") : tr("Enter");
       button.append(number, label);
       slot.replaceChildren(button);
+    }
+    if (hint) {
+      slot.dataset.hint = "true";
+      slot.setAttribute("aria-label", tr("Dart {0}: suggested {1}", { 0: index + 1, 1: tr(hint) }));
+      if (next) slot.firstElementChild.setAttribute("aria-label",
+        tr("Enter dart {0}, suggested {1}", { 0: index + 1, 1: tr(hint) }));
+      else {
+        const label = document.createElement("span"); label.textContent = tr(hint);
+        const caption = document.createElement("small"); caption.textContent = tr("Suggested");
+        slot.replaceChildren(label, caption);
+      }
     }
     return slot;
   }
@@ -295,6 +306,7 @@ function renderMatch(value) {
   const turn = frame.turns[0];
   const manual = value.options.input === "manual";
   const won = frame.winner >= 0;
+  if (value.tournament) $("local-tournament-return").href = `/local/tournament?id=${encodeURIComponent(value.tournament.id)}`;
   $("local-tournament-return").hidden = $("local-tournament-continue").hidden = !value.tournament;
   $("local-rematch").hidden = $("local-new").hidden = Boolean(value.tournament);
   const player = frame.players[frame.player];
@@ -318,13 +330,12 @@ function renderMatch(value) {
   $("local-phase").dataset.bust = String(Boolean(turn.busted));
   const route = turn.finishedAt || won ? null
     : checkout(frame.gameScores[frame.player], 3 - turn.throws.length, value.options.double_out);
-  $("local-checkout").hidden = !route;
-  $("local-checkout").textContent = route ? tr("Checkout: {0}", { 0: route.map(dart => tr(dart)).join(" · ") }) : "";
-  const dartsSignature = JSON.stringify([turn.throws, entry]);
+  const dartsSignature = JSON.stringify([turn.throws, entry, route]);
   if (dartsSignature !== dartsRevision) {
     dartsRevision = dartsSignature;
     $("local-darts").replaceChildren(...[0, 1, 2].map(index => dartSlot(turn.throws[index], index,
-      index === turn.throws.length - 1, entry !== null && index === turn.throws.length)));
+      index === turn.throws.length - 1, entry !== null && index === turn.throws.length,
+      route?.[index - turn.throws.length])));
   }
   const entryButton = $("local-darts").querySelector("button");
   if (entryButton) entryButton.disabled = working;
