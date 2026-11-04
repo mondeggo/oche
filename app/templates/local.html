@@ -180,6 +180,16 @@
   <div id="local-stage" class="game-stage">
   <div id="local-side-left" class="game-side"></div>
   <div id="local-center" class="game-center">
+  <div id="football-guidance" class="football-guidance" hidden aria-live="polite">
+    <p id="football-clock" class="football-clock"></p>
+    <p id="football-message" class="football-message"></p>
+    <p id="football-target" class="football-target"></p>
+    <div id="football-bullup-entry" hidden>
+      <label for="football-distance">{{ _("Distance from bull centre (mm)") }}</label>
+      <div class="btn-row"><input id="football-distance" type="number" min="0" max="1700" step="0.1" inputmode="decimal"><button id="football-bullup-submit" type="button">{{ _("Record distance") }}</button></div>
+    </div>
+    <button id="football-confirm" type="button" hidden>{{ _("Confirm hit near wire") }}</button>
+  </div>
   <section id="local-board" class="game-board" aria-label="{{ _('Dartboard') }}">
     <svg id="local-board-svg" viewBox="-125 -125 250 250" role="img" aria-label="{{ _('Dartboard with the darts of the current visit') }}"></svg>
   </section>

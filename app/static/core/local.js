@@ -339,6 +339,7 @@ function renderMatch(value) {
   const frame = value.frame;
   const football = value.options.mode === "football";
   $("local-match").dataset.variant = football ? "football" : "x01";
+  $("football-guidance").hidden = !football;
   $("local-match-title").textContent = football ? tr("Football") : "X01";
   $("local-single-bed").hidden = !football || !footballKeypad || radio("ring") !== "1";
   $("football-input-board").hidden = !football || footballKeypad;
