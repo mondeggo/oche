@@ -17,9 +17,9 @@
       <header class="page-header">
         <div>
           <p class="eyebrow">{{ _("Your darts setup") }}</p>
-          <h1 id="page-title" tabindex="-1">{{ _("Overview") }}</h1>
+          <h1 id="page-title" tabindex="-1">{{ _("Integrations") }}</h1>
           <p id="page-description" class="muted">
-            {{ _("Your board and connection at a glance.") }}
+            {{ _("Choose your vision engines, lights and sound.") }}
           </p>
         </div>
       </header>
@@ -49,46 +49,6 @@
           </button>
         </div>
       </dialog>
-
-      <section data-view="overview" aria-label="{{ _('Overview') }}">
-        <div class="panel board-panel">
-          {%- for part in home_slots.get("board", []) %}{% include part %}{% endfor %}
-          {%- if not home_slots.get('board') %}
-          <div class="panel-heading"><h2>{{ _("Board") }}</h2></div>
-          {%- endif %}
-          <div class="board-controls">
-            <div>
-              <strong id="overview-phase" class="board-phase"
-                >{{ _("Waiting for board") }}</strong
-              >
-              <p id="overview-phase-reason" class="hint"></p>
-            </div>
-            <a class="button" href="/integrations">{{ _("Manage connection") }}</a>
-          </div>
-        </div>
-        <dl class="metrics">
-          {%- for part in home_slots.get("tiles", []) %}{% include part %}{% endfor %}
-          <div class="panel">
-            <dt>WLED</dt>
-            <dd id="overview-wled">{{ _("Loading…") }}</dd>
-            <a href="/integrations/wled">{{ _("Lighting settings →") }}</a>
-          </div>
-          <div class="panel">
-            <dt>{{ _("Caller") }}</dt>
-            <dd id="overview-caller">{{ _("Loading…") }}</dd>
-            <a href="/integrations/caller">{{ _("Voice settings →") }}</a>
-          </div>
-        </dl>
-        <div id="setup-integrations" class="panel compact-panel">
-          <div>
-            <h2>{{ _("Make it your setup") }}</h2>
-            <p class="muted">
-              {{ _("Choose the lights and audio to use with your board.") }}
-            </p>
-          </div>
-          <a class="button" href="/integrations">{{ _("Integrations") }}</a>
-        </div>
-      </section>
 
       <section data-view="integrations" aria-label="{{ _('Integrations') }}" hidden>
         {%- for part in home_slots.get("account", []) %}{% include part %}{% endfor %}

@@ -367,7 +367,7 @@
   "Dismiss notification": "Dismiss notification",
   "Display": "Display",
   "Display paused. The service and debug recording keep running.": "Display paused. The service and debug recording keep running.",
-  "Docker image upgrade required": "Docker image upgrade required",
+  "Release incompatible with this runtime": "Release incompatible with this runtime",
   "Domain HTTPS": "Domain HTTPS",
   "Domain HTTPS is active for": "Domain HTTPS is active for",
   "Domain certificates need a newer Oche installation. Update Oche, or rebuild its Docker image, to continue.": "Domain certificates need a newer Oche installation. Update Oche, or rebuild its Docker image, to continue.",
@@ -1291,5 +1291,6 @@
   "{0} · Bust — remove darts": "{0} · Bust — remove darts",
   "{count} game events · {raw} raw frames": "{count} game events · {raw} raw frames",
   "{count} samples": "{count} samples",
-  "{count} samples · {minutes} minutes · every {seconds} seconds": "{count} samples · {minutes} minutes · every {seconds} seconds"
+  "{count} samples · {minutes} minutes · every {seconds} seconds": "{count} samples · {minutes} minutes · every {seconds} seconds",
+  "Integrations and profiles": "Integrations and profiles"
 }

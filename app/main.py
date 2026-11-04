@@ -116,7 +116,7 @@ def create_app(
         )
         if request.url.path.startswith(("/api/", "/updates/", "/system/")):
             response.headers["Cache-Control"] = "no-store"
-        elif request.url.path in routes or request.url.path.startswith("/static/"):
+        elif request.url.path in routes or request.url.path in {"/", "/local"} or request.url.path.startswith("/static/"):
             response.headers["Cache-Control"] = "no-cache"
         return response
 
@@ -169,6 +169,10 @@ def create_app(
 
     for path in routes:
         application.add_api_route(path, index, methods=["GET"], include_in_schema=False)
+
+    @application.get("/", include_in_schema=False)
+    async def home():
+        return RedirectResponse("/local", status_code=307)
 
     @application.get("/local")
     async def local_game(request: Request):

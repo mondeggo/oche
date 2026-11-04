@@ -4,19 +4,23 @@ const registered = (() => {
   catch { return {}; }
 })();
 export const homeRoutes = {
-  overview: "/", integrations: "/integrations",
+  integrations: "/integrations",
   wled: "/integrations/wled", wled2: "/integrations/visual-wled",
   caller: "/integrations/caller",
   profiles: "/profiles", events: "/events",
   ...registered,
 };
 export const isHome = path => Object.values(homeRoutes).includes(path);
-export const pageForUrl = url => Object.keys(homeRoutes).find(key => homeRoutes[key] === url.pathname) || "overview";
+export const pageForUrl = url => Object.keys(homeRoutes).find(key => homeRoutes[key] === url.pathname) || "integrations";
 export function canonicalUrl(href, base) {
   const url = new URL(href, base);
-  if (isHome(url.pathname) && Object.hasOwn(homeRoutes, url.hash.slice(1))) {
+  if ((isHome(url.pathname) || url.pathname === "/") && Object.hasOwn(homeRoutes, url.hash.slice(1))) {
     url.pathname = homeRoutes[url.hash.slice(1)];
     url.hash = "";
+  }
+  if (url.pathname === "/") {
+    url.pathname = "/local";
+    if (url.hash === "#overview") url.hash = "";
   }
   if (url.pathname === "/supervisor" && url.searchParams.get("service") === "cameras") {
     url.pathname = "/integrations/cameras";

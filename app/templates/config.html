@@ -41,7 +41,7 @@
     <p class="hint">{{ _("Choose which pages appear in the sidebar and which open with it collapsed to icons. Integrations, Profiles and Settings are always shown; the Oche logo opens Overview.") }}</p>
     <div class="sidebar-matrix" role="table" aria-label="{{ _('Sidebar pages') }}">
       <div class="matrix-row matrix-head" role="row"><span role="columnheader">{{ _("Page") }}</span><span role="columnheader">{{ _("Show") }}</span><span role="columnheader">{{ _("Start collapsed") }}</span></div>
-      {{ page_row('Home', 'Overview, integrations and profiles', None, 'autohide_navbar_on_home') }}
+      {{ page_row('Integrations', 'Integrations and profiles', None, 'autohide_navbar_on_home') }}
       {{ page_row('Panels', 'Your website panels', 'show_panels_in_navbar', 'autohide_navbar_on_panels') }}
       {#- Switched-on integrations add rows for their buttons and pages. #}
       {%- for entry in nav_registry if entry.enabled %}

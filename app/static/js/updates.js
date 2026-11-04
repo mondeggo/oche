@@ -73,7 +73,7 @@
     const available = needsUpdate(item) || Boolean(item.installable);
     const incompatible = available && item.runtime_compatible === false;
     const working = item.pending || (data.job.status === 'running' && data.job.module === item.name);
-    const badge = element(service, 'span', working ? tr("Updating…") : item.error || item.discovery_error ? tr("Needs attention") : incompatible ? tr("Docker image upgrade required") : missing ? tr("Not installed") : available ? tr("Update available") : item.available ? tr("Up to date") : tr("Not checked"), 'update-badge');
+    const badge = element(service, 'span', working ? tr("Updating…") : item.error || item.discovery_error ? tr("Needs attention") : incompatible ? tr("Release incompatible with this runtime") : missing ? tr("Not installed") : available ? tr("Update available") : item.available ? tr("Up to date") : tr("Not checked"), 'update-badge');
     badge.dataset.state = working || incompatible ? 'pending' : item.error || item.discovery_error ? 'error' : available && !missing ? 'available' : '';
     const readable = value => value && !/^[a-f0-9]{40,64}$/i.test(value) ? value : null;
     version(article, tr("Installed"), item.active_version || readable(active), missing ? tr("Not installed") : tr("Version unavailable"));

@@ -51,8 +51,6 @@ integration = register(Integration(
     scripts=(f"{STATIC}/account.js", f"{STATIC}/cameras-card.js"),
     home={
         "notices": ("autodarts/home_notice.html",),
-        "board": ("autodarts/home_board.html",),
-        "tiles": ("autodarts/home_tile.html",),
         "account": ("autodarts/home_account.html",),
     },
     views=(HomeView(

@@ -2,7 +2,6 @@ import { tr } from "../js/i18n.mjs";
 import { $, api, poll, eventEntries, eventSource } from "./client.mjs";
 import { pageForUrl } from "../js/routes.mjs";
 const pages = {
-  overview: [tr("Overview"), tr("Your board and connection at a glance.")],
   integrations: [
     tr("Integrations"),
     tr("Choose your vision engines, lights and sound."),
@@ -13,8 +12,7 @@ const pages = {
   caller: [tr("Caller"), tr("Choose a voice and where to hear your game.")],
   events: [tr("Events"), tr("See what Oche receives from your board.")],
 };
-const integrations = { wled: null, wled2: null, caller: null };
-export let page = "overview";
+export let page = "integrations";
 let stream = "normalized";
 let refreshTask = null;
 let busy = false;
@@ -33,7 +31,7 @@ function navigate(focus = false) {
   const requested = pageForUrl(new URL(location.href));
   // Integrations add views that carry their own title and description.
   const registered = document.querySelector(`[data-view="${CSS.escape(requested)}"][data-title]`);
-  page = Object.hasOwn(pages, requested) || registered ? requested : "overview";
+  page = Object.hasOwn(pages, requested) || registered ? requested : "integrations";
   const [title, description] = pages[page] || [registered.dataset.title, registered.dataset.description];
   document.querySelectorAll("[data-view]").forEach((view) => {
     view.hidden = view.dataset.view !== page;
@@ -53,9 +51,7 @@ function navigate(focus = false) {
 }
 
 export function setIntegrationEnabled(name, enabled) {
-  integrations[name] = enabled;
   document.querySelector(`[data-integration="${name}"]`).hidden = !enabled && name !== "wled2";
-  $("setup-integrations").hidden = Object.values(integrations).some(Boolean);
 }
 
 export function notice(message, error = false) {
@@ -189,28 +185,15 @@ async function refreshEvents() {
 
 async function refreshData() {
   try {
-    const [newStatus, game] = await Promise.all([api("/api/status"), api("/api/game")]);
+    const newStatus = await api("/api/status");
     available = true;
     status = newStatus;
     renderStatus();
-    $("overview-phase").textContent = game.editing
-      ? tr("Editing score")
-      : {
-          ready: tr("Ready to throw"),
-          takeout: tr("Remove darts"),
-          waiting: tr("Wait"),
-          idle: tr("Idle"),
-        }[game.phase] || tr("Waiting for board");
-    $("overview-phase").dataset.phase = game.phase;
-    $("overview-phase-reason").textContent = tr(game.reason || "");
   } catch {
     available = false;
     document.dispatchEvent(new CustomEvent("oche:status", { detail: null }));
     $("debug-toggle").disabled = true;
     $("events-summary").textContent = tr("Event status unavailable.");
-    $("overview-phase").textContent = tr("Unavailable");
-    $("overview-phase").dataset.phase = "waiting";
-    $("overview-phase-reason").textContent = "";
   }
   await refreshEvents();
 }

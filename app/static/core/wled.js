@@ -1193,7 +1193,6 @@ import {
         renderStatus();
       } catch (error) {
         statusError = error.message;
-        $("overview-wled").textContent = tr("Unavailable");
       } finally {
         for (const id of ["wled-error", "wled-integration-error"]) {
           $(id).textContent = statusError || latestStatus?.error || "";
@@ -1212,15 +1211,6 @@ import {
     $("wled-toggle").setAttribute("aria-checked", String(enabled));
     $("wled-settings").hidden = !enabled;
     setIntegrationEnabled("wled", enabled);
-    const devices = latestStatus.devices.filter((item) => item.enabled);
-    const connected = devices.filter((item) => item.connected).length;
-    $("overview-wled").textContent = !enabled
-      ? tr("Disabled")
-      : latestStatus.error
-        ? tr("Needs attention")
-        : !devices.length
-          ? tr("No automatic lighting")
-          : `${connected} / ${devices.length} connected`;
   }
 
   async function work(task) {

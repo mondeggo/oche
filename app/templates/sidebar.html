@@ -1,7 +1,6 @@
 {%- macro icon(name) -%}
 <svg class="nav-icon" aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
 {%- if name == 'play' -%}<path d="M8 5.5v13l10.5-6.5Z"/>
-{%- elif name == 'overview' -%}<path d="M4 11.5 12 5l8 6.5V19a1 1 0 0 1-1 1h-4.5v-5h-5v5H5a1 1 0 0 1-1-1Z"/>
 {%- elif name == 'integrations' -%}<path d="M9 3v4m6-4v4M7 7h10v4a5 5 0 0 1-10 0Zm5 9v5"/>
 {%- elif name == 'profiles' -%}<circle cx="12" cy="8.5" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/>
 {%- elif name == 'autodarts' -%}<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r=".6" fill="currentColor"/>
@@ -14,12 +13,12 @@
 </svg>
 {%- endmacro -%}
 {%- macro item(href, label, icon_name, current=False, page=None) -%}
-<a class="nav-item" href="{{ href }}" data-label="{{ _(label) }}"{% if page %} data-page="{{ page }}"{% endif %}{% if current or (core_page|default(false) and home_page|default('overview') == page) %} aria-current="page"{% endif %}>{{ icon(icon_name) }}<span class="nav-text">{{ _(label) }}</span></a>
+<a class="nav-item" href="{{ href }}" data-label="{{ _(label) }}"{% if page %} data-page="{{ page }}"{% endif %}{% if current or (core_page|default(false) and home_page|default('integrations') == page) %} aria-current="page"{% endif %}>{{ icon(icon_name) }}<span class="nav-text">{{ _(label) }}</span></a>
 {%- endmacro -%}
 {%- set home = core_page is defined and core_page -%}
 <aside id="app-sidebar" class="app-sidebar" aria-label="Oche">
   <div class="sidebar-head">
-    <a class="brand" href="/" aria-label="{{ _('Oche Home') }}" title="Home"><span class="brand-mark" aria-hidden="true"></span><span class="nav-text">Oche</span></a>
+    <a class="brand" href="/local" aria-label="{{ _('Oche Home') }}" title="Home"><span class="brand-mark" aria-hidden="true"></span><span class="nav-text">Oche</span></a>
   </div>
   <nav id="main-nav" class="sidebar-nav" aria-label="{{ _('Main navigation') }}">
     <div class="nav-section">

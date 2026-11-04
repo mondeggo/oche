@@ -268,39 +268,8 @@
   color: var(--on-pop);
 }
 /* Featured panels carry a coral lip along the top. */
-.core-workspace :is(.board-panel, .connection-card, .wled-overview) {
+.core-workspace :is(.connection-card, .wled-overview) {
   box-shadow: var(--pop), inset 0 5px 0 var(--accent);
-}
-.core-workspace .board-name {
-  font-family: var(--font-display);
-  font-size: 30px;
-  font-weight: 400;
-  letter-spacing: -0.03em;
-  overflow-wrap: anywhere;
-}
-.core-workspace .board-panel .button {
-  margin-top: 24px;
-}
-.core-workspace .metrics {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
-  margin: 0;
-}
-.core-workspace .metrics dt {
-  font-size: 13px;
-}
-.core-workspace .metrics dd {
-  margin: 10px 0 0;
-  font-family: var(--font-display);
-  font-size: 22px;
-  font-weight: 400;
-  overflow-wrap: anywhere;
-}
-.core-workspace .metrics a {
-  display: block;
-  margin-top: 10px;
-  font-size: 12px;
 }
 .core-workspace .compact-panel {
   display: flex;
@@ -515,15 +484,6 @@
 @media (max-width: 1000px) {.core-workspace .core-main {
     padding: 32px 24px;
   }
-.core-workspace .metrics {
-    gap: 10px;
-  }
-.core-workspace .metrics .panel {
-    padding: 18px;
-  }
-.core-workspace .metrics dd {
-    font-size: 17px;
-  }
 }
 @media (max-width: 760px) {.core-workspace .core-main {
     padding: 26px 20px 40px;
@@ -542,13 +502,6 @@
 .core-workspace .compact-panel {
     align-items: flex-start;
     flex-direction: column;
-  }
-.core-workspace .metrics {
-    grid-template-columns: 1fr;
-    gap: 0;
-  }
-.core-workspace .metrics .panel {
-    margin-bottom: 12px;
   }
 .core-workspace .integration-row {
     flex-wrap: wrap;
@@ -1085,34 +1038,12 @@
   color: var(--online);
   margin-right: 6px;
 }
-.core-workspace .board-controls,
 .core-workspace .event-filters {
   display: flex;
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 12px;
-}
-.core-workspace .board-phase {
-  font-size: 18px;
-}
-.core-workspace .board-phase::before {
-  content: "";
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--offline);
-  margin-right: 8px;
-}
-.core-workspace .board-phase[data-phase="ready"]::before {
-  background: var(--online);
-}
-.core-workspace .board-phase[data-phase="takeout"]::before {
-  background: var(--warning-text);
-}
-.core-workspace .board-phase[data-phase="waiting"]::before {
-  background: var(--accent);
 }
 .core-workspace .event-filters {
   align-items: flex-end;

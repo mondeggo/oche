@@ -77,7 +77,7 @@ def test_complete_application_is_staged_atomically_before_restart(manager, tmp_p
     [
         ({"integrated": False}, "integrated darts"),
         ({"checksum": False}, "SHA-256"),
-        ({"runtime": "v1-runtime"}, "different Docker"),
+        ({"runtime": "v1-runtime"}, "Release incompatible with this runtime"),
     ],
 )
 def test_invalid_release_preserves_active_application(manager, tmp_path, options, reason):

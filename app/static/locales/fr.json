@@ -367,7 +367,7 @@
   "Dismiss notification": "Fermer la notification",
   "Display": "Affichage",
   "Display paused. The service and debug recording keep running.": "Affichage en pause. Le service et l’enregistrement de diagnostic continuent.",
-  "Docker image upgrade required": "Mise à niveau de l’image Docker requise",
+  "Release incompatible with this runtime": "Version incompatible avec cet environnement d’exécution",
   "Domain HTTPS": "HTTPS avec domaine",
   "Domain HTTPS is active for": "HTTPS avec domaine est actif pour",
   "Domain certificates need a newer Oche installation. Update Oche, or rebuild its Docker image, to continue.": "Les certificats de domaine nécessitent une version plus récente d’Oche. Mettez à jour Oche ou reconstruisez son image Docker.",
@@ -1291,5 +1291,6 @@
   "{0} · Bust — remove darts": "{0} · Score annulé — retirez les fléchettes",
   "{count} game events · {raw} raw frames": "{count} événements de jeu · {raw} messages bruts",
   "{count} samples": "{count} mesures",
-  "{count} samples · {minutes} minutes · every {seconds} seconds": "{count} mesures · {minutes} minutes · toutes les {seconds} secondes"
+  "{count} samples · {minutes} minutes · every {seconds} seconds": "{count} mesures · {minutes} minutes · toutes les {seconds} secondes",
+  "Integrations and profiles": "Intégrations et profils"
 }

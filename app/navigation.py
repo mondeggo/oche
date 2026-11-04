@@ -4,7 +4,6 @@ from app.core.integrations import registry
 
 # Home's own pages. Integrations add theirs as views; see home_routes().
 HOME_ROUTES = {
-    "/": "overview",
     "/integrations": "integrations",
     "/integrations/wled": "wled",
     "/integrations/visual-wled": "wled2",

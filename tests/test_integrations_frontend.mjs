@@ -28,6 +28,15 @@ test("legacy links resolve to direct routes and Home views share one retained do
   assert.notEqual(viewKey(new URL("/supervisor?service=system", base)), viewKey(new URL("/supervisor?service=updates", base)));
 });
 
+test("home navigation opens Play instead of the removed Overview", () => {
+  const base = "http://localhost:8180/integrations";
+  assert.equal(canonicalUrl("/", base).pathname, "/local");
+  assert.equal(canonicalUrl("/#overview", base).pathname, "/local");
+  assert.equal(canonicalUrl("/#overview", base).hash, "");
+  assert.equal(isHome("/"), false);
+  assert.equal(Object.hasOwn(homeRoutes, "overview"), false);
+});
+
 function navigationContext(path = "/integrations") {
   const handlers = {}, frames = [];
   const original = { hidden: false };

@@ -321,9 +321,6 @@ import {
               : current.voice
                 ? tr("Voice unavailable")
                 : tr("Choose a voice");
-        $("overview-caller").textContent = !current.enabled
-          ? tr("Disabled")
-          : $("caller-state").textContent;
         error(current.error || "");
         if (page === "caller" || !config || (!dirty && response.etag !== configurationETag)) {
           const version = `${current.voice}:${current.installed}:${current.download.state}`;
@@ -353,7 +350,6 @@ import {
           $("caller-test").disabled =
           $("caller-save").disabled =
             true;
-        $("overview-caller").textContent = tr("Unavailable");
       }
     })().finally(() => {
       polling = null;

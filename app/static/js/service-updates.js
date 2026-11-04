@@ -24,7 +24,7 @@
     else if (data.job.status === 'running' && data.job.action === 'check') message = tr("Checking for updates…");
     else if (data.job.status === 'error') message = tr("Update availability could not be checked.");
     else if (data.job.status === 'complete') message = tr("No release information available for this service.");
-    if (available && item.runtime_compatible === false && !working) message += ' · Docker image upgrade required';
+    if (available && item.runtime_compatible === false && !working) message += " · " + tr("Release incompatible with this runtime");
     panel.querySelector('[data-service-update-message]').textContent = message;
   }
   document.addEventListener('oche:updates', event => render(event.detail));

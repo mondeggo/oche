@@ -105,13 +105,8 @@ async function loadBoards() {
 }
 
 function render() {
-  const { auth, cloud, events } = status;
+  const { auth, cloud } = status;
   const authLabel = labels[auth.state] ?? auth.state;
-  const cloudLabel = labels[cloud.state] ?? cloud.state;
-  const connected = cloud.state === "connected";
-  show("auth-state", authLabel);
-  show("cloud-state", cloudLabel);
-  show("count", events.normalized);
   badge("account-state", authLabel, auth.state === "authenticated" ? "good" : "");
   show("account-hint", !config.client_id
     ? tr("Set an OAuth Client ID in Advanced settings below to connect.")
@@ -120,17 +115,6 @@ function render() {
       : auth.state === "awaiting_authorization"
         ? tr("Approve the connection using the code below.")
         : tr("Sign in on Autodarts to connect your board."));
-  const board = boardOptions.find((item) => item.id === config.board_id);
-  show("board-name", board?.name || (config.board_id ? tr("Your Autodarts board") : tr("Choose your board")));
-  badge(
-    "board-state",
-    !config.board_id ? tr("Not selected")
-      : !connected || cloud.board_online == null ? tr("Status unknown")
-        : cloud.board_online ? tr("Online") : tr("Offline"),
-    connected && cloud.board_online ? "good" : "",
-  );
-  show("match", !connected ? tr("Connect Autodarts to receive game events.")
-    : cloud.match_id ? tr("Match in progress") : tr("No active match"));
   show("detail-board", config.board_id || tr("No board selected"));
   show("detail-match", cloud.match_id || tr("No active match"));
   const errors = [auth.error, cloud.error,
@@ -156,11 +140,7 @@ function render() {
 
 function unavailable() {
   available = false;
-  show("auth-state", tr("Unavailable"));
-  show("cloud-state", tr("Unavailable"));
   badge("account-state", tr("Unavailable"), "warning");
-  badge("board-state", tr("Status unknown"));
-  show("match", tr("Waiting for the service to reconnect."));
   show("warning-text", tr("Cannot reach Oche. Retrying automatically."));
   $("connection-warning").hidden = false;
   updateButtons();

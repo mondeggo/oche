@@ -307,7 +307,7 @@ class UpdateManager:
             raise ValueError("No compatible release is published for this module")
         if release.get("runtime", store.RUNTIME) != store.RUNTIME:
             raise ValueError(
-                "This package requires a different Docker runtime image. Upgrade the container image before installing it."
+                "Release incompatible with this runtime. Use a release package and container image built for the same runtime."
             )
         version = release["version"]
         if (

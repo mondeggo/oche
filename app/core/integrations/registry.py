@@ -103,9 +103,7 @@ class Integration:
     static: Path | None = None  # Served at /static/integrations/<id>/.
     cards: tuple[str, ...] = ()  # Templates included on the Integrations page.
     scripts: tuple[str, ...] = ()  # Module scripts the Home workspace loads.
-    # Home slots filled with templates: "notices" above every view, "board" (the
-    # board panel's heading on Overview), "tiles" (Overview metrics) and
-    # "account" (the top of the Integrations page).
+    # Workspace slots: "notices" above every view and "account" at the top of Integrations.
     home: dict[str, tuple[str, ...]] = field(default_factory=dict)
     views: tuple[HomeView, ...] = ()
     health: tuple[Health, ...] = ()

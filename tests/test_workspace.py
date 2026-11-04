@@ -41,7 +41,7 @@ def application(tmp_path):
 
 def test_workspace_assets_and_ids_are_valid_and_core_has_no_second_application(application):
     with TestClient(application) as client:
-        page = client.get("/")
+        page = client.get("/integrations")
         assert page.status_code == 200
         document = Document()
         document.feed(page.text)
@@ -89,7 +89,7 @@ def test_sidebar_reaches_every_page_and_marks_the_current_one(application, tmp_p
             assert '<option value="default" selected>Default</option>' in sidebar
             for status in ("autodarts", "cloud"):
                 assert f'data-health="{status}"' in sidebar
-        assert 'href="/integrations/cameras"' in client.get("/").text.split('id="core-main"')[1]
+        assert 'href="/integrations/cameras"' in client.get("/integrations").text.split('id="core-main"')[1]
         # Camera tools and each System page retain their own collapse preferences.
         assert client.post("/config/data", json={"autohide_navbar_on_cameras": True}).status_code == 200
         collapsed = {
@@ -127,7 +127,7 @@ def test_camera_card_and_sidebar_share_persisted_visibility(application, tmp_pat
         before = client.get("/config/data").json()
         for enabled in (False, True):
             assert client.post("/config/data", json={"show_page_cameras": enabled}).status_code == 200
-            page = client.get("/").text
+            page = client.get("/integrations").text
             assert re.search(rf'id="cameras-toggle"[^>]*aria-checked="{str(enabled).lower()}"', page)
             assert bool(re.search(r'id="nav-link-cameras"[^>]*\shidden', page)) != enabled
             assert bool(re.search(r'id="cameras-settings"[^>]*\shidden', page)) != enabled
@@ -190,3 +190,18 @@ def test_core_configuration_reads_the_oche_environment(tmp_path, monkeypatch):
     assert Settings(_env_file=None, data_dir=tmp_path).client_id == "current-client"
     monkeypatch.delenv("OCHE_CORE_CLIENT_ID")
     assert Settings(_env_file=None, data_dir=tmp_path).client_id == ""
+
+
+def test_home_opens_play_and_overview_is_removed(application):
+    with TestClient(application) as client:
+        response = client.get("/", follow_redirects=False)
+        assert response.status_code == 307
+        assert response.headers["location"] == "/local"
+        play = client.get("/")
+        assert play.url.path == "/local"
+        assert 'class="brand" href="/local"' in play.text
+        assert 'data-label="Play" aria-current=page' in play.text
+        workspace = client.get("/integrations").text
+        assert 'data-view="overview"' not in workspace
+        assert 'id="overview-phase"' not in workspace
+        assert 'data-view="integrations"' in workspace
