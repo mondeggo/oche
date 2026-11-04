@@ -51,7 +51,7 @@ class LocalOptions(BaseModel):
     input: Literal["autodarts", "manual"] = "autodarts"
     bot_speed: Literal["slow", "normal", "fast"] = "normal"
     show_board: bool = True
-    random_names: bool = True
+    random_names: bool = False
 
     @field_validator("players", mode="before")
     @classmethod

@@ -114,7 +114,7 @@ function closeBots() {
   else addPlayer(newName(true), level, auto);
 }
 
-const randomNames = () => radio("names") !== "numbered";
+const randomNames = () => radio("names") === "random";
 
 /* A playful name, or an empty one that renderRoster numbers. */
 function newName(bot = false) {
@@ -133,8 +133,8 @@ function prefill(value) {
   if (prefilled) return;
   prefilled = true;
   const options = value.options;
-  // A new game starts with one player under a playful name; Rematch keeps the previous roster.
-  setRadio("names", options.random_names === false ? "numbered" : "random");
+  // A fresh setup starts with numbered names; Rematch keeps the previous roster.
+  setRadio("names", "numbered");
   $("local-players").replaceChildren();
   addPlayer();
   setRadio("score", options.starting_score);

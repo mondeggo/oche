@@ -512,7 +512,7 @@ def test_dart_positions_from_detector_and_bots_are_kept_for_the_board(detected, 
     assert first.coords.model_dump() == {"x": -0.01, "y": 0.6}
     assert second.coords is None
     assert detected.status()["options"]["show_board"] is True
-    assert detected.status()["options"]["random_names"] is True
+    assert detected.status()["options"]["random_names"] is False
 
     segment, coords = bots.throw("T20", 11, random.Random(1))
     assert bots.segment_at(coords.x * bots.DOUBLE[1], coords.y * bots.DOUBLE[1]) == segment
