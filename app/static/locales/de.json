@@ -1433,5 +1433,10 @@
   "Suggested": "Vorschlag",
   "Dart {0}: suggested {1}": "Dart {0}: Vorschlag {1}",
   "Enter dart {0}, suggested {1}": "Dart {0} eingeben, Vorschlag {1}",
-  "Past tournaments": "Vergangene Turniere"
+  "Past tournaments": "Vergangene Turniere",
+  "Arcade": "Arcade",
+  "Football": "Fußball",
+  "Score goals with your darts": "Erziele Tore mit deinen Darts",
+  "Clear the maze and avoid the ghosts": "Räume das Labyrinth leer und weiche den Geistern aus",
+  "Explore worlds and collect stars": "Erkunde Welten und sammle Sterne"
 }

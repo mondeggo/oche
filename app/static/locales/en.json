@@ -1433,5 +1433,10 @@
   "Suggested": "Suggested",
   "Dart {0}: suggested {1}": "Dart {0}: suggested {1}",
   "Enter dart {0}, suggested {1}": "Enter dart {0}, suggested {1}",
-  "Past tournaments": "Past tournaments"
+  "Past tournaments": "Past tournaments",
+  "Arcade": "Arcade",
+  "Football": "Football",
+  "Score goals with your darts": "Score goals with your darts",
+  "Clear the maze and avoid the ghosts": "Clear the maze and avoid the ghosts",
+  "Explore worlds and collect stars": "Explore worlds and collect stars"
 }

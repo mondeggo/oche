@@ -4,7 +4,8 @@ Open **Play on Oche** in the sidebar (`/local`) and choose a game mode. The firs
 mode is one-leg X01: 301 or 501, single in, straight or double out, and one to
 eight players sharing the board. Bull is 25; double bull is 50 and counts as a
 double for checkout. A bust restores the score from the beginning of the visit.
-Other modes are listed as **Coming soon** and cannot be started yet.
+Other modes are listed as **Coming soon** and cannot be started yet. The **Arcade**
+category groups planned Football, Pac-Man and Mario 64 games.
 
 The setup screen is one centered column, up to 680 px wide, with one panel: the
 players and, below them, labelled settings (starting score, finish, player names, dartboard and input) with

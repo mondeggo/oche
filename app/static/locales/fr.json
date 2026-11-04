@@ -1433,5 +1433,10 @@
   "Suggested": "Suggestion",
   "Dart {0}: suggested {1}": "Fléchette {0} : suggestion {1}",
   "Enter dart {0}, suggested {1}": "Saisir la fléchette {0}, suggestion {1}",
-  "Past tournaments": "Tournois passés"
+  "Past tournaments": "Tournois passés",
+  "Arcade": "Arcade",
+  "Football": "Football",
+  "Score goals with your darts": "Marquez des buts avec vos fléchettes",
+  "Clear the maze and avoid the ghosts": "Parcourez le labyrinthe et évitez les fantômes",
+  "Explore worlds and collect stars": "Explorez des mondes et collectionnez les étoiles"
 }
