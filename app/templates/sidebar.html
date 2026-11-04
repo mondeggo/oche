@@ -12,6 +12,13 @@
 {%- endif -%}
 </svg>
 {%- endmacro -%}
+{%- macro integration_links(vision_engines) -%}
+{%- for entry in nav_registry %}{% for link, shown in entry.pages %}
+{%- if (entry.engine and loop.first) == vision_engines %}
+<a id="nav-link-{{ link.id }}" class="nav-child" href="{{ link.href }}" data-label="{{ _(link.label) }}" data-nav-sync{% if link.setting %} data-visible-setting="{{ link.setting }}"{% endif %}{{ ' data-integration-off' if not entry.enabled }} {{ 'hidden' if not shown }} {{ 'aria-current=page' if sidebar_page == link.page }}>{{ _(link.label) }}{% if entry.release and loop.first %}<span class="service-update-dot" data-update-dot="{{ entry.id }}" hidden role="img" aria-label="{{ _('Update available') }}"></span>{% endif %}</a>
+{%- endif %}
+{%- endfor %}{% endfor %}
+{%- endmacro -%}
 {%- macro item(href, label, icon_name, current=False, page=None) -%}
 <a class="nav-item" href="{{ href }}" data-label="{{ _(label) }}"{% if page %} data-page="{{ page }}"{% endif %}{% if current or (core_page|default(false) and home_page|default('integrations') == page) %} aria-current="page"{% endif %}>{{ icon(icon_name) }}<span class="nav-text">{{ _(label) }}</span></a>
 {%- endmacro -%}
@@ -32,12 +39,11 @@
     <div class="nav-section">
       <a class="nav-item" href="/integrations" data-label="{{ _('Integrations') }}" data-page="integrations" {%- set view_ids = home_views | map(attribute='id') | list %} data-subpages="{{ (['events'] + view_ids) | join(' ') }}" {% if home_page|default('') in ['integrations', 'events'] + view_ids %}aria-current="page"{% endif %}>{{ icon('integrations') }}<span class="nav-text">{{ _("Integrations") }}</span></a>
       <div class="nav-children">
+        {{ integration_links(true) }}
+        {{ integration_links(false) }}
         <a class="nav-child" href="/integrations/visual-wled" data-page="wled2" {% if home_page|default('') == 'wled2' %}aria-current="page"{% endif %} data-integration="wled2">Visual WLED</a>
         <a id="nav-integration-wled" class="nav-child" href="/integrations/wled" data-page="wled" {% if home_page|default('') == 'wled' %}aria-current="page"{% endif %} data-integration="wled" data-nav-sync {{ 'hidden' if not nav_integrations.wled }}>WLED</a>
         <a id="nav-integration-caller" class="nav-child" href="/integrations/caller" data-page="caller" {% if home_page|default('') == 'caller' %}aria-current="page"{% endif %} data-integration="caller" data-nav-sync {{ 'hidden' if not nav_integrations.caller }}>{{ _("Caller") }}</a>
-        {%- for entry in nav_registry %}{% for link, shown in entry.pages %}
-        <a id="nav-link-{{ link.id }}" class="nav-child" href="{{ link.href }}" data-label="{{ _(link.label) }}" data-nav-sync{% if link.setting %} data-visible-setting="{{ link.setting }}"{% endif %}{{ ' data-integration-off' if not entry.enabled }} {{ 'hidden' if not shown }} {{ 'aria-current=page' if sidebar_page == link.page }}>{{ _(link.label) }}{% if entry.release and loop.first %}<span class="service-update-dot" data-update-dot="{{ entry.id }}" hidden role="img" aria-label="{{ _('Update available') }}"></span>{% endif %}</a>
-        {%- endfor %}{% endfor %}
       </div>
       {{ item('/profiles', 'Profiles', 'profiles', False, 'profiles') }}
     </div>

@@ -110,6 +110,7 @@ def navigation_context(request):
             {
                 "id": item.id,
                 "enabled": item in switched_on,
+                "engine": bool(item.engine),
                 "release": bool(item.release),
                 # Buttons below Play also follow the "Play" sidebar switch in Settings.
                 "play": [(button, item in switched_on and config.get("show_play_in_navbar", True)) for button in item.play],
