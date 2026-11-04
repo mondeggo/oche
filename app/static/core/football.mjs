@@ -1,7 +1,7 @@
 import { $ } from "./client.mjs";
 import { tr } from "../js/i18n.mjs";
 
-const ORDER = [20, 1, 18, 4, 13, 6, 10, 15, 2, 17, 3, 19, 7, 16, 8, 11, 14, 9, 12, 5];
+import { ORDER, CELLS, cellPath, cellPosition } from "./football-pitch.mjs";
 export function regionLabel(region) {
   if (region === "B") return tr("Bullseye");
   if (region === "OB") return tr("Outer bull");
@@ -16,20 +16,94 @@ export function dartRegion(dart) {
   if (multiplier !== 1) return `${multiplier === 3 ? "T" : "D"}${number}`;
   return `${Math.hypot(dart.coords.x, dart.coords.y) * 170 < 99 ? "I" : "O"}${number}`;
 }
-export function pitchPosition(region) {
-  if (region === "D11") return [27, 320];
-  if (region === "D6") return [973, 320];
-  if (region === "B") return [500, 320];
-  if (region === "OB") return [500, 303];
-  const radius = { I: 65, T: 103, O: 135, D: 166 }[region[0]] / 170;
-  const angle = ORDER.indexOf(Number(region.slice(1))) * Math.PI / 10;
-  return [500 + Math.sin(angle) * radius * 450, 320 - Math.cos(angle) * radius * 270];
+export const pitchPosition = cellPosition;
+let pitchState = null, inspected = null, morph = 1, pitchReady = false, matchId = null;
+
+function drawPitch() {
+  if (!pitchState) return;
+  const { football: game, frame, options } = pitchState;
+  const finished = Boolean(frame.turns[0].finishedAt) || game.phase === "finished";
+  const selected = inspected || game.ball;
+  const targets = inspected
+    ? game.neighbours[inspected].filter(cell => options.football_own_goals || cell !== game.attacks[1 - frame.player])
+    : finished ? [] : game.targets;
+  for (const node of $("football-cells").children) {
+    const cell = node.dataset.cell;
+    node.setAttribute("d", cellPath(cell, morph));
+    node.dataset.selected = String(cell === selected);
+    node.dataset.neighbour = String(targets.includes(cell));
+    node.setAttribute("aria-pressed", String(cell === inspected));
+    node.tabIndex = cell === selected ? 0 : -1;
+  }
+  for (const node of $("football-cell-labels").children) {
+    const [x, y] = node.dataset.goal ? cellPosition(node.dataset.goal, morph) : cellPosition("O" + node.dataset.number, morph);
+    node.setAttribute("x", x); node.setAttribute("y", y);
+
+  }
+  const [x, y] = cellPosition(game.ball, morph);
+  $("football-ball").setAttribute("transform", `translate(${x} ${y})`);
+  const goal = cellPosition(game.attacks[frame.player], morph);
+  $("football-attack").setAttribute("points", `${x},${y} ${goal[0]},${goal[1] - 28} ${goal[0]},${goal[1] + 28}`);
+
+  $("football-follow").disabled = !inspected;
+  $("football-explore").textContent = inspected
+    ? tr("Exploring {0}: {1}", { 0: regionLabel(inspected), 1: targets.map(regionLabel).join(" · ") })
+    : tr("Select a cell to explore its neighbours.");
+  $("football-explore").title = $("football-explore").textContent;
 }
+
+function preparePitch() {
+  if (pitchReady) return;
+  pitchReady = true;
+  const ns = "http://www.w3.org/2000/svg";
+  for (const cell of CELLS) {
+    const path = document.createElementNS(ns, "path");
+    path.dataset.cell = cell;
+    path.dataset.ring = cell === "B" || cell === "OB" ? cell : cell[0];
+    path.dataset.alt = String(ORDER.indexOf(Number(cell.slice(1))) % 2 === 0);
+    path.dataset.goal = String(cell === "D6" || cell === "D11");
+    path.setAttribute("role", "button");
+    path.setAttribute("aria-label", regionLabel(cell));
+    const title = document.createElementNS(ns, "title"); title.textContent = regionLabel(cell); path.append(title);
+    $("football-cells").append(path);
+  }
+  for (const number of ORDER) {
+    const label = document.createElementNS(ns, "text");
+    label.dataset.number = number; label.textContent = number;
+    $("football-cell-labels").append(label);
+  }
+  for (const cell of ["D6", "D11"]) {
+    const label = document.createElementNS(ns, "text");
+    label.dataset.goal = cell; label.textContent = cell;
+    $("football-cell-labels").append(label);
+  }
+  $("football-cells").addEventListener("click", event => {
+    const cell = event.target.closest("[data-cell]")?.dataset.cell;
+    if (cell) { inspected = cell; drawPitch(); }
+  });
+  $("football-cells").addEventListener("keydown", event => {
+    const cell = event.target.closest("[data-cell]")?.dataset.cell;
+    if (!cell) return;
+    if (["Enter", " ", "ArrowRight", "ArrowLeft", "ArrowUp", "ArrowDown"].includes(event.key)) {
+      event.preventDefault();
+      const step = ["ArrowLeft", "ArrowUp"].includes(event.key) ? -1 : 1;
+      inspected = event.key.startsWith("Arrow") ? CELLS[(CELLS.indexOf(cell) + step + CELLS.length) % CELLS.length] : cell;
+      drawPitch(); $("football-cells").querySelector(`[data-cell="${inspected}"]`).focus();
+    }
+    if (event.key === "Escape") { inspected = null; drawPitch(); }
+  });
+  $("football-morph").addEventListener("input", event => { morph = Number(event.target.value) / 100; drawPitch(); });
+  $("football-follow").addEventListener("click", () => { inspected = null; drawPitch(); });
+}
+
 export function renderFootball(value) {
   const game = value.football, frame = value.frame;
   $("local-football").hidden = !game;
   for (const node of $("local-board-svg").querySelectorAll("[data-target]")) delete node.dataset.target;
   if (!game) return;
+  if (matchId !== frame.id) { inspected = null; matchId = frame.id; }
+  pitchState = value;
+  preparePitch();
   for (let index = 0; index < 2; index++) {
     $("football-name-" + index).textContent = frame.players[index].name;
     $("football-score-" + index).textContent = frame.gameScores[index];
@@ -37,11 +111,7 @@ export function renderFootball(value) {
     $("football-team-" + index).dataset.active = String(game.phase !== "finished" && frame.player === index);
     $("football-team-" + index).dataset.winner = String(frame.winner === index);
   }
-  const [x, y] = pitchPosition(game.ball);
-  $("football-ball").setAttribute("transform", `translate(${x} ${y})`);
-  const goalX = game.attacks[frame.player] === "D6" ? 950 : 50;
-  $("football-attack").setAttribute("points", `${x},${y} ${goalX},270 ${goalX},370`);
-  $("football-attack").setAttribute("visibility", game.phase !== "finished" && game.phase !== "bullup" ? "visible" : "hidden");
+  $("football-attack").setAttribute("visibility", "hidden");
   const finished = Boolean(frame.turns[0].finishedAt);
   const goal = game.goal_by !== null;
   $("football-message").textContent = frame.winner >= 0 ? tr("{0} wins!", { 0: frame.players[frame.winner].name })
@@ -84,6 +154,7 @@ export function renderFootball(value) {
   }
   if (game.pending) $("football-target").textContent = tr("Hit near a wire. Confirm its cell before play continues.");
   const targets = penalties ? [game.attacks[frame.player]] : game.targets.filter(region => value.options.football_own_goals || region !== game.attacks[1 - frame.player]);
+  drawPitch();
   if (!finished && game.phase !== "finished") for (const region of targets) {
     for (const node of $("local-board-svg").querySelectorAll(`[data-region="${region}"]`)) node.dataset.target = "true";
   }

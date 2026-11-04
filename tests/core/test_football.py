@@ -474,3 +474,13 @@ def test_forfeited_dart_near_wire_does_not_block_goal(tmp_path):
     assert local.saved.football.goals == [1, 0]
     assert local.saved.football_pending is None
     assert len(local.saved.frame.turns[0].throws) == 1
+
+
+@pytest.mark.parametrize("beginner", [False, True])
+def test_pitch_inspection_uses_the_backend_neighbour_graph(tmp_path, beginner):
+    local = game(tmp_path, football_beginner=beginner)
+    graph = local.status()["football"]["neighbours"]
+    assert set(graph) == football.REGIONS
+    assert graph["I17"] == football.neighbours("I17", beginner)
+    assert ("T3" in graph["I17"]) == beginner
+    assert "I5" in graph["I20"]

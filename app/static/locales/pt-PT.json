@@ -1507,5 +1507,14 @@
   "Confirm the hit near the wire before continuing.": "Confirme o lançamento junto ao arame para continuar.",
   "There is no hit waiting for confirmation.": "Não há lançamento por confirmar.",
   "Choose the inner or outer single region.": "Escolha o simples interior ou exterior.",
-  "Penalties: {0} – {1}": "Penáltis: {0} – {1}"
+  "Penalties: {0} – {1}": "Penáltis: {0} – {1}",
+  "Explore board cells": "Explorar células do alvo",
+  "Board → pitch": "Alvo → campo",
+  "Board to pitch shape": "Forma do alvo ao campo",
+  "Follow ball": "Seguir a bola",
+  "Select a cell to explore its neighbours.": "Selecione uma célula para ver as vizinhas.",
+  "Choose a dart on the round board": "Escolha um dardo no alvo redondo",
+  "Exploring {0}: {1}": "Vizinhas de {0}: {1}",
+  "Use keypad": "Usar teclado",
+  "Use round board": "Usar alvo redondo"
 }

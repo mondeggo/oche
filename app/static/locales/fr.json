@@ -1507,5 +1507,14 @@
   "Confirm the hit near the wire before continuing.": "Confirmez le lancer près du fil pour continuer.",
   "There is no hit waiting for confirmation.": "Aucun lancer à confirmer.",
   "Choose the inner or outer single region.": "Choisissez le simple intérieur ou extérieur.",
-  "Penalties: {0} – {1}": "Tirs au but : {0} – {1}"
+  "Penalties: {0} – {1}": "Tirs au but : {0} – {1}",
+  "Explore board cells": "Explorer les zones de la cible",
+  "Board → pitch": "Cible → terrain",
+  "Board to pitch shape": "Forme de la cible au terrain",
+  "Follow ball": "Suivre le ballon",
+  "Select a cell to explore its neighbours.": "Sélectionnez une zone pour voir ses voisines.",
+  "Choose a dart on the round board": "Choisissez un lancer sur la cible ronde",
+  "Exploring {0}: {1}": "Voisines de {0} : {1}",
+  "Use keypad": "Utiliser le clavier",
+  "Use round board": "Utiliser la cible ronde"
 }

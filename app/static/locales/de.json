@@ -1507,5 +1507,14 @@
   "Confirm the hit near the wire before continuing.": "Treffer nahe am Draht bestätigen, um fortzufahren.",
   "There is no hit waiting for confirmation.": "Kein Treffer wartet auf Bestätigung.",
   "Choose the inner or outer single region.": "Inneres oder äußeres Einzelfeld wählen.",
-  "Penalties: {0} – {1}": "Elfmeterschießen: {0} – {1}"
+  "Penalties: {0} – {1}": "Elfmeterschießen: {0} – {1}",
+  "Explore board cells": "Felder erkunden",
+  "Board → pitch": "Scheibe → Spielfeld",
+  "Board to pitch shape": "Form zwischen Scheibe und Spielfeld",
+  "Follow ball": "Ball folgen",
+  "Select a cell to explore its neighbours.": "Ein Feld auswählen, um seine Nachbarn zu sehen.",
+  "Choose a dart on the round board": "Treffer auf der runden Scheibe auswählen",
+  "Exploring {0}: {1}": "Nachbarn von {0}: {1}",
+  "Use keypad": "Tastenfeld verwenden",
+  "Use round board": "Runde Scheibe verwenden"
 }

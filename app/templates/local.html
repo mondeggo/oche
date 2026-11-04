@@ -200,12 +200,14 @@
   <dialog id="local-manual" class="game-dialog game-pad" aria-labelledby="local-manual-title">
     <form method="dialog" class="card-head"><h2 id="local-manual-title">{{ _('Enter a dart') }}</h2><button type="submit" class="icon-button" aria-label="{{ _('Close') }}">✕</button></form>
     <p id="local-manual-error" class="game-error" role="alert" hidden></p>
-    <div class="game-rings" role="radiogroup" aria-label="{{ _('Ring') }}">
+    <button id="football-input-toggle" type="button" class="btn-neutral" hidden>{{ _("Use keypad") }}</button>
+    <div id="local-rings" class="game-rings" role="radiogroup" aria-label="{{ _('Ring') }}">
       {{ choice("ring", "1", _("Single"), True) }}{{ choice("ring", "2", _("Double")) }}{{ choice("ring", "3", _("Triple")) }}
     </div>
     <fieldset id="local-single-bed" class="game-option" hidden><legend>{{ _("Single region") }}</legend>
       <div class="game-choices">{{ choice("single-bed", "inner", _("Inner single"), True) }}{{ choice("single-bed", "outer", _("Outer single")) }}</div>
     </fieldset>
+    <div id="football-input-board" hidden><svg id="football-input-svg" viewBox="-125 -125 250 250" role="img" aria-label="{{ _('Choose a dart on the round board') }}"></svg><button id="football-input-miss" type="button" class="btn-neutral">{{ _('Miss') }}</button></div>
     <div id="local-keys" class="game-keys">
       {%- for number in range(1, 21) %}<button type="button" class="btn-neutral" data-number="{{ number }}">{{ number }}</button>{% endfor -%}
       <button type="button" class="btn-neutral game-key-wide" data-number="25">{{ _("Bull") }}</button>

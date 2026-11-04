@@ -1507,5 +1507,14 @@
   "Confirm the hit near the wire before continuing.": "Confirm the hit near the wire before continuing.",
   "There is no hit waiting for confirmation.": "There is no hit waiting for confirmation.",
   "Choose the inner or outer single region.": "Choose the inner or outer single region.",
-  "Penalties: {0} – {1}": "Penalties: {0} – {1}"
+  "Penalties: {0} – {1}": "Penalties: {0} – {1}",
+  "Explore board cells": "Explore board cells",
+  "Board → pitch": "Board → pitch",
+  "Board to pitch shape": "Board to pitch shape",
+  "Follow ball": "Follow ball",
+  "Select a cell to explore its neighbours.": "Select a cell to explore its neighbours.",
+  "Choose a dart on the round board": "Choose a dart on the round board",
+  "Exploring {0}: {1}": "Exploring {0}: {1}",
+  "Use keypad": "Use keypad",
+  "Use round board": "Use round board"
 }

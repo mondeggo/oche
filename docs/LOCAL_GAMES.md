@@ -276,8 +276,7 @@ opens score entry without automatically applying the suggestion.
 
 Choose **Arcade → Football**. Two players share a ball across all 82 dartboard
 cells: bulls, inner singles, trebles, outer singles and doubles. Fixed and adaptive
-bots can also play. D6 is the right goal and D11 the left; the goal labels sit in
-the goal boxes, outside the playing field.
+bots can also play. D6 is the right goal and D11 the left; the goal doubles form coloured goal mouths in the outer band.
 
 ### Setup and bull-up
 
@@ -344,9 +343,26 @@ to cells and pauses for confirmation within 1.5 mm of a wire. Confirm the actual
 cell in the manual scoring dialog; repeated detector snapshots retain the
 confirmation. Without coordinates, singles and bull-up cannot be guessed.
 
+The pitch displays all 82 cells as nested rectangular bands and numbered wedges.
+Its corners align with the 18/4, 15/2, 7/16 and 9/12 boundaries, giving exactly five
+segments per side. **Board → pitch** continuously morphs the cells from circular
+to rectangular; the ball, labels and highlights use that same transformation.
+Narrow scoring bands are widened visually for legibility, without changing the
+cell boundaries used for scoring or their adjacency.
+
+Click a pitch cell to inspect its neighbours under the selected movement mode;
+this never records a dart. Arrow keys navigate cells, Enter/Space selects, and
+Escape or **Follow ball** returns to the live ball. The current player's blocked
+own goal is excluded when own goals are off. Inspection uses the backend's neighbour
+graph, while live highlights use its current legal targets, including kick-off.
+
+The manual-entry and wire-confirmation popup has a clickable round board, including
+distinct inner/outer singles, plus a Miss button. **Use keypad** retains the existing
+number buttons as an alternative. Vision coordinates remain in the original round
+board coordinate system.
+
 The pitch and reference dartboard scale to available viewport height; small
-screens place the compact board and input controls below the pitch. The board
-highlights playable targets, and the pitch shows the ball's cell.
+screens place the compact board and input controls below the pitch.
 
 This is Oche's custom soccer rule set, using the left/right D11–D6 field idea from
 [GLD's football darts description](https://gldproducts.com/blogs/all/how-to-play-football-darts).

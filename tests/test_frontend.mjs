@@ -8,6 +8,7 @@ import { sourceEnabled } from "../app/static/core/sources.mjs";
 import { engineHealth, localEventsHealth, localHealth, manualHealth, syncHealthRows } from "../app/static/js/health.mjs";
 // The Autodarts integration contributes its event health to one engine indicator.
 import { cloudHealth } from "../app/core/integrations/autodarts/static/health.mjs";
+import { CELLS, ORDER as FOOTBALL_ORDER, cellOutline, cellPosition, cellDart, pitchPoint } from "../app/static/core/football-pitch.mjs";
 import { dartRegion, pitchPosition } from "../app/static/core/football.mjs";
 import { boardMarkup, boardPoint, checkout, funnyName, hitKey, playerStats, seats } from "../app/static/core/game.mjs";
 
@@ -690,11 +691,66 @@ test("football pitch and board distinguish inner/outer singles and align D11/D6 
   assert.equal(dartRegion({ segment: { number: 25, multiplier: 1 } }), "OB");
   assert.equal(dartRegion({ segment: { number: 25, multiplier: 2 } }), "B");
   assert.deepEqual(pitchPosition("B"), [500, 320]);
-  assert.deepEqual(pitchPosition("D11"), [27, 320]);
-  assert.deepEqual(pitchPosition("D6"), [973, 320]);
+  assert.deepEqual(pitchPosition("D11").map(Math.round), [77, 320]);
+  assert.deepEqual(pitchPosition("D6").map(Math.round), [923, 320]);
   assert.ok(Math.abs(pitchPosition("D11")[1] - 320) < 0.001);
   const markup = boardMarkup();
   for (const region of ["I17", "O17", "T17", "D17", "B", "OB"]) {
     assert.equal(markup.split(`data-region="${region}"`).length - 1, 1);
   }
+});
+
+
+test("rectangular football corners and five-cell sides follow the dartboard sectors", () => {
+  for (const [angle, expected] of [[45, [950, 50]], [135, [950, 590]], [225, [50, 590]], [315, [50, 50]]]) {
+    const point = pitchPoint(170, angle);
+    point.forEach((coordinate, index) => assert.ok(Math.abs(coordinate - expected[index]) < 1e-8));
+  }
+  for (const [numbers, axis, edge] of [
+    [[4, 13, 6, 10, 15], 0, 950], [[16, 8, 11, 14, 9], 0, 50],
+    [[12, 5, 20, 1, 18], 1, 50], [[2, 17, 3, 19, 7], 1, 590],
+  ]) for (const number of numbers) {
+    assert.ok(Math.abs(pitchPoint(170, FOOTBALL_ORDER.indexOf(number) * 18)[axis] - edge) < 1e-8);
+  }
+});
+
+test("all 82 regions retain exactly the same shared edges throughout the morph", () => {
+  function graph(morph) {
+    const edges = new Map();
+    for (const cell of CELLS) {
+      const points = cellOutline(cell, morph).map(point => point.map(n => n.toFixed(5)).join(","));
+      for (let i = 0; i < points.length; i++) {
+        const a = points[i], b = points[(i + 1) % points.length];
+        if (a === b) continue;
+        const key = [a, b].sort().join("/");
+        if (!edges.has(key)) edges.set(key, new Set());
+        edges.get(key).add(cell);
+      }
+    }
+    return new Set([...edges.values()].filter(cells => cells.size === 2).map(cells => [...cells].sort().join("/")));
+  }
+  const round = graph(0);
+  for (const amount of [.25, .5, .75, 1]) assert.deepEqual(graph(amount), round);
+  for (const cell of ["I3", "I2", "T17", "OB"]) assert.ok(round.has(["I17", cell].sort().join("/")));
+  assert.ok(!round.has(["I17", "T3"].sort().join("/")));
+  assert.ok(round.has(["I20", "I5"].sort().join("/")));
+  assert.equal(CELLS.length, 82);
+});
+
+test("rectangular cells cover the pitch exactly and input retains the original scored cell", () => {
+  let totalArea = 0;
+  for (const cell of CELLS) {
+    const points = cellOutline(cell);
+    const area = points.reduce((sum, [x, y], i) => {
+      const next = points[(i + 1) % points.length];
+      return sum + x * next[1] - y * next[0];
+    }, 0) / 2;
+    assert.ok(area > 0);
+    totalArea += area;
+    const dart = cellDart(cell);
+    const radial = cell === "B" || cell === "OB" ? null : cell[0] === "I" ? 65 : 135;
+    assert.equal(dartRegion({segment:dart, coords:radial ? {x:0,y:radial/170} : null}), cell);
+    assert.ok(cellPosition(cell).every(Number.isFinite));
+  }
+  assert.ok(Math.abs(totalArea - 900 * 540) < 1e-6);
 });

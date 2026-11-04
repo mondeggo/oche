@@ -270,6 +270,10 @@ class LocalGames:
             "football": (
                 {
                     **self.saved.football.model_dump(),
+                    "neighbours": {
+                        region: football_rules.neighbours(region, self.saved.options.football_beginner)
+                        for region in football_rules.REGIONS
+                    },
                     "clock": football_rules.clock(self.saved.football, self.saved.options),
                     "attacks": [football_rules.goal_for(self.saved.football, p) for p in (0, 1)],
                     "pending": self.saved.football_pending,

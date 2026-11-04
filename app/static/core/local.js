@@ -2,9 +2,11 @@ import { tr } from "../js/i18n.mjs";
 import { $, api } from "./client.mjs";
 import { boardMarkup, boardPoint, checkout, funnyName, hitKey, playerStats, seats } from "./game.mjs";
 
+import { cellDart } from "./football-pitch.mjs";
 import { dartRegion, regionLabel, renderFootball } from "./football.mjs";
 
 let selectedMode = "x01";
+let footballKeypad = false;
 const maxPlayers = () => selectedMode === "football" ? 2 : 8;
 const SVG = "http://www.w3.org/2000/svg";
 const DETECTOR = { stopped: "Stopped", waiting: "Waiting", waiting_for_clear: "Clear the board",
@@ -337,7 +339,11 @@ function renderMatch(value) {
   const football = value.options.mode === "football";
   $("local-match").dataset.variant = football ? "football" : "x01";
   $("local-match-title").textContent = football ? tr("Football") : "X01";
-  $("local-single-bed").hidden = !football || radio("ring") !== "1";
+  $("local-single-bed").hidden = !football || !footballKeypad || radio("ring") !== "1";
+  $("football-input-board").hidden = !football || footballKeypad;
+  $("local-rings").hidden = $("local-keys").hidden = football && !footballKeypad;
+  $("football-input-toggle").hidden = !football;
+  $("football-input-toggle").textContent = tr(footballKeypad ? "Use round board" : "Use keypad");
   $("local-history-score-label").textContent = football ? tr("Goals") : tr("Remaining");
   const turn = frame.turns[0];
   const manual = value.options.input === "manual";
@@ -596,10 +602,13 @@ $("local-keys").addEventListener("click", event => {
   const key = event.target.closest("button[data-number]");
   if (!key || key.disabled || !$("local-manual").open || manualEntry(state) !== entryVisit) return;
   const multiplier = key.dataset.number === "0" ? 1 : Number(radio("ring"));
+  submitManualDart({ number: Number(key.dataset.number), multiplier,
+    bed: state.options.mode === "football" && multiplier === 1 && Number(key.dataset.number) < 21 && Number(key.dataset.number) > 0 ? radio("single-bed") : null });
+});
+function submitManualDart(dart) {
   $("local-manual-error").hidden = true;
   action(async () => {
-    const result = await post(state.football?.pending ? "football/confirm" : "throw", { number: Number(key.dataset.number), multiplier,
-      bed: state.options.mode === "football" && multiplier === 1 && Number(key.dataset.number) < 21 && Number(key.dataset.number) > 0 ? radio("single-bed") : null });
+    const result = await post(state.football?.pending ? "football/confirm" : "throw", dart);
     $("local-manual").close();
     return result;
   }).then(() => {
@@ -609,6 +618,11 @@ $("local-keys").addEventListener("click", event => {
       target.focus();
     }
   });
+}
+$("football-input-svg").innerHTML = boardMarkup();
+$("football-input-svg").addEventListener("click", event => {
+  const cell = event.target.closest("[data-region]")?.dataset.region;
+  if (cell && !working && $("local-manual").open && manualEntry(state) === entryVisit) submitManualDart(cellDart(cell));
 });
 document.querySelectorAll('input[name="ring"]').forEach(input => input.addEventListener("change", () => {
   if (state?.active) renderMatch(state);
@@ -671,4 +685,9 @@ $("football-confirm").addEventListener("click", () => {
   $("local-manual-error").hidden = true;
   renderMatch(state);
   $("local-manual").showModal();
+});
+
+$("football-input-toggle").addEventListener("click", () => { footballKeypad = !footballKeypad; renderMatch(state); });
+$("football-input-miss").addEventListener("click", () => {
+  if (!working && $("local-manual").open && manualEntry(state) === entryVisit) submitManualDart({ number: 0, multiplier: 1 });
 });
