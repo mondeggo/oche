@@ -1,6 +1,7 @@
 _ag_extract_tmp/
 ressources/
 AGENTS.md
+.pytest-tmp/
 
 # Local runtime data and machine-specific configuration
 /data/
