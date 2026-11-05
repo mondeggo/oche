@@ -102,9 +102,9 @@ button.game-mode .game-tag { border-color: var(--outline); background: var(--lim
 .game-auto { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 
 /* Game screen */
-/* One compact line: the game's details as rounded badges, title first, then End game.
+/* The game's details as rounded badges, title first, with End game below them.
    Who is throwing sits under the board. */
-.game-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin-bottom: 12px; }
+.game-bar { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; margin-bottom: 12px; }
 .game-bar-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .game-bar-actions .game-back { margin: 0; }
 .game-bar .game-title { margin: 0; border-color: var(--outline); background: var(--lime); color: var(--on-pop); font-family: var(--font-body); font-size: .8rem; font-weight: 800; line-height: normal; letter-spacing: 0; }
