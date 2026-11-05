@@ -194,14 +194,13 @@
     <button id="football-confirm" type="button" hidden>{{ _("Confirm hit near wire") }}</button>
   </div>
   <section id="local-board" class="game-board" aria-label="{{ _('Dartboard') }}">
-    <svg id="local-board-svg" viewBox="-125 -125 250 250" role="img" aria-label="{{ _('Dartboard with the darts of the current visit') }}"></svg>
+    <svg id="local-board-svg" viewBox="-131 -131 262 262" role="img" aria-label="{{ _('Dartboard with the darts of the current visit') }}"></svg>
   </section>
   <section id="local-turn" class="game-turn" aria-label="{{ _('Current visit') }}">
     <div class="game-visit">
       <ol id="local-darts" class="game-darts" aria-label="{{ _('Darts') }}"></ol>
       <div class="game-visit-total"><span>{{ _("Visit") }}</span><strong id="local-visit">0</strong></div>
       <div class="game-turn-actions">
-        <button id="local-undo" type="button" class="btn-neutral">{{ _("Undo dart") }}</button>
         <button id="local-next" type="button">{{ _("Next turn") }}</button>
       </div>
     </div>
@@ -220,7 +219,7 @@
     <fieldset id="local-single-bed" class="game-option" hidden><legend>{{ _("Single region") }}</legend>
       <div class="game-choices">{{ choice("single-bed", "inner", _("Inner single"), True) }}{{ choice("single-bed", "outer", _("Outer single")) }}</div>
     </fieldset>
-    <div id="football-input-board" hidden><svg id="football-input-svg" viewBox="-125 -125 250 250" role="img" aria-label="{{ _('Choose a dart on the round board') }}"></svg><button id="football-input-miss" type="button" class="btn-neutral">{{ _('Miss') }}</button></div>
+    <div id="football-input-board" hidden><svg id="football-input-svg" viewBox="-131 -131 262 262" role="img" aria-label="{{ _('Choose a dart on the round board') }}"></svg><button id="football-input-miss" type="button" class="btn-neutral">{{ _('Miss') }}</button></div>
     <div id="local-keys" class="game-keys">
       {%- for number in range(1, 21) %}<button type="button" class="btn-neutral" data-number="{{ number }}">{{ number }}</button>{% endfor -%}
       <button type="button" class="btn-neutral game-key-wide" data-number="25">{{ _("Bull") }}</button>

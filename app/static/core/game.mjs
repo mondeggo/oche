@@ -96,7 +96,8 @@ function sector(inner, outer, from, to) {
 /** Static SVG content for the board; segments carry data-hit keys such as T20, S25 or D25.
     Wires are drawn once over the beds, as rings and spokes, like OcheCore's live board. */
 export function boardMarkup() {
-  const parts = ['<circle r="125" class="board-surround"/>'];
+  // OcheCore's proportions: a 222 mm surround with the numbers at 199 mm.
+  const parts = [`<circle r="${MM(222)}" class="board-surround"/>`];
   BOARD_ORDER.forEach((number, index) => {
     const from = index * 18 - 9, to = from + 18;
     const [single, ring] = index % 2 ? ["light", "green"] : ["dark", "red"];
@@ -116,7 +117,7 @@ export function boardMarkup() {
   });
   parts.push(`<g class="board-wires">${wires.join("")}</g>`);
   BOARD_ORDER.forEach((number, index) => {
-    const [x, y] = polar(115, index * 18);
+    const [x, y] = polar(MM(199), index * 18);
     parts.push(`<text x="${x}" y="${y}" class="board-number">${number}</text>`);
   });
   parts.push('<g class="board-darts"></g>');

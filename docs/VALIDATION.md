@@ -11,6 +11,11 @@
   the newest pulsing. Not verified: detected darts from a running engine, the
   faded board while detection is stopped, and the football boards that share the
   drawing.
+- Then, following OcheCore's live page: the X01 visit line sits above the board,
+  with larger dart and visit text and no double or triple colours; Undo dart is
+  gone, and the last manual dart is a button that takes it back (checked in the
+  rendered page and through `/api/local/undo`); the surround is 222 mm with the
+  numbers at 199 mm. Headless Edge, dark theme, 1400 × 900.
 
 ## OcheCore scoring and the Autodarts 2.1.1 board format (2026-11-05)
 

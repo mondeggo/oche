@@ -1138,7 +1138,6 @@
   "Unable to connect. Check that Autodarts is running, then reconnect.": "Unable to connect. Check that Autodarts is running, then reconnect.",
   "Unavailable": "Unavailable",
   "Unavailable for writing": "Unavailable for writing",
-  "Undo dart": "Undo dart",
   "Unknown": "Unknown",
   "Unsaved changes": "Unsaved changes",
   "Up MB/s": "Up MB/s",
@@ -1523,5 +1522,7 @@
   "Use keypad": "Use keypad",
   "Use round board": "Use round board",
   "Show dartboard": "Show dartboard",
-  "Hide dartboard": "Hide dartboard"
+  "Hide dartboard": "Hide dartboard",
+  "Tap to take this dart back": "Tap to take this dart back",
+  "Take back dart {0}: {1}": "Take back dart {0}: {1}"
 }

@@ -1138,7 +1138,6 @@
   "Unable to connect. Check that Autodarts is running, then reconnect.": "Verbindung nicht möglich. Prüfen Sie, ob Autodarts läuft, und verbinden Sie erneut.",
   "Unavailable": "Nicht verfügbar",
   "Unavailable for writing": "Nicht beschreibbar",
-  "Undo dart": "Dart rückgängig machen",
   "Unknown": "Unbekannt",
   "Unsaved changes": "Ungespeicherte Änderungen",
   "Up MB/s": "Upload MB/s",
@@ -1523,5 +1522,7 @@
   "Use keypad": "Tastenfeld verwenden",
   "Use round board": "Runde Scheibe verwenden",
   "Show dartboard": "Dartscheibe anzeigen",
-  "Hide dartboard": "Dartscheibe ausblenden"
+  "Hide dartboard": "Dartscheibe ausblenden",
+  "Tap to take this dart back": "Tippen, um diesen Dart zurückzunehmen",
+  "Take back dart {0}: {1}": "Dart {0} zurücknehmen: {1}"
 }

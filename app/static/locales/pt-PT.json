@@ -1138,7 +1138,6 @@
   "Unable to connect. Check that Autodarts is running, then reconnect.": "Não foi possível ligar. Verifique se o Autodarts está em execução e volte a ligar.",
   "Unavailable": "Indisponível",
   "Unavailable for writing": "Indisponível para escrita",
-  "Undo dart": "Anular dardo",
   "Unknown": "Desconhecido",
   "Unsaved changes": "Alterações por guardar",
   "Up MB/s": "Envio MB/s",
@@ -1523,5 +1522,7 @@
   "Use keypad": "Usar teclado",
   "Use round board": "Usar alvo redondo",
   "Show dartboard": "Mostrar alvo",
-  "Hide dartboard": "Ocultar alvo"
+  "Hide dartboard": "Ocultar alvo",
+  "Tap to take this dart back": "Toque para retirar este dardo",
+  "Take back dart {0}: {1}": "Retirar o dardo {0}: {1}"
 }

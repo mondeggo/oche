@@ -1138,7 +1138,6 @@
   "Unable to connect. Check that Autodarts is running, then reconnect.": "Connexion impossible. Vérifiez qu’Autodarts fonctionne, puis reconnectez.",
   "Unavailable": "Indisponible",
   "Unavailable for writing": "Modification indisponible",
-  "Undo dart": "Annuler la fléchette",
   "Unknown": "Inconnu",
   "Unsaved changes": "Modifications non enregistrées",
   "Up MB/s": "Envoi Mo/s",
@@ -1523,5 +1522,7 @@
   "Use keypad": "Utiliser le clavier",
   "Use round board": "Utiliser la cible ronde",
   "Show dartboard": "Afficher la cible",
-  "Hide dartboard": "Masquer la cible"
+  "Hide dartboard": "Masquer la cible",
+  "Tap to take this dart back": "Touchez pour retirer cette fléchette",
+  "Take back dart {0}: {1}": "Retirer la fléchette {0} : {1}"
 }

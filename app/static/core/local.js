@@ -203,7 +203,7 @@ function renderDetector(value) {
 }
 
 /* Game screen */
-function dartSlot(dart, index, latest, next = false, hint = null, football = false, bullup = false) {
+function dartSlot(dart, index, latest, next = false, hint = null, football = false, bullup = false, removable = false) {
   const slot = document.createElement("li");
   slot.className = "game-dart";
   if (!dart) {
@@ -245,8 +245,17 @@ function dartSlot(dart, index, latest, next = false, hint = null, football = fal
   const label = document.createElement("span");
   label.textContent = name;
   slot.append(label, points);
-  slot.dataset.ring = String(dart.segment.multiplier);
   slot.dataset.latest = String(latest);
+  if (removable) {
+    // Manual darts are taken back by tapping the last one; there is no separate undo button.
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "game-dart-remove";
+    button.title = tr("Tap to take this dart back");
+    button.setAttribute("aria-label", tr("Take back dart {0}: {1}", { 0: index + 1, 1: name }));
+    button.append(label, points);
+    slot.replaceChildren(button);
+  }
   return slot;
 }
 
@@ -318,17 +327,23 @@ function renderBoard(turn) {
   board.querySelector(".board-darts").replaceChildren(...marks);
 }
 
-/* Players sit on both sides of the board, with the current visit in a line below it.
-   A single player keeps the visit under their card so the board can use the full height. */
-function placeStage(count, board) {
+/* Players sit on both sides of the board. In X01 the current visit is a line above the board,
+   as on OcheCore's live board. In football it stays below, and a single player keeps it under
+   their card so the board can use the full height. */
+function placeStage(count, board, football) {
   const stage = $("local-stage");
   stage.dataset.board = String(board);
   stage.dataset.count = String(count);
   $("local-board").hidden = !board;
   const solo = board && count === 1;
   $("local-match").dataset.solo = String(solo);
+  const turn = $("local-turn");
+  if (!football) {
+    if (turn.nextElementSibling !== $("local-board")) $("local-board").before(turn);
+    return;
+  }
   const home = solo ? $("local-side-left") : $("local-center");
-  if ($("local-turn").parentElement !== home) home.append($("local-turn"));
+  if (turn.parentElement !== home || turn.previousElementSibling?.id === "football-guidance") home.append(turn);
 }
 
 let dartsRevision = "";
@@ -368,7 +383,7 @@ function renderMatch(value) {
   $("local-chip-out").textContent = football ? tr(value.options.football_beginner ? "Beginner" : "Strict") : tr(value.options.double_out ? "Double out" : "Straight out");
   $("local-chip-round").textContent = football && value.options.football_format === "rounds" ? value.football.clock : tr("Round {0}", { 0: frame.round + 1 });
   $("local-winner").hidden = !won;
-  placeStage(frame.players.length, football ? footballBoard : value.options.show_board);
+  placeStage(frame.players.length, football ? footballBoard : value.options.show_board, football);
   $("local-football").parentElement.dataset.reference = String(footballBoard);
   $("football-board-toggle").textContent = tr(footballBoard ? "Hide dartboard" : "Show dartboard");
   $("football-board-toggle").setAttribute("aria-pressed", String(footballBoard));
@@ -386,18 +401,17 @@ function renderMatch(value) {
   $("local-phase").dataset.bust = String(Boolean(turn.busted));
   const route = football || turn.finishedAt || won ? null
     : checkout(frame.gameScores[frame.player], 3 - turn.throws.length, value.options.double_out);
-  const dartsSignature = JSON.stringify([turn.throws, entry, route, football]);
+  const removable = manual && !bot && !(won && Boolean(value.tournament));
+  const dartsSignature = JSON.stringify([turn.throws, entry, route, football, removable]);
   if (dartsSignature !== dartsRevision) {
     dartsRevision = dartsSignature;
     $("local-darts").replaceChildren(...(value.football && ["bullup", "penalties"].includes(value.football.phase) ? [0] : [0, 1, 2]).map(index => dartSlot(turn.throws[index], index,
       index === turn.throws.length - 1, entry !== null && index === turn.throws.length,
-      route?.[index - turn.throws.length], football, value.football?.phase === "bullup")));
+      route?.[index - turn.throws.length], football, value.football?.phase === "bullup",
+      removable && index === turn.throws.length - 1)));
   }
-  const entryButton = $("local-darts").querySelector("button");
-  if (entryButton) entryButton.disabled = working;
+  for (const button of $("local-darts").querySelectorAll("button")) button.disabled = working;
   $("local-visit").textContent = turn.busted ? tr("Bust") : turn.points;
-  $("local-undo").hidden = !manual;
-  $("local-undo").disabled = working || bot || !turn.throws.length || (won && Boolean(value.tournament));
   $("local-next").disabled = working || won || bot || !turn.throws.length || Boolean(value.football?.pending);
   $("local-stop").disabled = $("local-rematch").disabled = $("local-new").disabled = working;
   const closed = working || bot || ((won || Boolean(turn.finishedAt)) && !value.football?.pending);
@@ -628,7 +642,7 @@ function submitManualDart(dart) {
   }).then(() => {
     if (!$("local-manual").open) {
       const target = state.frame.winner >= 0 ? $(state.tournament ? "local-tournament-continue" : "local-rematch")
-        : $("local-darts").querySelector("button") || $("local-next");
+        : $("local-darts").querySelector(".game-dart-entry") || $("local-next");
       target.focus();
     }
   });
@@ -641,7 +655,9 @@ $("football-input-svg").addEventListener("click", event => {
 document.querySelectorAll('input[name="ring"]').forEach(input => input.addEventListener("change", () => {
   if (state?.active) renderMatch(state);
 }));
-$("local-undo").addEventListener("click", () => action(() => post("undo")));
+$("local-darts").addEventListener("click", event => {
+  if (event.target.closest(".game-dart-remove") && !working) action(() => post("undo"));
+});
 $("local-next").addEventListener("click", () => action(() => post("next")));
 $("local-stop").addEventListener("click", () => {
   const message = state?.tournament && state.frame.winner < 0
