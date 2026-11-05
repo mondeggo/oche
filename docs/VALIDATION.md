@@ -20,6 +20,10 @@
   board, empty dart slots read "–", and the X01 board uses OcheCore's 9.7 mm
   rings and a soft shadow (football keeps Oche's scoring rings). Headless Edge,
   light theme, 1400 × 900, beside a screenshot of OcheCore's live page.
+- Then: the visit sits beside End game, and the footer holds the badges at the
+  bottom left with who throws in the middle, so the board grows from about 510
+  to 625 px at 1400 × 900. At 600 px wide the header and footer stack and nothing
+  overflows. Headless Edge, light theme.
 
 ## OcheCore scoring and the Autodarts 2.1.1 board format (2026-11-05)
 

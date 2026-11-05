@@ -331,7 +331,7 @@ function renderBoard(turn) {
 }
 
 /* Players sit on both sides of the board. In X01 the current visit is a line above the board,
-   as on OcheCore's live board. In football it stays below, and a single player keeps it under
+   beside End game, as on OcheCore's live board. In football it stays below, and a single player keeps it under
    their card so the board can use the full height. */
 let boardRings = null;
 function placeStage(count, board, football) {
@@ -349,7 +349,7 @@ function placeStage(count, board, football) {
   $("local-match").dataset.solo = String(solo);
   const turn = $("local-turn");
   if (!football) {
-    if (turn.nextElementSibling !== $("local-board")) $("local-board").before(turn);
+    if (turn.parentElement !== $("local-bar-visit")) $("local-bar-visit").append(turn);
     return;
   }
   const home = solo ? $("local-side-left") : $("local-center");

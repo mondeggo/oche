@@ -151,17 +151,11 @@
 
 <section id="local-match" class="game-view game-screen" aria-labelledby="local-match-title" hidden>
   <header class="game-bar">
-    <ul class="game-chips" aria-label="{{ _('Game') }}">
-      <li><h1 id="local-match-title" class="badge game-title">X01</h1></li>
-      <li><span id="local-detector" class="badge" title="">{{ _("Waiting") }}</span></li>
-      <li><span id="local-chip-score" class="badge"></span></li>
-      <li><span id="local-chip-out" class="badge"></span></li>
-      <li><span id="local-chip-round" class="badge"></span></li>
-    </ul>
     <div class="game-bar-actions">
       <button id="local-stop" type="button" class="game-back game-exit"><svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 8l-4 4 4 4M6 12h10"/></svg>{{ _("End game") }}</button>
       <a id="local-tournament-return" class="game-back" href="/local/tournament" hidden>{{ _("Tournament") }}</a>
     </div>
+    <div id="local-bar-visit" class="game-bar-visit"></div>
   </header>
   <p id="local-detector-detail" class="hint game-detail" role="status"></p>
   <div id="local-winner" class="card game-winner" hidden>
@@ -191,9 +185,6 @@
   <section id="local-board" class="game-board" aria-label="{{ _('Dartboard') }}">
     <svg id="local-board-svg" viewBox="-131 -131 262 262" role="img" aria-label="{{ _('Dartboard with the darts of the current visit') }}"></svg>
   </section>
-  <div id="local-turn-head" class="game-turn-head">
-    <p id="local-phase" class="game-phase" role="status"></p>
-  </div>
   <section id="local-turn" class="game-turn" aria-label="{{ _('Current visit') }}">
     <div class="game-visit">
       <ol id="local-darts" class="game-darts" aria-label="{{ _('Darts') }}"></ol>
@@ -207,6 +198,18 @@
   <div id="local-side-right" class="game-side"></div>
   </div>
   </div>
+  <footer class="game-foot">
+    <ul class="game-chips" aria-label="{{ _('Game') }}">
+      <li><h1 id="local-match-title" class="badge game-title">X01</h1></li>
+      <li><span id="local-detector" class="badge" title="">{{ _("Waiting") }}</span></li>
+      <li><span id="local-chip-score" class="badge"></span></li>
+      <li><span id="local-chip-out" class="badge"></span></li>
+      <li><span id="local-chip-round" class="badge"></span></li>
+    </ul>
+    <div id="local-turn-head" class="game-turn-head">
+      <p id="local-phase" class="game-phase" role="status"></p>
+    </div>
+  </footer>
   <dialog id="local-manual" class="game-dialog game-pad" aria-labelledby="local-manual-title">
     <form method="dialog" class="card-head"><h2 id="local-manual-title">{{ _('Enter a dart') }}</h2><button type="submit" class="icon-button" aria-label="{{ _('Close') }}">✕</button></form>
     <p id="local-manual-error" class="game-error" role="alert" hidden></p>

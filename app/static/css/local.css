@@ -102,12 +102,17 @@ button.game-mode .game-tag { border-color: var(--outline); background: var(--lim
 .game-auto { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 
 /* Game screen */
-/* The game's details as rounded badges, title first, with End game below them.
-   Who is throwing sits under the board. */
-.game-bar { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; margin-bottom: 12px; }
+/* End game, then the X01 visit centred on the same line, so the board gets the height.
+   The footer holds the game's details as badges at the bottom left, title first, and who is
+   throwing in the middle, level with Recent visits. */
+.game-bar { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 10px 16px; margin-bottom: 12px; }
+.game-bar-visit { min-width: 0; }
+.game-bar-visit:empty { display: none; }
+.game-foot { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 8px 16px; min-height: 48px; margin-top: 8px; }
+.game-foot > .game-chips { justify-self: start; }
 .game-bar-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .game-bar-actions .game-back { margin: 0; }
-.game-bar .game-title { margin: 0; border-color: var(--outline); background: var(--lime); color: var(--on-pop); font-family: var(--font-body); font-size: .8rem; font-weight: 800; line-height: normal; letter-spacing: 0; }
+.game-foot .game-title { margin: 0; border-color: var(--outline); background: var(--lime); color: var(--on-pop); font-family: var(--font-body); font-size: .8rem; font-weight: 800; line-height: normal; letter-spacing: 0; }
 .game-exit:hover:not(:disabled) { background: var(--coral); color: var(--on-pop); }
 .game-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
 .game-chips .badge { font-variant-numeric: tabular-nums; }
@@ -121,7 +126,7 @@ button.game-mode .game-tag { border-color: var(--outline); background: var(--lim
 /* Vertically, each side spans the board and visit line with equal space above, between and below its cards. */
 .game-stage[data-board="true"]:not([data-count="1"]) :is(#local-side-left, #local-side-right) { align-self: stretch; justify-content: space-evenly; gap: 0; }
 .game-side { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
-.game-center { display: flex; flex-direction: column; align-items: center; gap: 24px; min-width: 0; }
+.game-center { display: flex; flex-direction: column; align-items: center; gap: 16px; min-width: 0; }
 .game-side { gap: 24px; }
 .game-side .game-player { padding: 22px 24px; }
 .game-side .game-player-name { font-size: 1.1rem; }
@@ -249,6 +254,9 @@ button.game-mode .game-tag { border-color: var(--outline); background: var(--lim
 }
 
 @media (max-width: 900px) {
+  .game-bar, .game-foot { grid-template-columns: minmax(0, 1fr); }
+  .game-bar-visit { justify-self: stretch; }
+  .game-foot { padding-right: 64px; }
   #main:has(.game-page[data-view="setup"]) { --setup-gutter: 20px; }
   .game-stage { display: flex; flex-wrap: wrap; gap: 16px; }
   .game-stage .game-side { display: contents; }
