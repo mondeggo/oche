@@ -85,9 +85,9 @@ uses `/api/ui` on the same origin.
 Theme and language belong to each application profile. The profile store is
 authoritative and mirrors the active appearance to the UI settings service.
 Templates and browser code share bundled catalogues in `app/static/locales`.
-Language changes save pending edits before reloading; normal navigation retains
-the existing views. See [interface languages](I18N.md) for migration and message
-editing conventions.
+Language changes save pending edits before reloading. Normal navigation uses the
+URL and browser history. See [interface languages](I18N.md) for message editing
+conventions.
 
 The detector, terminal and camera tools retain their own responsibilities. The
 detector is an external executable, while account authentication, profiles,

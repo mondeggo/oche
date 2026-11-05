@@ -2,7 +2,7 @@
 
 ## Navigation and football defaults (2026-11-05)
 
-- Automated: 814 Python tests passed, 2 skipped and 82 subtests passed. Both
+- Automated: 812 Python tests passed, 2 skipped and 82 subtests passed. Both
   JavaScript files passed 71 tests, including direct browser navigation, legacy
   URL canonicalisation, football defaults and the absence of nested Oche
   documents.
@@ -13,6 +13,9 @@
   unsaved-changes protection when leaving the page.
 - New football games default to rounds, bull-or-inner-single kick-off, beginner
   movement and own goals. The reference dartboard is shown in the right panel.
+- The retired Visual WLED import, migration notice and backup path were removed.
+  Existing obsolete metadata is discarded on load, and an old `wled2.json` is
+  ignored instead of being merged.
 - Browser interaction and visual acceptance were not run for this change.
 - Docker and hardware acceptance were not run. No camera or physical WLED
   controller was used.

@@ -153,7 +153,6 @@ class Profiles:
     async def configure_wled(self, config: WLEDConfig) -> None:
         data = self.data.model_copy(deep=True)
         data.wled = config.model_copy(deep=True)
-        data.wled.visual_migrated = True
         data.callers = {
             profile.id: data.callers.get(profile.id, self.caller.config).model_copy(deep=True)
             for profile in config.profiles

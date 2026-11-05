@@ -1176,8 +1176,6 @@ import {
     const result = await api("/api/wled", "GET", undefined, { metadata: true });
     if (!discard && (changed || revision !== editRevision)) return;
     configuration = result.data;
-    $("wled-migration-note").textContent = tr(configuration.migration_note || "");
-    $("wled-migration-note").hidden = !configuration.migration_note;
     $("wled-unconnected-note").hidden = !configuration.unconnected_lights?.length;
     configurationETag = result.etag;
     changed = false;

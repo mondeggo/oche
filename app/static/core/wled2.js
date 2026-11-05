@@ -214,8 +214,6 @@ async function refresh() {
   loading = (async () => {
     try {
       live = await api("/api/wled2/status");
-      $("w2-migration-note").textContent = tr(live.migration_note || "");
-      $("w2-migration-note").hidden = !live.migration_note;
       if (!layout) await load();
       else if (!dirty && page === "wled2" && !drag) {
         const saved = await api("/api/wled2", "GET", undefined, { metadata: true });

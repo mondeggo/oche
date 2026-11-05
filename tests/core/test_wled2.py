@@ -305,14 +305,20 @@ def test_failed_shared_save_restores_both_views(
 
 
 
-def test_legacy_file_is_not_reimported_after_a_shared_save(app, settings):
+def test_legacy_visual_file_is_ignored(app, settings):
     with TestClient(app) as client:
         client.patch("/api/wled", json={"enabled": True})
     (settings.data_dir / "wled2.json").write_text('{"enabled": true}')
     with TestClient(create_app(settings)) as client:
-        assert client.get("/api/wled").json()["enabled"] is True
+        config = client.get("/api/wled").json()
+        assert config["enabled"] is True
+        assert "migration_note" not in config
+        assert "visual_migrated" not in config
         assert client.get("/api/wled2").json()["enabled"] is True
-        assert client.get("/api/wled2/status").json()["enabled"] is True
+        status = client.get("/api/wled2/status").json()
+        assert status["enabled"] is True
+        assert "migration_note" not in status
+        assert "wled-migration-note" not in client.get("/integrations/wled").text
         assert json.loads((settings.data_dir / "wled2.json").read_text())["enabled"] is True
 
 
@@ -551,59 +557,6 @@ def test_list_and_visual_edits_share_profiles_and_stale_save_protection(app):
         assert client.put('/api/profile', json={'id': profile}).status_code == 200
         assert client.get('/api/wled2').json()['lights'][0]['rules']['phases']['ready']['color'] == '#445566'
         assert client.get('/api/wled2').json()['lights'][0]['position']['x'] == 123
-
-
-@pytest.mark.parametrize('visual_active', [False, True])
-def test_migrate_legacy_setups_once_preserving_profiles_and_connections(settings, visual_active):
-    classic = scene(enabled=not visual_active).compile()
-    classic.visual_migrated = False
-    classic.devices[0].targets[0].phases.ready.color = '#112233'
-    classic.devices[0].targets[0].players = {}
-    classic.unconnected_lights = []
-    legacy = scene(enabled=visual_active)
-    legacy.lights[0].rules.phases.ready.color = '#445566'
-    legacy.lights[2].connection.after_light_id = 'mine'
-    classic_path = settings.data_dir / 'wled.json'
-    classic_path.write_text(classic.model_dump_json())
-    legacy_path = settings.data_dir / 'wled2.json'
-    legacy_path.write_text(legacy.model_dump_json())
-    original = legacy_path.read_bytes()
-    with TestClient(create_app(settings)) as client:
-        config = client.get('/api/wled').json()
-        layout = client.get('/api/wled2').json()
-        assert config['enabled'] is True
-        assert len(config['devices']) == 1
-        assert len(config['devices'][0]['targets']) == 6
-        assert len(config['unconnected_lights']) == 1
-        assert sum(t['enabled'] for t in config['devices'][0]['targets']) == 3
-        active_ring = next(t for t in config['devices'][0]['targets'] if t['enabled'] and t['shape'] == 'ring')
-        assert active_ring['phases']['ready']['color'] == ('#445566' if visual_active else '#112233')
-        chained = next(light for light in layout['lights'] if light['connection'] and light['connection']['after_light_id'])
-        parent = next(light for light in layout['lights'] if light['id'] == chained['connection']['after_light_id'])
-        assert parent['name'] == 'My score'
-        assert config['profiles'][0]['targets']['controller']['ring']['phases']['ready']['color'] == '#112233'
-        assert config['visual_migrated'] is True
-        assert config['migration_note']
-    with TestClient(create_app(settings)) as client:
-        assert client.get('/api/wled').json() == config
-        assert client.get('/api/wled2').json() == layout
-    assert legacy_path.read_bytes() == original
-    backup = json.loads((settings.data_dir / "profiles-before-wled-merge.json").read_text())
-    assert len(backup["wled"]["devices"][0]["targets"]) == 3
-    assert backup["wled"]["devices"][0]["targets"][0]["phases"]["ready"]["color"] == "#112233"
-
-
-def test_invalid_legacy_layout_does_not_overwrite_settings(settings):
-    classic = scene().compile()
-    saved = settings.data_dir / 'wled.json'
-    saved.write_text(classic.model_dump_json())
-    original = saved.read_bytes()
-    (settings.data_dir / 'wled2.json').write_text('{broken')
-    with pytest.raises(ConnectionProblem, match='Original settings are unchanged'):
-        with TestClient(create_app(settings)):
-            pass
-    assert saved.read_bytes() == original
-    assert not (settings.data_dir / 'profiles.json').exists()
 
 
 def test_duplicate_target_ids_across_controllers_survive_visual_roundtrip(app):

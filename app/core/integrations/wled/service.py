@@ -275,8 +275,6 @@ class WLEDConfig(Model, PlaySources):
     enabled: bool = False
     board: Position = Field(default_factory=Position)
     unconnected_lights: list[Target] = Field(default_factory=list, max_length=128)
-    visual_migrated: bool = False
-    migration_note: str | None = None
     devices: list[Device] = Field(default_factory=list, max_length=8)
     active_profile: Identifier = "default"
     profiles: list[LightingProfile] = Field(
@@ -284,6 +282,16 @@ class WLEDConfig(Model, PlaySources):
         min_length=1,
         max_length=12,
     )
+
+    @model_validator(mode="before")
+    @classmethod
+    def discard_retired_metadata(cls, value):
+        """Accept saved data containing fields from the removed Visual WLED import."""
+        if isinstance(value, dict):
+            value = dict(value)
+            value.pop("visual_migrated", None)
+            value.pop("migration_note", None)
+        return value
 
     @model_validator(mode="after")
     def unique_devices(self):
@@ -1313,8 +1321,7 @@ class WLED:
 
         def automation(value):
             return value.model_dump(exclude={
-                "board": True, "unconnected_lights": True, "visual_migrated": True,
-                "migration_note": True,
+                "board": True, "unconnected_lights": True,
                 "devices": {"__all__": {"placement": True, "targets": {"__all__": {
                     "placement": True, "shape": True,
                 }}}},

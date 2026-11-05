@@ -1710,7 +1710,7 @@ async def test_worker_isolation_preview_restoration_and_shutdown(tmp_path):
 
 
 def test_wled_partial_updates_validate_and_keep_browser_guards(settings):
-    config = WLEDConfig(devices=[device(enabled=False)], visual_migrated=True)
+    config = WLEDConfig(devices=[device(enabled=False)])
     WLED.sync_profiles(config)
     values = config.model_dump(mode="json")
     with TestClient(create_app(settings)) as client:
@@ -1733,7 +1733,16 @@ def test_wled_partial_updates_validate_and_keep_browser_guards(settings):
         )
         assert client.get("/api/wled").json() == values
         assert client.patch("/api/wled", json={"devices": []}).status_code == 200
-        assert client.get("/api/wled").json() == WLEDConfig(visual_migrated=True).model_dump(mode="json")
+        assert client.get("/api/wled").json() == WLEDConfig().model_dump(mode="json")
+
+
+def test_retired_visual_import_metadata_is_discarded():
+    config = WLEDConfig.model_validate({
+        "visual_migrated": True,
+        "migration_note": "Retired migration notice",
+    })
+    assert "visual_migrated" not in config.model_dump()
+    assert "migration_note" not in config.model_dump()
 
 
 def test_bad_saved_wled_configuration_does_not_stop_core(settings):

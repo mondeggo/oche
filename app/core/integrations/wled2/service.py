@@ -1,11 +1,10 @@
-"""Visual editing and legacy-layout migration for the shared WLED configuration."""
+"""Visual editing for the shared WLED configuration."""
 
 import asyncio
 import hashlib
-from pathlib import Path
 from typing import Literal
 
-from pydantic import Field, ValidationError, model_validator
+from pydantic import Field, model_validator
 
 from app.core.errors import ConnectionProblem
 from app.core.integrations.sources import PlaySources
@@ -30,7 +29,6 @@ from app.core.integrations.wled.service import (
     WLEDConfig,
     default_effects,
 )
-from app.core.storage import write_private_json
 
 
 class Rules(Model):
@@ -243,110 +241,14 @@ class Layout(Model, PlaySources):
 class WLED2:
     """Visual editor adapter for WLED. It owns no workers or independent configuration."""
 
-    def __init__(self, path: Path, classic: WLED):
-        self.path = path  # Legacy import only; all new saves go through Profiles.
+    def __init__(self, classic: WLED, profiles):
         self.engine = classic
+        self.profiles = profiles
         self.error: str | None = None
-        self.profiles = None
 
     @property
     def config(self) -> Layout:
         return Layout.from_config(self.engine.config)
-
-    def migrate(self, profiles) -> None:
-        self.profiles = profiles
-        current = self.engine.config
-        if current.visual_migrated:
-            return
-        if not self.path.exists():
-            current.visual_migrated = profiles.data.wled.visual_migrated = True
-            return
-        merged = current.model_copy(deep=True)
-        if self.path.exists():
-            try:
-                legacy = Layout.model_validate_json(self.path.read_text(encoding="utf-8"))
-                imported = legacy.compile()
-                # The enabled setup keeps control. Other lights remain editable, paused
-                # where they share a controller, so migration cannot produce competing effects.
-                visual_active = imported.enabled and not current.enabled
-                self._merge_devices(merged, imported, activate=visual_active)
-                if visual_active:
-                    merged.enabled = True
-                    merged.run_on_local = imported.run_on_local
-                    merged.run_on_cloud = imported.run_on_cloud
-                if visual_active or not current.devices:
-                    merged.board = imported.board
-                merged.unconnected_lights.extend(imported.unconnected_lights)
-                merged.migration_note = (
-                    "Your WLED setups have been combined. Lights imported onto an existing "
-                    "controller are paused; review them before enabling. The original Visual WLED file is kept."
-                )
-            except (OSError, ValueError, ValidationError) as exc:
-                raise ConnectionProblem("Cannot merge the saved WLED layouts. Original settings are unchanged.") from exc
-        merged.visual_migrated = True
-        try:
-            merged = WLEDConfig.model_validate(merged.model_dump())
-            Layout.from_config(merged)
-        except ValueError as exc:
-            raise ConnectionProblem("Cannot merge the saved WLED layouts. Original settings are unchanged.") from exc
-        WLED.sync_profiles(merged)
-        data = profiles.data.model_copy(deep=True)
-        data.wled = merged
-        backup = profiles.path.with_name("profiles-before-wled-merge.json")
-        if not backup.exists():
-            write_private_json(backup, profiles.data.model_dump(mode="json"))
-        write_private_json(profiles.path, data.model_dump(mode="json"))
-        profiles.data = data
-        self.engine.config = merged
-
-    @staticmethod
-    def _merge_devices(primary, secondary, *, activate=False):
-        from uuid import uuid4
-
-        # Preserve the imported diagram's chains even when legacy IDs collide.
-        existing_layout = Layout.from_config(primary)
-        taken = {item.id for item in [*existing_layout.controllers, *existing_layout.lights]} | {"board"}
-        remapped = {}
-        imported_items = [*secondary.devices, *secondary.unconnected_lights,
-                          *(target for device in secondary.devices for target in device.targets)]
-        for item in imported_items:
-            place = item.placement
-            if place is None:
-                continue
-            old = place.id or item.id
-            new = old if old not in taken else "imported-" + uuid4().hex[:24]
-            taken.add(new)
-            remapped[old] = place.id = new
-        for item in imported_items:
-            if item.placement and item.placement.after_light_id:
-                item.placement.after_light_id = remapped.get(item.placement.after_light_id,
-                                                             item.placement.after_light_id)
-        if activate:
-            for device in primary.devices:
-                device.enabled = False
-        for device in secondary.devices:
-            existing = next((d for d in primary.devices if d.url.lower() == device.url.lower()), None)
-            if existing is None:
-                device = device.model_copy(deep=True)
-                if device.id in {d.id for d in primary.devices}:
-                    device.id = "imported-" + uuid4().hex[:24]
-                # Only the previously selected setup should react after migration.
-                device.enabled = device.enabled and (activate or not primary.enabled)
-                primary.devices.append(device)
-                continue
-            if activate:
-                existing.enabled = device.enabled
-                existing.name = device.name
-                existing.placement = device.placement
-                existing.idle_timeout_minutes = device.idle_timeout_minutes
-                for target in existing.targets:
-                    target.enabled = False
-            for target in device.targets:
-                target = target.model_copy(deep=True)
-                if target.id in {t.id for t in existing.targets}:
-                    target.id = "imported-" + uuid4().hex[:24]
-                target.enabled = target.enabled and activate
-                existing.targets.append(target)
 
     async def configure(self, layout: Layout) -> None:
         layout = Layout.model_validate(layout.model_dump())
@@ -413,7 +315,7 @@ class WLED2:
                        if light.connection and light.connection.controller_id == controller.id}
             device["faces"] = {mapping.get(key, key): value for key, value in device.get("faces", {}).items()}
             device["corners"] = [mapping.get(key, key) for key in device.get("corners", [])]
-        return {**status, "error": self.error or self.engine.error, "migration_note": self.engine.config.migration_note}
+        return {**status, "error": self.error or self.engine.error}
 
     async def check_connections(self) -> None:
         """Let the status route report real controller reachability, not a cached guess."""

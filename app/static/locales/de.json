@@ -1350,7 +1350,6 @@
   "Player colours": "Spielerfarben",
   "Player name filter": "Spielernamenfilter",
   "Finish the current lighting edit first.": "Schließe zuerst die aktuelle Beleuchtungsbearbeitung ab.",
-  "Your WLED setups have been combined. Lights imported onto an existing controller are paused; review them before enabling. The original Visual WLED file is kept.": "Deine WLED-Konfigurationen wurden zusammengeführt. Auf vorhandene Controller importierte Lichter sind pausiert; prüfe sie vor dem Aktivieren. Die ursprüngliche Visual-WLED-Datei bleibt erhalten.",
   "Enter": "Eingeben",
   "Enter dart {0}": "Dart {0} eingeben",
   "Tournament": "Turnier",

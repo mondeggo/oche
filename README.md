@@ -227,10 +227,3 @@ on `/integrations/wled`; the editor saves pending changes first and remembers yo
 Controllers, lights, game sources and profile effects are shared. Visual placement does
 not restart lighting automation. The former `/integrations/visual-wled` link redirects
 to the visual view; `/api/wled2` remains a compatible visual projection of `/api/wled`.
-
-On first startup after upgrading, existing `wled2.json` layouts are imported into the
-profile store. Existing WLED profile styles and unconnected visual lights are retained.
-When both setups contain the same controller, only the previously active setup's lights
-remain enabled; the other lights are kept paused for review. The original legacy file
-and a `profiles-before-wled-merge.json` backup are kept, and the migration runs once. Invalid or oversized combined layouts stop migration
-without overwriting the originals.

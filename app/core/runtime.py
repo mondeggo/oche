@@ -43,8 +43,7 @@ class Runtime:
         self.profiles = Profiles(
             settings.data_dir / "profiles.json", self.wled, self.caller, ui or UISettings(settings)
         )
-        self.wled2 = WLED2(settings.data_dir / "wled2.json", self.wled)
-        self.wled2.migrate(self.profiles)
+        self.wled2 = WLED2(self.wled, self.profiles)
 
     def game_state(self) -> dict:
         if self.local.active:
