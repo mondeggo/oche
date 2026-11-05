@@ -99,7 +99,9 @@ class Integration:
     pages: tuple[Page, ...] = ()
     release: Release | None = None
     process: object | None = None  # Module with get_status(), start() and stop().
-    port: int | None = None  # Port the process serves; Updates checks it after an update.
+    # Port the process serves; Updates checks it after an update. An engine serves
+    # the board API there, on this machine, for Play to score from.
+    port: int | None = None
     engine: Engine | None = None
     routers: tuple = ()
     templates: Path | None = None  # Loaded as "<id>/<name>.html".

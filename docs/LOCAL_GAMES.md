@@ -93,11 +93,13 @@ Detector readiness alone does not confirm support for offline scored throws.
 
 ## Local Autodarts event input
 
-**Local Autodarts** reads the detector already managed by Oche, at
-`http://127.0.0.1:3180`. It does not install a detector, downgrade it,
+**Local Autodarts** reads the vision engine Play uses, already managed by Oche:
+Autodarts at `http://127.0.0.1:3180` or OcheCore at `http://127.0.0.1:5180`. Both
+serve the same board API. Each new feed session and readiness check reads the
+current choice. It does not install a detector, downgrade it,
 change its configuration, or start a second server. There is no cloud fallback.
 
-`app/core/autodarts/local.py` connects to `/api/events?type=state` over WebSocket
+`app/core/board/local.py` connects to `/api/events?type=state` over WebSocket
 and reads the `data` object from each `{"type":"state","data":...}` message.
 It also reconciles `/api/state` after two seconds without an event. If WebSocket
 connection setup fails, it falls back to HTTP polling every 200 ms. A lost stream
@@ -124,13 +126,39 @@ and restart Oche (recreate the container when using Compose):
 OCHE_CORE_LOCAL_AUTODARTS_URL=http://192.168.1.99:3180
 ```
 
-This URL also controls the Local readiness indicator. The Autodarts process
+This URL also controls the Local readiness indicator, and it is used whichever
+engine Play chooses. The default URL means "follow the chosen engine". The Autodarts process
 indicator continues to describe Oche's bundled detector. Camera controls continue
 to operate on the bundled detector; the event-source override does not redirect
 camera management. No account credentials are needed to read the local feed.
 
 Automatic scoring requires a local API that supplies scored segments. The adapter
-accepts the following cumulative state contract:
+accepts cumulative states in the format that Autodarts 2.0.2 and OcheCore send:
+
+```json
+{
+  "connected": true,
+  "event": "throwDetected",
+  "running": true,
+  "status": "throw",
+  "throws": [{"bed": "Triple", "bouncer": false, "coordsX": -0.0098, "coordsY": 0.5761,
+              "failed": false, "method": "UnanimousCam", "multiplier": 3,
+              "segmentName": "T20", "segmentNumber": 20}]
+}
+```
+
+There is no `numThrows`; the dart count is the length of `throws`. Coordinates are
+fractions of 170 mm, +x toward 6 and +y toward 20. Statuses and events are camelCase
+(`throw`, `takeout`, `takeoutInProgress`; `throwDetected`, `takeoutStarted`,
+`takeoutFinished`, `manualReset`, `calibrationFinished`), and Oche reads them as the
+cloud's words (`Takeout in progress`). A miss has multiplier 0 (bed `Outside`); bulls
+are `S25`/`D25`. A visit's first dart sometimes arrives while `event` still reads
+`manualReset`; since a reset clears the board, that state counts as a throw. The
+board resets an empty board about two seconds after each takeout; such a reset is
+not forwarded as a `manual_reset` event.
+
+The older form, with `numThrows` and nested `segment` (`number`, `multiplier`) and
+`coords` (`x`, `y`), is still accepted:
 
 ```json
 {
@@ -141,8 +169,8 @@ accepts the following cumulative state contract:
 }
 ```
 
-The initial baseline must report `numThrows: 0`, an empty or omitted `throws` array, and
-explicit readiness (`Throw`, `Ready`, or `Ready for throw`). Darts already on the
+The initial baseline must have no darts (an empty `throws` array, or `numThrows: 0`
+with `throws` omitted) and explicit readiness (`Throw`, `Ready`, or `Ready for throw`). Darts already on the
 board when connecting are ignored. Repeated snapshots do not score twice. Corrections
 to existing segments retain dart IDs and produce normalized correction events.
 Takeout snapshots do not delete scored darts; a confirmed takeout advances the

@@ -3,7 +3,7 @@ import asyncio
 import httpx
 
 from app.core.api.ui import UISettings
-from app.core.board.detection import LocalDetection
+from app.core.board.detection import BOARD_URL, LocalDetection
 from app.core.config import Settings
 from app.core.errors import ConnectionProblem
 from app.core.events import EventBus, RawEventRecorder
@@ -16,6 +16,7 @@ from app.core.integrations.wled2.service import Layout as WLED2Layout
 from app.core.local import LocalGames, LocalOptions
 from app.core.profiles import Profiles
 from app.core.tournaments import Tournaments
+from app.services import engines
 
 
 class Runtime:
@@ -26,9 +27,9 @@ class Runtime:
         self.bus = EventBus(recorder=self.debug)
         self.tasks: list[asyncio.Task] = []
         self.lock = asyncio.Lock()
-        self.local = LocalGames(settings.data_dir, http, self.bus, settings.local_autodarts_url)
+        self.local = LocalGames(settings.data_dir, http, self.bus, self.board_url)
         self.tournaments = Tournaments(settings.data_dir, self.local)
-        self.detection = LocalDetection(http, settings.local_autodarts_url)
+        self.detection = LocalDetection(http, self.board_url)
         # Game sources come from switched-on integrations, such as Autodarts Play.
         self.sources: dict = {}
         self.source_tasks: dict[str, asyncio.Task] = {}
@@ -44,6 +45,18 @@ class Runtime:
             settings.data_dir / "profiles.json", self.wled, self.caller, ui or UISettings(settings)
         )
         self.wled2 = WLED2(self.wled, self.profiles)
+
+    def board_url(self) -> str:
+        """The board API local games read: the vision engine Play uses, on its own port.
+
+        A detector set with OCHE_CORE_LOCAL_AUTODARTS_URL, such as one on another
+        computer, serves every engine choice instead.
+        """
+        configured = self.settings.local_autodarts_url
+        if configured != BOARD_URL:
+            return configured
+        engine = registry.get(engines.chosen())
+        return f"http://127.0.0.1:{engine.port}" if engine and engine.port else configured
 
     def game_state(self) -> dict:
         if self.local.active:

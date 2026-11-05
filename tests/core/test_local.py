@@ -10,7 +10,7 @@ from pydantic import ValidationError
 
 from app.core import bots
 from app.core.errors import ConnectionProblem
-from app.core.events import EventBus
+from app.core.events import Coords, EventBus
 from app.core.integrations.caller.service import CallerConfig, call_parts
 from app.core.local import LocalDart, LocalGames, LocalOptions
 from app.main import create_app
@@ -251,7 +251,7 @@ def test_stopped_detector_preserves_visit_and_requires_running_detection(detecte
     detected.consume_board(board((20, 3)))
     detected.consume_board({"status": "Stopped", "event": "Stopped", "running": False, "numThrows": 0})
     assert detected.detector_state == "stopped"
-    assert detected.detector_error == "Local Autodarts detection is stopped."
+    assert detected.detector_error == "Local detection is stopped."
     assert not detected.armed
     assert not detected.game_state()["available"]
     assert detected.saved.frame.game_scores == [241]
@@ -516,3 +516,71 @@ def test_dart_positions_from_detector_and_bots_are_kept_for_the_board(detected, 
 
     segment, coords = bots.throw("T20", 11, random.Random(1))
     assert bots.segment_at(coords.x * bots.DOUBLE[1], coords.y * bots.DOUBLE[1]) == segment
+
+
+def flat(bed, multiplier, name, number, x=0.0, y=0.5, failed=False):
+    """A throw as Autodarts 2.0.2 and OcheCore list it."""
+    return {
+        "bed": bed, "bouncer": False, "coordsX": x, "coordsY": y, "failed": failed,
+        "method": "UnanimousCam", "multiplier": multiplier, "segmentName": name, "segmentNumber": number,
+    }
+
+
+def flat_board(event, status, *throws):
+    return {"connected": True, "event": event, "running": True, "status": status, "throws": list(throws)}
+
+
+def test_autodarts_202_visit_scores_and_advances(detected):
+    # One visit as the installed board sent it on 2026-11-05, including the first dart
+    # listed under the preceding reset and the reset after the takeout.
+    t20 = flat("Triple", 3, "T20", 20, -0.0098, 0.5761)
+    s20 = flat("SingleInner", 1, "S20", 20, -0.0389, 0.5516)
+    s20b = flat("SingleInner", 1, "S20", 20, -0.0004, 0.5131)
+    for state in (
+        flat_board("calibrationFinished", "throw"),
+        flat_board("manualReset", "throw"),
+        flat_board("manualReset", "throw", t20),
+        flat_board("throwDetected", "throw", t20),
+        flat_board("throwDetected", "throw", t20, s20),
+        flat_board("throwDetected", "takeout", t20, s20, s20b),
+        flat_board("takeoutStarted", "takeoutInProgress", t20, s20, s20b),
+        flat_board("takeoutFinished", "throw"),
+        flat_board("manualReset", "throw"),
+    ):
+        detected.consume_board(state)
+    assert detected.saved.frame.game_scores == [201]
+    assert len(detected.saved.frame.turns) == 2
+    assert [dart.segment.name for dart in detected.saved.frame.turns[1].throws] == ["T20", "S20", "S20"]
+    assert detected.saved.frame.turns[1].throws[0].coords == Coords(x=-0.0098, y=0.5761)
+    assert len(events(detected, "throw")) == 3
+    assert len(events(detected, "takeout_started")) == len(events(detected, "takeout_finished")) == 1
+    assert not events(detected, "manual_reset")
+    assert detected.armed and detected.board["numThrows"] == 0
+
+
+def test_ochecore_bulls_and_misses_score(detected):
+    detected.consume_board(flat_board("calibrationFinished", "throw"))
+    darts = [
+        flat("SingleBull", 1, "S25", 25, 0.0, 0.05),
+        flat("DoubleBull", 2, "D25", 25, 0.0, 0.0),
+        flat("Outside", 0, "M3", 3, 0.1, -1.1),
+    ]
+    for count in range(1, 4):
+        detected.consume_board(flat_board("throwDetected", "throw" if count < 3 else "takeout", *darts[:count]))
+    unplaced = {**flat("Outside", 0, "M0", 0, failed=True), "coordsX": None, "coordsY": None}
+    detected.consume_board(flat_board("takeoutStarted", "takeoutInProgress", *darts))
+    detected.consume_board(flat_board("takeoutFinished", "throw"))
+    detected.consume_board(flat_board("throwDetected", "throw", unplaced))
+    visit, current = detected.saved.frame.turns[1], detected.saved.frame.turns[0]
+    assert [dart.segment.name for dart in visit.throws] == ["S25", "D25", "MISS"]
+    assert detected.saved.frame.game_scores == [226]
+    assert current.throws[0].segment.name == "MISS" and current.throws[0].coords is None
+
+
+def test_flat_throws_need_a_consistent_count(detected):
+    four = [flat("Triple", 3, "T20", 20)] * 4
+    with pytest.raises(ConnectionProblem):
+        detected.consume_board(flat_board("throwDetected", "throw", *four))
+    with pytest.raises(ConnectionProblem):
+        detected.consume_board({**flat_board("throwDetected", "throw"), "throws": [{"bed": "Triple"}]})
+    assert not events(detected, "throw")

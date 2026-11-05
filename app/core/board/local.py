@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+from collections.abc import Callable
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from urllib.parse import urlsplit, urlunsplit
@@ -15,16 +16,23 @@ from app.core.errors import ConnectionProblem
 
 
 class LocalBoardConnection:
-    def __init__(self, http: httpx.AsyncClient, url: str = BOARD_URL):
-        self.http, self.url = http, url.rstrip("/")
-        parts = urlsplit(self.url)
-        self.events_url = urlunsplit(
-            ("wss" if parts.scheme == "https" else "ws", parts.netloc, "/api/events", "type=state", "")
-        )
+    def __init__(self, http: httpx.AsyncClient, url: str | Callable[[], str] = BOARD_URL):
+        self.http = http
+        # A callable follows the vision engine Play uses; each session reads it again.
+        self.locate = url if callable(url) else lambda: url
+        self.url = self.events_url = ""
+        self.point()
         self.transport: str | None = None
         self.received = 0
         self.invalid_messages = 0
         self.last_message_at: str | None = None
+
+    def point(self) -> None:
+        self.url = self.locate().rstrip("/")
+        parts = urlsplit(self.url)
+        self.events_url = urlunsplit(
+            ("wss" if parts.scheme == "https" else "ws", parts.netloc, "/api/events", "type=state", "")
+        )
 
     def status(self) -> dict:
         return {
@@ -51,6 +59,7 @@ class LocalBoardConnection:
     async def session(self):
         socket = None
         states = None
+        self.point()
         try:
             try:
                 socket = await connect(

@@ -2,22 +2,31 @@
 
 import asyncio
 import time
+from collections.abc import Callable
 from urllib.parse import urlsplit
 
 import httpx
+
+from app.core.board import board_words
 
 BOARD_URL = "http://127.0.0.1:3180"
 
 
 class LocalDetection:
-    def __init__(self, http: httpx.AsyncClient, url: str = BOARD_URL):
+    def __init__(self, http: httpx.AsyncClient, url: str | Callable[[], str] = BOARD_URL):
         self.http = http
-        self.url = url.rstrip("/")
-        self.managed = urlsplit(self.url).hostname in {"127.0.0.1", "localhost", "::1"}
+        # A callable follows the vision engine Play uses, which can change while Oche runs.
+        self.locate = url if callable(url) else lambda: url
+        self.url, self.managed = "", False
+        self.point()
         self.lock = asyncio.Lock()
         self.checked_at: float | None = None
         self.process_key: tuple | None = None
         self.current = self.result("unavailable", False, False, "Detection has not been checked.")
+
+    def point(self) -> None:
+        self.url = self.locate().rstrip("/")
+        self.managed = urlsplit(self.url).hostname in {"127.0.0.1", "localhost", "::1"}
 
     @staticmethod
     def result(state: str, running: bool, detecting: bool, reason: str) -> dict:
@@ -32,8 +41,8 @@ class LocalDetection:
         ):
             raise ValueError("Invalid local detector state")
         if not data["running"]:
-            return cls.result("stopped", False, False, "Local Autodarts detection is stopped.")
-        status = data["status"].strip().lower().replace("_", " ").replace("-", " ")
+            return cls.result("stopped", False, False, "Local detection is stopped.")
+        status = board_words(data["status"]).lower()
         if status in {
             "throw",
             "ready",
@@ -42,20 +51,21 @@ class LocalDetection:
             "takeout in progress",
             "removing darts",
         }:
-            return cls.result("detecting", True, True, "Local Autodarts is running and detecting darts.")
+            return cls.result("detecting", True, True, "The vision engine is running and detecting darts.")
         if status == "calibrating":
-            return cls.result("calibrating", True, False, "Local Autodarts is calibrating.")
+            return cls.result("calibrating", True, False, "The vision engine is calibrating.")
         if status in {"starting", "started"}:
-            return cls.result("starting", True, False, "Local Autodarts is starting detection.")
-        return cls.result("waiting", True, False, "Local Autodarts is running but detection is not ready.")
+            return cls.result("starting", True, False, "The vision engine is starting detection.")
+        return cls.result("waiting", True, False, "The vision engine is running but detection is not ready.")
 
     async def check(self, process: dict) -> None:
         async with self.lock:
-            key = (process.get("status"), process.get("pid")) if self.managed else (self.url,)
+            self.point()
+            key = (self.url, process.get("status"), process.get("pid")) if self.managed else (self.url,)
             if self.managed and process.get("status") != "running":
                 state = "unavailable" if process.get("status") == "nofile" else "stopped"
                 self.current = self.result(
-                    state, False, False, process.get("unavailable_reason") or "Local Autodarts is stopped."
+                    state, False, False, process.get("unavailable_reason") or "The vision engine is stopped."
                 )
                 self.process_key, self.checked_at = key, None
                 return
@@ -75,7 +85,7 @@ class LocalDetection:
                     "unavailable",
                     self.managed,
                     False,
-                    "Autodarts is running, but its local detection state is unavailable."
+                    "The vision engine is running, but its local detection state is unavailable."
                     if self.managed
                     else "Cannot read local detector readiness. Check the vision engine's page in Integrations.",
                 )

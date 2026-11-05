@@ -8,9 +8,10 @@ can drive lighting and a caller.
   game mode, and play X01 (301/501) on this device. Built-in tournaments support
   Swiss rounds, single/double elimination, and Swiss-seeded knockout finals. If the chosen engine is stopped,
   use its Start button under Local detection. Only manual darts are offered
-  until a vision engine is switched on and installed; OcheCore is listed but cannot
-  score until its Autodarts-compatible API exists. Automatic offline scoring with the
-  Autodarts v2 detector is not verified; see [local games](docs/LOCAL_GAMES.md).
+  until a vision engine is switched on and installed. Both engines score through the
+  same Autodarts board API, which Play reads on the chosen engine's port (3180 or
+  5180). Automatic offline scoring is verified against recorded board states only,
+  not live throws; see [local games](docs/LOCAL_GAMES.md).
 - **Play on Autodarts**: Autodarts Play inside Oche, over local HTTPS. The Autodarts
   integration adds it below Play while it is switched on.
 - **Vision engines** (Integrations): Autodarts, on by default, and OcheCore, an
@@ -141,7 +142,7 @@ Set these in `~/oche/.env`; [.env.example](.env.example) lists them.
 | `OCHE_UPDATE_FEED` | latest GitHub release | Application update manifest; empty turns updates off |
 | `OCHE_ACME_DNS_URL` | `https://auth.acme-dns.io` | acme-dns server for domain certificates |
 | `OCHE_CORE_CLIENT_ID`, `OCHE_CORE_BOARD_ID` | empty | Lock the account and board at startup |
-| `OCHE_CORE_LOCAL_AUTODARTS_URL` | `http://127.0.0.1:3180` | Local detector origin; can point to a separate LAN board |
+| `OCHE_CORE_LOCAL_AUTODARTS_URL` | `http://127.0.0.1:3180` | Local detector origin; the default follows the vision engine Play uses, another value points every engine choice at a separate LAN board |
 
 Run `./oche.sh restart` after changing `.env`.
 

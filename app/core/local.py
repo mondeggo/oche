@@ -4,6 +4,7 @@ import asyncio
 import json
 import random
 import time
+from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Literal
@@ -15,6 +16,7 @@ from websockets.exceptions import ConnectionClosed
 
 from app.core import bots
 from app.core import football as football_rules
+from app.core.board import board_words
 from app.core.board.detection import BOARD_URL
 from app.core.board.local import LocalBoardConnection
 from app.core.errors import ConnectionProblem
@@ -142,7 +144,13 @@ class SavedLocalGame(BaseModel):
 
 
 class LocalGames:
-    def __init__(self, directory: Path, http: httpx.AsyncClient, bus: EventBus, board_url: str = BOARD_URL):
+    def __init__(
+        self,
+        directory: Path,
+        http: httpx.AsyncClient,
+        bus: EventBus,
+        board_url: str | Callable[[], str] = BOARD_URL,
+    ):
         self.path = directory / "local-game.json"
         self.http, self.bus = http, bus
         self.connection = LocalBoardConnection(http, board_url)
@@ -523,36 +531,57 @@ class LocalGames:
 
     @staticmethod
     def parse_board(data: object) -> tuple[dict, list[Segment], list[Coords | None]]:
+        """Read a board state, returned with word names and its dart count.
+
+        Autodarts 2.0.2 and OcheCore list flat throws in camelCase states without
+        ``numThrows``; other detectors nest ``segment`` and ``coords`` and count them.
+        """
         if not isinstance(data, dict) or not isinstance(data.get("status"), str):
             raise ConnectionProblem("The local detector returned an invalid board state.")
         count = data.get("numThrows")
-        # The observed v2.0.2 board omits throws on an empty board.
+        # An earlier v2.0.2 board omitted throws on an empty board.
         throws = data.get("throws", [] if type(count) is int and count == 0 else None)
         if not isinstance(throws, list):
             raise ConnectionProblem(
                 "This Autodarts local API does not expose scored throws. "
                 "Scored dart segments are required for automatic local games."
             )
+        if "numThrows" not in data:
+            count = len(throws)
         if type(count) is not int or not 0 <= count <= 3 or len(throws) != count:
             raise ConnectionProblem("The local detector returned an inconsistent throw count.")
+        board = {**data, "status": board_words(data["status"]), "numThrows": count}
+        if isinstance(data.get("event"), str):
+            board["event"] = board_words(data["event"])
+            # Autodarts lists a visit's first dart under the reset before it and renames
+            # the event a moment later. A reset clears the board, so this is a throw.
+            if board["event"] == "Manual reset" and throws:
+                board["event"] = "Throw detected"
         segments, positions = [], []
         for item in throws:
-            if not isinstance(item, dict) or not isinstance(item.get("segment"), dict):
+            if not isinstance(item, dict):
                 raise ConnectionProblem("The local detector returned an invalid dart.")
-            raw = item["segment"]
+            if isinstance(item.get("segment"), dict):
+                raw = item["segment"]
+                number, multiplier, coords = raw.get("number"), raw.get("multiplier"), item.get("coords")
+                missed = number == 0 and multiplier == 0
+            elif "segmentNumber" in item:
+                # Positions are fractions of 170 mm, +x toward 6 and +y toward 20, like Coords.
+                number, multiplier = item.get("segmentNumber"), item.get("multiplier")
+                x, y = item.get("coordsX"), item.get("coordsY")
+                coords = {"x": x, "y": y} if x is not None and y is not None else None
+                # A miss is bed Outside with multiplier zero, numbered after the segment beside it.
+                missed = multiplier == 0 or item.get("bed") == "Outside"
+            else:
+                raise ConnectionProblem("The local detector returned an invalid dart.")
             # Detection can represent a miss using multiplier zero.
-            if (
-                type(raw.get("number")) is int
-                and type(raw.get("multiplier")) is int
-                and raw["number"] == 0
-                and raw["multiplier"] == 0
-            ):
+            if missed and type(number) is int and type(multiplier) is int and 0 <= number <= 25:
                 segment = Segment(number=0, multiplier=0, name="MISS")
             else:
-                segment = LocalDart(number=raw.get("number"), multiplier=raw.get("multiplier")).segment()
+                segment = LocalDart(number=number, multiplier=multiplier).segment()
             segments.append(segment)
-            positions.append(Dart(id="detected", segment=segment, coords=item.get("coords")).coords)
-        return data, segments, positions
+            positions.append(Dart(id="detected", segment=segment, coords=coords).coords)
+        return board, segments, positions
 
     def consume_board(self, data: object) -> None:
         board, segments, positions = self.parse_board(data)
@@ -564,14 +593,14 @@ class LocalGames:
         if board.get("running") is False or status in {"stopped", "stopping"}:
             self.armed = False
             self.detector_state = "stopped"
-            self.detector_error = "Local Autodarts detection is stopped."
+            self.detector_error = "Local detection is stopped."
             self._event("board.state", board)
             return
-        if action != previous_action and action in {
-            "manual reset",
-            "calibration started",
-            "calibration finished",
-        }:
+        # Autodarts also resets an empty board about 2 s after each takeout; that is not news.
+        if action != previous_action and (
+            action in {"calibration started", "calibration finished"}
+            or (action == "manual reset" and self.detected)
+        ):
             self._event("board.events", {"event": board["event"]})
         ready = status in {"ready", "throw", "ready for throw"}
         if not self.armed:

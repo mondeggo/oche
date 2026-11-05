@@ -23,8 +23,8 @@ integration = register(Integration(
     ),
     process=process,
     port=process.PORT,
-    # Play scores with OcheCore once it serves the Autodarts-compatible board API.
-    engine=Engine(label="OcheCore", scores=False, note="OcheCore can't score games yet."),
+    # OcheCore serves the Autodarts board API (/api/state, /api/events) on its own port.
+    engine=Engine(label="OcheCore", scores=True),
     health=(Health("ochecore", "OcheCore", "/integrations/ochecore", "/static/js/health.mjs", 20),),
     routers=(router, pages),
     templates=HERE / "templates",

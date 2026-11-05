@@ -1,4 +1,5 @@
 import asyncio
+from unittest.mock import AsyncMock
 
 import httpx
 import pytest
@@ -6,6 +7,7 @@ from fastapi.testclient import TestClient
 
 from app.core.board.detection import LocalDetection
 from app.core.integrations.autodarts import process as autodarts
+from app.core.runtime import Runtime
 from app.main import create_app
 
 
@@ -113,3 +115,40 @@ def test_manual_game_does_not_turn_detection_status_green(settings, monkeypatch)
         assert status["local"]["active"]
         assert status["local_detection"]["state"] == "stopped"
         assert not status["local_detection"]["detecting"]
+
+
+@pytest.mark.parametrize(
+    "status,state",
+    [("throw", "detecting"), ("takeout", "detecting"), ("takeoutInProgress", "detecting"), ("calibrating", "calibrating")],
+)
+def test_camel_case_statuses_from_autodarts_and_ochecore(status, state):
+    assert LocalDetection.classify({"running": True, "status": status})["state"] == state
+
+
+@pytest.mark.parametrize(
+    "engine,configured,expected",
+    [
+        ("autodarts", "http://127.0.0.1:3180", "http://127.0.0.1:3180"),
+        ("ochecore", "http://127.0.0.1:3180", "http://127.0.0.1:5180"),
+        ("manual", "http://127.0.0.1:3180", "http://127.0.0.1:3180"),
+        # A detector set on another computer serves every engine choice.
+        ("ochecore", "http://192.0.2.1:3180", "http://192.0.2.1:3180"),
+    ],
+)
+async def test_local_games_read_the_engine_play_uses(settings, monkeypatch, engine, configured, expected):
+    requests = []
+
+    def respond(request):
+        requests.append(str(request.url))
+        return httpx.Response(200, json={"running": True, "status": "throw", "throws": []})
+
+    monkeypatch.setattr("app.core.runtime.engines.chosen", lambda: engine)
+    monkeypatch.setattr("app.core.board.local.connect", AsyncMock(side_effect=OSError))
+    settings = settings.model_copy(update={"local_autodarts_url": configured})
+    async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as http:
+        runtime = Runtime(settings, http)
+        await runtime.detection.check({"status": "running", "pid": 1})
+        async with runtime.local.connection.session() as states:
+            await anext(states)
+    assert requests == [f"{expected}/api/state"] * 2
+    assert runtime.local.connection.events_url == f"ws{expected[4:]}/api/events?type=state"

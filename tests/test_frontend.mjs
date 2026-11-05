@@ -163,8 +163,8 @@ test("engine indicators combine required checks and leave inactive engines grey"
   assert.equal(engineHealth({ ...engine, status: "stopped" }, detector, connected)[0], "bad");
   assert.equal(engineHealth({ ...engine, active: false, status: "stopped" }, null, null)[0], "neutral");
   assert.equal(manualHealth()[0], "good");
-  const unsupported = engineHealth({ ...engine, name: "ochecore", scores: false,
-    note: "OcheCore can't score games yet." }, detector, connected);
+  const unsupported = engineHealth({ ...engine, name: "other", scores: false,
+    note: "This engine can't score games yet." }, detector, connected);
   assert.equal(unsupported[0], "warn");
   assert.match(unsupported[2], /can't score games yet/);
 });

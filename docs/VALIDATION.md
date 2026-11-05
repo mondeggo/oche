@@ -1,5 +1,26 @@
 # Validation
 
+## OcheCore scoring and the Autodarts 2.0.2 board format (2026-11-05)
+
+- Automated: 824 Python tests passed, 2 skipped and 82 subtests passed (one updates
+  test errored once creating its temporary folder and passed when rerun). Both
+  JavaScript files passed 71 tests. Ruff on the CI scope and the changed tests,
+  translation coverage and whitespace checks passed.
+- Replay, not committed: the board states Oche recorded from the installed
+  Autodarts 2.0.2 board (263 states, 18 visits, 53 darts) and OcheCore's contract
+  fixture (`crates/oche-autodarts/tests/fixtures`, 123 states, from OcheCore
+  `9b8c349`) each went through `LocalGames.consume_board` without an error. With
+  four 501 players, all 53 darts scored, every takeout advanced the visit (18
+  `turn_end`, `takeout_started` and `takeout_finished` events) and no
+  `manual_reset` was emitted. Before this change every state with darts was
+  rejected as an inconsistent throw count.
+- Committed tests replay one captured visit, OcheCore's chosen encoding of bulls,
+  misses and unplaced darts, camelCase readiness, and the board URL following the
+  chosen engine (Autodarts 3180, OcheCore 5180, manual and a LAN override).
+- Docker, browser and hardware acceptance were not run: no game was scored from
+  live throws with either engine, and OcheCore's states were not read over its
+  real port.
+
 ## Navigation and football defaults (2026-11-05)
 
 - Automated: 813 Python tests passed, 2 skipped and 82 subtests passed. Both
