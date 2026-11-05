@@ -25,6 +25,8 @@ class PlayButton:
     href: str
     icon: str  # Static URL of a single-colour SVG, drawn in the button's colour.
     page: str  # Sidebar page key, so the button shows as current.
+    new_tab_href: str | None = None  # Direct URL used when the new-tab setting is on.
+    new_tab_setting: str | None = None  # Settings switch controlling new_tab_href.
 
 
 @dataclass(frozen=True)

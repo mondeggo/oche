@@ -91,7 +91,7 @@
       <p id="local-football-rules" class="hint" hidden></p>
       <div class="game-options">
         <fieldset id="local-format-option" class="game-option" hidden><legend>{{ _("Match format") }}</legend>
-          <div class="game-choices">{{ choice("football-format", "goals", _("Goals"), True) }}{{ choice("football-format", "rounds", _("Rounds")) }}</div></fieldset>
+          <div class="game-choices">{{ choice("football-format", "goals", _("Goals")) }}{{ choice("football-format", "rounds", _("Rounds"), True) }}</div></fieldset>
         <fieldset id="local-rounds-option" class="game-option" hidden><legend>{{ _("Rounds") }}</legend>
           <div class="game-choices">{{ choice("football-rounds", "10", "10", True) }}{{ choice("football-rounds", "16", "16") }}{{ choice("football-rounds", "custom", _("Custom")) }}</div>
           <label>{{ _("Custom rounds") }} <input id="football-custom-rounds" type="number" min="2" max="200" value="10"></label></fieldset>
@@ -103,12 +103,12 @@
         <fieldset id="local-goals-option" class="game-option" hidden><legend>{{ _("Goals to win") }}</legend>
           <div class="game-choices">{{ choice("goals", "3", "3") }}{{ choice("goals", "5", "5", True) }}</div></fieldset>
         <fieldset id="local-kickoff-option" class="game-option" hidden><legend>{{ _("Kick-off target") }}</legend>
-          <div class="game-choices">{{ choice("kickoff", "outer", _("Outer bull"), True) }}{{ choice("kickoff", "bull", _("Either bull")) }}{{ choice("kickoff", "inner", _("Bull or inner single")) }}</div></fieldset>
+          <div class="game-choices">{{ choice("kickoff", "outer", _("Outer bull only")) }}{{ choice("kickoff", "bull", _("Either bull (inner or outer)")) }}{{ choice("kickoff", "inner", _("Bull or inner single"), True) }}</div></fieldset>
         <fieldset id="local-movement-option" class="game-option" hidden><legend>{{ _("Movement") }}</legend>
-          <div class="game-choices">{{ choice("movement", "strict", _("Strict"), True) }}{{ choice("movement", "beginner", _("Beginner")) }}</div>
+          <div class="game-choices">{{ choice("movement", "strict", _("Strict")) }}{{ choice("movement", "beginner", _("Beginner"), True) }}</div>
           <p class="hint">{{ _("Strict: shared edges. Beginner: diagonals also count. Invalid hits use a dart without moving the ball.") }}</p></fieldset>
         <fieldset id="local-own-goals-option" class="game-option" hidden><legend>{{ _("Own goals") }}</legend>
-          <div class="game-choices">{{ choice("own-goals", "off", _("Off"), True) }}{{ choice("own-goals", "on", _("On")) }}</div>
+          <div class="game-choices">{{ choice("own-goals", "off", _("Off")) }}{{ choice("own-goals", "on", _("On"), True) }}</div>
           <p class="hint">{{ _("A legal move into your own goal scores for your opponent when enabled. When disabled, the ball stays put.") }}</p></fieldset>
         <fieldset id="local-score-option" class="game-option"><legend>{{ _("Starting score") }}</legend>
           <div class="game-choices">{{ choice("score", "501", "501", True) }}{{ choice("score", "301", "301") }}</div></fieldset>
@@ -180,6 +180,9 @@
   <div id="local-stage" class="game-stage">
   <div id="local-side-left" class="game-side"></div>
   <div id="local-center" class="game-center">
+  <div id="football-panel-actions" class="football-panel-actions">
+    <button id="football-board-toggle" type="button" class="btn-neutral" aria-controls="local-board" aria-pressed="true">{{ _("Hide dartboard") }}</button>
+  </div>
   <div id="football-guidance" class="football-guidance" hidden aria-live="polite">
     <p id="football-clock" class="football-clock"></p>
     <p id="football-message" class="football-message"></p>

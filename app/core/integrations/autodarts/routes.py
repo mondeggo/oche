@@ -4,6 +4,7 @@ from fastapi.responses import PlainTextResponse
 from app.config import LOG_DIR, load_config
 from app.core.integrations.autodarts import process as autodarts
 from app.core.integrations.autodarts.terminal import AutodartsTerminal
+from app.core.integrations.local_url import local_http_url
 from app.log_download import log_download
 from app.services import engines
 from app.services.setup_terminal import serve_terminal
@@ -35,6 +36,7 @@ async def page(request: Request):
             "service": service,
             "status": autodarts.get_status(),
             "config": config,
+            "local_url": local_http_url(request.url.hostname, 3180),
             "active_nav": "autodarts",
         },
     )

@@ -7,7 +7,7 @@ import { dartRegion, regionLabel, renderFootball } from "./football.mjs";
 
 let selectedMode = "x01";
 let footballKeypad = false;
-let footballBoard = false;
+let footballBoard = true;
 const maxPlayers = () => selectedMode === "football" ? 2 : 8;
 const SVG = "http://www.w3.org/2000/svg";
 const DETECTOR = { stopped: "Stopped", waiting: "Waiting", waiting_for_clear: "Clear the board",
@@ -138,6 +138,7 @@ function renameGenerated() {
 function configureMode(mode) {
   selectedMode = mode;
   const football = mode === "football";
+  if (football) footballBoard = true;
   $("local-setup-title").textContent = football ? tr("Football") : "X01";
   $("local-setup-description").textContent = football ? tr("Two players · Three darts per turn · Saved on this device") : tr("One leg · Single in · Saved on this device");
   for (const id of ["score", "out", "board"]) $("local-" + id + "-option").hidden = football;
@@ -340,6 +341,7 @@ function renderMatch(value) {
   const football = value.options.mode === "football";
   $("local-match").dataset.variant = football ? "football" : "x01";
   $("football-guidance").hidden = !football;
+  $("football-panel-actions").hidden = !football;
   $("local-match-title").textContent = football ? tr("Football") : "X01";
   $("local-single-bed").hidden = !football || !footballKeypad || radio("ring") !== "1";
   $("football-input-board").hidden = !football || footballKeypad;
@@ -367,7 +369,7 @@ function renderMatch(value) {
   const entry = manualEntry(value);
   if ($("local-manual").open && entry !== entryVisit) $("local-manual").close();
   // With the board shown, its halo replaces the detection badge.
-  $("local-detector").parentElement.hidden = value.options.show_board && !manual;
+  $("local-detector").parentElement.hidden = (football ? footballBoard : value.options.show_board) && !manual;
   $("local-next").title = manual || bot ? ""
     : tr("Detected visits advance when you remove the darts. Use Next turn after clearing the board to finish an interrupted visit.");
   if (won) $("local-winner-name").textContent = frame.winner < 0 ? tr("Draw") : tr("{0} wins!", { 0: frame.players[frame.winner].name });

@@ -22,6 +22,7 @@ DEFAULTS = {
     "autohide_navbar_on_updates": False,
     "autohide_navbar_on_panels": True,
     "show_play_in_navbar": True,
+    "open_autodarts_play_in_new_tab": False,
     "show_panels_in_navbar": True,
     "show_page_cameras": True,
     "show_page_system": True,

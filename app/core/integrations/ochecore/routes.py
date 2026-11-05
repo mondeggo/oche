@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, Request, WebSocket
 from fastapi.responses import PlainTextResponse
 
 from app.config import LOG_DIR, load_config
+from app.core.integrations.local_url import local_http_url
 from app.log_download import log_download
 from app.services import engines
 from app.services.setup_terminal import serve_terminal
@@ -32,6 +33,7 @@ async def page(request: Request):
         "service": "ochecore",
         "status": process.get_status(),
         "config": load_config(),
+        "local_url": local_http_url(request.url.hostname, process.PORT),
         "active_nav": "ochecore",
     })
 

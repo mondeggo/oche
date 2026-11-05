@@ -88,8 +88,10 @@
 .football-cell-labels [data-goal] { font-weight: 800; font-size: 17px; }
 .football-map-controls { display: flex; align-items: center; gap: 10px; margin-top: 10px; font-size: .8rem; }
 .football-map-controls input { min-width: 40px; width: 100%; flex: 1; accent-color: var(--primary); padding: 0; }
-.football-map-controls label, .football-map-controls button { flex-shrink: 0; }
-.football-map-controls button { font-size: .75rem; padding: 5px 10px; }
+.football-map-controls label { flex-shrink: 0; }
+.football-panel-actions { display: flex; justify-content: flex-end; width: 100%; }
+.football-panel-actions[hidden] { display: none; }
+.football-panel-actions button { font-size: .75rem; padding: 5px 10px; }
 .football-explore { font-size: .75rem; color: var(--fg-dim); margin: 6px 0 0; height: 2.6em; overflow-y: auto; }
 #football-input-board { width: min(300px, 65vw); margin: 0 auto 12px; text-align: center; }
 #football-input-board svg { width: 100%; display: block; }
@@ -127,7 +129,6 @@
   .football-broadcast .football-score { font-size: 1.5rem; }
   .football-match-clock { font-size: .75rem; }
   .football-map-controls { flex-wrap: wrap; }
-  #football-board-toggle { order: 5; }
   .game-screen[data-variant="football"] .local-arena[data-reference="false"] .game-turn-actions { flex-direction: column; }
 }
 

@@ -24,8 +24,7 @@
     </svg>
   </div>
   <div class="football-map-controls">
-    <button id="football-board-toggle" type="button" class="btn-neutral" aria-pressed="false">{{ _("Show dartboard") }}</button>
-    <label for="football-morph">{{ _("Board → pitch") }}</label>
+    <label for="football-morph" title="{{ _('Blend the dartboard layout into the rectangular pitch view. This only changes how the game is displayed.') }}">{{ _("Display shape: board to pitch") }}</label>
     <input id="football-morph" type="range" min="0" max="100" value="100" aria-label="{{ _('Board to pitch shape') }}">
     <button id="football-follow" type="button" class="btn-neutral" disabled>{{ _("Follow ball") }}</button>
   </div>

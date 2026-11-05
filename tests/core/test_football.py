@@ -14,7 +14,19 @@ from app.main import create_app
 
 def game(tmp_path, **options):
     local = LocalGames(tmp_path, None, EventBus())
-    local.start(LocalOptions(mode="football", players=["Alice", "Bob"], input="manual", **options))
+    defaults = {
+        "football_format": "goals",
+        "football_kickoff": "outer",
+        "football_beginner": False,
+        "football_own_goals": False,
+    }
+    defaults.update(options)
+    local.start(LocalOptions(
+        mode="football",
+        players=["Alice", "Bob"],
+        input="manual",
+        **defaults,
+    ))
     bullup(local)
     return local
 
@@ -69,6 +81,15 @@ def test_edges_and_beginner_diagonals_are_symmetric():
     assert "D17" not in football.neighbours("I17", True)
     assert "D6" not in football.neighbours("T6")
     assert "D6" in football.neighbours("O6")
+
+
+def test_football_defaults():
+    options = LocalOptions(mode="football", players=["Alice", "Bob"])
+    assert options.football_format == "rounds"
+    assert options.football_rounds == 10
+    assert options.football_kickoff == "inner"
+    assert options.football_beginner is True
+    assert options.football_own_goals is True
 
 
 @pytest.mark.parametrize(
@@ -222,6 +243,11 @@ def test_player_validation_and_manual_api(settings):
             "/api/local/start", json={"mode": "football", "players": ["A", "B"], "input": "manual"}
         )
         assert response.status_code == 200
+        options = response.json()["options"]
+        assert options["football_format"] == "rounds"
+        assert options["football_kickoff"] == "inner"
+        assert options["football_beginner"] is True
+        assert options["football_own_goals"] is True
         assert response.json()["football"]["ball"] == "B"
         for distance in (4, 10):
             response = client.post(

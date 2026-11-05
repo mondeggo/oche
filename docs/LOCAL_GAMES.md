@@ -280,13 +280,13 @@ bots can also play. D6 is the right goal and D11 the left; the goal doubles form
 
 ### Setup and bull-up
 
-- **Goals:** first to 3 or 5 (default).
-- **Rounds:** 10, 16, or a custom 2–200 rounds. Choose penalties, golden goal, or a
+- **Goals:** first to 3 or 5.
+- **Rounds:** 10 (default), 16, or a custom 2–200 rounds. Choose penalties, golden goal, or a
   draw as the tiebreaker. Optional stoppage time randomly adds 0–2 complete rounds
   per half; the allowances are saved with the game.
-- **Kick-off:** outer bull only (default), either bull, or either bull plus any inner single.
-- **Movement:** strict shared edges (default), or beginner diagonals as well.
-- **Own goals:** off by default.
+- **Kick-off:** outer bull only, either bull, or either bull plus any inner single (default).
+- **Movement:** strict shared edges or beginner diagonals as well (default).
+- **Own goals:** on by default.
 
 Both players throw one dart for the bull-up. The closest starts; equal distances
 (within 0.01 mm) repeat the bull-up. Manual input asks for the measured distance
@@ -345,7 +345,7 @@ confirmation. Without coordinates, singles and bull-up cannot be guessed.
 
 The pitch displays all 82 cells as nested rectangular bands and numbered wedges.
 Its corners align with the 18/4, 15/2, 7/16 and 9/12 boundaries, giving exactly five
-segments per side. **Board → pitch** continuously morphs the cells from circular
+segments per side. **Display shape: board to pitch** continuously morphs the cells from circular
 to rectangular; the ball, labels and highlights use that same transformation.
 Narrow scoring bands are widened visually for legibility, without changing the
 cell boundaries used for scoring or their adjacency.
@@ -361,7 +361,7 @@ distinct inner/outer singles, plus a Miss button. **Use keypad** retains the exi
 number buttons as an alternative. Vision coordinates remain in the original round
 board coordinate system.
 
-Goal nets sit immediately beyond the D6/D11 scoring cells and follow the morph. A compact match scoreboard shows both scores and the round-based clock (Goals mode shows the round count). The reference dartboard starts hidden; **Show dartboard** reveals it, while manual entry always keeps its round-board input.
+Goal nets sit immediately beyond the D6/D11 scoring cells and follow the morph. A compact match scoreboard shows both scores and the round-based clock (Goals mode shows the round count). The reference dartboard starts shown in the right panel; its toggle stays there, while manual entry always keeps its round-board input.
 
 The pitch and reference dartboard scale to available viewport height; small
 screens place the compact board and input controls below the pitch.

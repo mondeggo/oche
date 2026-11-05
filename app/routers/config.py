@@ -47,6 +47,7 @@ class ConfigUpdate(BaseModel):
     autohide_navbar_on_updates: Optional[bool] = None
     autohide_navbar_on_panels: Optional[bool] = None
     show_play_in_navbar: Optional[bool] = None
+    open_autodarts_play_in_new_tab: Optional[bool] = None
     show_panels_in_navbar: Optional[bool] = None
     show_page_system: Optional[bool] = None
     show_page_updates: Optional[bool] = None

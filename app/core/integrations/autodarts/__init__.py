@@ -29,7 +29,15 @@ integration = register(Integration(
     description="Board detection and calibration from Autodarts. Play on Autodarts needs it.",
     # The installer adds Autodarts by default, so it starts switched on.
     enabled_by_default=True,
-    play=(PlayButton("play", "Play on Autodarts", "/play", f"{STATIC}/logo.svg", "play"),),
+    play=(PlayButton(
+        "play",
+        "Play on Autodarts",
+        "/play",
+        f"{STATIC}/logo.svg",
+        "play",
+        "https://play.autodarts.com/",
+        "open_autodarts_play_in_new_tab",
+    ),),
     pages=(
         Page("autodarts", "Autodarts", "/integrations/autodarts/board", "autodarts"),
         Page("cameras", "Camera Enhancer", "/integrations/cameras", "cameras", setting="show_page_cameras"),

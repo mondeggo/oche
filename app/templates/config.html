@@ -45,7 +45,7 @@
       {{ page_row('Panels', 'Your website panels', 'show_panels_in_navbar', 'autohide_navbar_on_panels') }}
       {#- Switched-on integrations add rows for their buttons and pages. #}
       {%- for entry in nav_registry if entry.enabled %}
-      {%- for button, shown in entry.play %}
+      {%- for button, shown, new_tab in entry.play %}
       {{ page_row(button.label, '', 'show_play_in_navbar', 'autohide_navbar_on_' ~ button.page) }}
       {%- endfor %}
       {%- for link, shown in entry.pages %}
@@ -56,6 +56,7 @@
       {{ page_row('Status', '', 'show_page_system', 'autohide_navbar_on_system', child=True, group='system') }}
       {{ page_row('Updates', '', 'show_page_updates', 'autohide_navbar_on_updates', child=True, group='system') }}
     </div>
+    {{ toggle('open_autodarts_play_in_new_tab', 'Open Play on Autodarts in a new tab', 'Open play.autodarts.com directly instead of inside Oche. This does not require local HTTPS.') }}
   </section>
   <section class="card" id="engine">
     <h2>{{ _("Vision engine") }}</h2>

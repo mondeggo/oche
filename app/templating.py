@@ -109,7 +109,18 @@ def navigation_context(request):
                 "engine": bool(item.engine),
                 "release": bool(item.release),
                 # Buttons below Play also follow the "Play" sidebar switch in Settings.
-                "play": [(button, item in switched_on and config.get("show_play_in_navbar", True)) for button in item.play],
+                "play": [
+                    (
+                        button,
+                        item in switched_on and config.get("show_play_in_navbar", True),
+                        bool(
+                            button.new_tab_href
+                            and button.new_tab_setting
+                            and config.get(button.new_tab_setting, False)
+                        ),
+                    )
+                    for button in item.play
+                ],
                 "pages": [
                     (link, item in switched_on and (not link.setting or config.get(link.setting, True)))
                     for link in item.pages

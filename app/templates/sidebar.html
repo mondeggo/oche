@@ -31,8 +31,8 @@
     <div class="nav-section">
       <a class="nav-item nav-play nav-play-oche" href="/local" data-label="{{ _('Play') }}" {{ 'aria-current=page' if active_nav == 'local' }}>{{ icon('play') }}<span class="nav-text">{{ _("Play") }}</span></a>
       {#- Integrations add their own play buttons below Play. #}
-      {%- for entry in nav_registry %}{% for button, shown in entry.play %}
-      <a id="nav-link-{{ button.id }}" class="nav-item nav-play" href="{{ button.href }}" data-label="{{ _(button.label) }}" data-nav-sync data-visible-setting="show_play_in_navbar"{{ ' data-integration-off' if not entry.enabled }} {{ 'aria-current=page' if sidebar_page == button.page }} {{ 'hidden' if not shown }}><span class="nav-icon" aria-hidden="true"><span class="nav-icon-mask" style="--icon: url('{{ button.icon }}')"></span></span><span class="nav-text">{{ _(button.label) }}</span></a>
+      {%- for entry in nav_registry %}{% for button, shown, new_tab in entry.play %}
+      <a id="nav-link-{{ button.id }}" class="nav-item nav-play" href="{{ button.new_tab_href if new_tab else button.href }}" data-label="{{ _(button.label) }}" data-nav-sync data-visible-setting="show_play_in_navbar"{% if new_tab %} target="_blank" rel="noopener noreferrer"{% endif %}{{ ' data-integration-off' if not entry.enabled }} {{ 'aria-current=page' if sidebar_page == button.page }} {{ 'hidden' if not shown }}><span class="nav-icon" aria-hidden="true"><span class="nav-icon-mask" style="--icon: url('{{ button.icon }}')"></span></span><span class="nav-text">{{ _(button.label) }}</span>{% if new_tab %}<span class="nav-trailing" aria-label="{{ _('Opens in a new tab') }}">↗</span>{% endif %}</a>
       {%- endfor %}{% endfor %}
     </div>
 

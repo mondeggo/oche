@@ -11,7 +11,7 @@
       <p class="subtitle">{{ _("Offline board detection with two to four cameras. Its own page sets up the cameras and calibration.") }}</p>
     </div>
     <div class="page-actions">
-      <a id="oc-open" class="btn-link" target="_blank" rel="noopener noreferrer" {{ 'hidden' if status.status != 'running' }}>{{ _("Open OcheCore ↗") }}</a>
+      <a id="oc-open" class="btn-link" href="{{ local_url }}" target="_blank" rel="noopener noreferrer">{{ _("Open OcheCore ↗") }}</a>
     </div>
   </header>
   <p id="oc-unavailable" class="card" role="status" {{ 'hidden' if status.installed }}>{{ _(status.unavailable_reason) if status.unavailable_reason else '' }}</p>
@@ -113,7 +113,6 @@
     url.pathname = "/";
     url.search = url.hash = "";
     $("oc-open").href = url.href;
-    $("oc-open").hidden = state.status !== "running";
   }
   async function refresh() {
     const response = await fetch("/ochecore/status", { cache: "no-store" }).catch(() => null);

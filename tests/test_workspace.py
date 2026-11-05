@@ -119,6 +119,60 @@ def test_sidebar_reaches_every_page_and_marks_the_current_one(application, tmp_p
         assert moved.headers["location"] == "/integrations/cameras"
 
 
+def test_engine_pages_and_autodarts_nav_have_direct_launch_links(application, tmp_path):
+    with (
+        TestClient(application) as client,
+        patch("app.config.CONFIG_FILE", tmp_path / "settings.json"),
+    ):
+        autodarts = client.get("/integrations/autodarts/board").text
+        assert re.search(
+            r'<a id="ad-open"[^>]*href="https://play\.autodarts\.com/"[^>]*target="_blank"',
+            autodarts,
+        )
+        assert re.search(
+            r'<a id="ad-local-open"[^>]*href="http://testserver:3180/"[^>]*target="_blank"',
+            autodarts,
+        )
+
+        ochecore = client.get("/integrations/ochecore").text
+        assert re.search(
+            r'<a id="oc-open"[^>]*href="http://testserver:5180/"[^>]*target="_blank"',
+            ochecore,
+        )
+
+        settings_page = client.get("/config").text
+        assert 'data-setting="open_autodarts_play_in_new_tab"' in settings_page
+        anchor = re.search(r'<a id="nav-link-play".*?</a>', settings_page, re.S).group()
+        assert 'href="/play"' in anchor
+        assert "target=" not in anchor
+
+        response = client.post("/config/data", json={"open_autodarts_play_in_new_tab": True})
+        assert response.status_code == 200
+        assert response.json()["open_autodarts_play_in_new_tab"] is True
+        page = client.get("/local").text
+        anchor = re.search(r'<a id="nav-link-play".*?</a>', page, re.S).group()
+        assert 'href="https://play.autodarts.com/"' in anchor
+        assert 'target="_blank"' in anchor
+
+
+def test_football_setup_defaults_and_board_controls(application):
+    with TestClient(application) as client:
+        page = client.get("/local").text
+        for field, value in (
+            ("football-format", "rounds"),
+            ("kickoff", "inner"),
+            ("movement", "beginner"),
+            ("own-goals", "on"),
+        ):
+            assert re.search(rf'name="{field}" value="{value}" checked', page)
+        center = page[page.index('id="local-center"') : page.index('id="local-manual"')]
+        assert 'id="football-panel-actions"' in center
+        assert 'id="football-board-toggle"' in center
+        football = page[page.index('id="local-football"') : page.index('id="football-panel-actions"')]
+        assert 'id="football-board-toggle"' not in football
+        assert 'Display shape: board to pitch' in page
+
+
 def test_camera_card_and_sidebar_share_persisted_visibility(application, tmp_path):
     with (
         TestClient(application) as client,

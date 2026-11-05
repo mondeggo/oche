@@ -49,13 +49,13 @@ class LocalOptions(BaseModel):
     )
     mode: Literal["x01", "football"] = "x01"
     goals_to_win: Literal[3, 5] = 5
-    football_format: Literal["goals", "rounds"] = "goals"
+    football_format: Literal["goals", "rounds"] = "rounds"
     football_rounds: int = Field(default=10, ge=2, le=200)
     football_tiebreak: Literal["penalties", "golden", "draw"] = "penalties"
     football_stoppage: bool = False
-    football_beginner: bool = False
-    football_kickoff: Literal["outer", "bull", "inner"] = "outer"
-    football_own_goals: bool = False
+    football_beginner: bool = True
+    football_kickoff: Literal["outer", "bull", "inner"] = "inner"
+    football_own_goals: bool = True
     starting_score: Literal[301, 501] = 501
     double_out: bool = True
     input: Literal["autodarts", "manual"] = "autodarts"
