@@ -533,7 +533,7 @@ class LocalGames:
     def parse_board(data: object) -> tuple[dict, list[Segment], list[Coords | None]]:
         """Read a board state, returned with word names and its dart count.
 
-        Autodarts 2.0.2 and OcheCore list flat throws in camelCase states without
+        Autodarts 2.1.1 and OcheCore list flat throws in camelCase states without
         ``numThrows``; other detectors nest ``segment`` and ``coords`` and count them.
         """
         if not isinstance(data, dict) or not isinstance(data.get("status"), str):
@@ -613,7 +613,7 @@ class LocalGames:
                 self.detector_error = "Clear the board. If a visit was interrupted, select Next turn."
             return
         self.detector_state = "connected"
-        if self.saved.football_pending and not segments:
+        if self.saved.football_pending and not segments and action != "manual reset":
             self.detector_error = "Confirm the hit near the wire before continuing."
             return
         if self.saved.football and segments and self.saved.football.phase != "bullup":
@@ -669,6 +669,8 @@ class LocalGames:
                 else:
                     self._event("board.events", {"event": "Takeout finished"})
                     self.detected = []
+            elif ready and action == "manual reset":
+                self._wipe_visit(board)
             else:
                 self.armed = False
                 self.detector_error = "Detection reset unexpectedly. Clear the board and select Next turn."
@@ -700,6 +702,20 @@ class LocalGames:
             if not self.saved.frame.turns[0].finished_at and self.saved.frame.winner < 0:
                 self.throw(segments[index], detected=True, coords=positions[index])
         self.detected = segments
+        self._event("board.state", board)
+
+    def _wipe_visit(self, board: dict) -> None:
+        """The detector cleared its darts, for example when a hand came into view, or
+        when Autodarts resets the board 2 s after a takeout. Oche follows its count:
+        the visit loses those darts and goes on with the darts detected next."""
+        saved = self._require_game()
+        if not (saved.tournament_id and saved.frame.winner >= 0):
+            saved.frame.turns[0].throws.clear()
+            saved.football_pending, saved.football_confirmed = None, {}
+            self._score(saved)
+            self._save(saved)
+            self._frame()
+        self.detected = []
         self._event("board.state", board)
 
     def confirm_football(self, dart: LocalDart) -> None:

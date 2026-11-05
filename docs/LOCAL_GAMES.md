@@ -133,7 +133,7 @@ to operate on the bundled detector; the event-source override does not redirect
 camera management. No account credentials are needed to read the local feed.
 
 Automatic scoring requires a local API that supplies scored segments. The adapter
-accepts cumulative states in the format that Autodarts 2.0.2 and OcheCore send:
+accepts cumulative states in the format that Autodarts 2.1.1 and OcheCore send:
 
 ```json
 {
@@ -151,11 +151,20 @@ There is no `numThrows`; the dart count is the length of `throws`. Coordinates a
 fractions of 170 mm, +x toward 6 and +y toward 20. Statuses and events are camelCase
 (`throw`, `takeout`, `takeoutInProgress`; `throwDetected`, `takeoutStarted`,
 `takeoutFinished`, `manualReset`, `calibrationFinished`), and Oche reads them as the
-cloud's words (`Takeout in progress`). A miss has multiplier 0 (bed `Outside`); bulls
-are `S25`/`D25`. A visit's first dart sometimes arrives while `event` still reads
-`manualReset`; since a reset clears the board, that state counts as a throw. The
-board resets an empty board about two seconds after each takeout; such a reset is
-not forwarded as a `manual_reset` event.
+cloud's words (`Takeout in progress`). Darts are scored from `segmentNumber` and
+`multiplier`. A miss has multiplier 0 and bed `Outside`, named after the segment
+beside it (`M15`). Autodarts sends a single bull as bed `Single`, name `25`, and a
+double bull as bed `Double`, name `Bull`; OcheCore names them `S25` and `D25`. A
+dart sometimes arrives while `event` still reads the previous `manualReset` or
+`takeoutFinished`; that state counts as a throw.
+
+Autodarts resets the board about two seconds after each takeout. A reset on an
+empty board changes nothing and is not forwarded as a `manual_reset` event. A reset
+that clears darts during a visit, such as that automatic reset after a quick first
+dart or one after a hand came into view, removes those darts from the visit, as
+Autodarts does, and scoring continues with the darts detected next. Lighting and
+the caller receive `manual_reset` and `throw_removed`. A completed tournament
+result is not changed.
 
 The older form, with `numThrows` and nested `segment` (`number`, `multiplier`) and
 `coords` (`x`, `y`), is still accepted:
@@ -174,8 +183,9 @@ with `throws` omitted) and explicit readiness (`Throw`, `Ready`, or `Ready for t
 board when connecting are ignored. Repeated snapshots do not score twice. Corrections
 to existing segments retain dart IDs and produce normalized correction events.
 Takeout snapshots do not delete scored darts; a confirmed takeout advances the
-visit, including a short visit. A manual detector reset preserves the visit and
-requires the user to clear the board and select **Next turn**.
+visit, including a short visit. A detector reset removes the visit's darts, as
+described above. Any other loss of darts outside a takeout stops scoring until the
+user clears the board and selects **Next turn**.
 
 After a connection loss or application restart, detection waits for a clear
 board. If the current visit contains scored darts, **Next turn** explicitly

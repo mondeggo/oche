@@ -12,7 +12,7 @@ _WORD = re.compile(r"(?<=[a-z])(?=[A-Z])")
 def board_words(value: str) -> str:
     """Name a board status or event the way Autodarts' cloud does.
 
-    Autodarts 2.0.2 and OcheCore send camelCase (``takeoutInProgress``); the cloud
+    Autodarts 2.1.1 and OcheCore send camelCase (``takeoutInProgress``); the cloud
     and older boards send words (``Takeout in progress``). Oche compares words.
     """
     words = _WORD.sub(" ", value.strip()).replace("_", " ").replace("-", " ").lower()

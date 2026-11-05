@@ -236,14 +236,17 @@ def test_unexpected_reset_and_reconnect_do_not_replay_darts(detected):
     assert detected.saved.frame.game_scores == [181]
 
 
-def test_manual_detector_reset_preserves_visit_and_waits_for_confirmation(detected):
+def test_detector_reset_removes_its_darts_and_keeps_scoring(detected):
     detected.consume_board(board())
     detected.consume_board(board((20, 3)))
     detected.consume_board(board(event="Manual reset"))
-    assert not detected.armed
-    assert detected.saved.frame.game_scores == [241]
+    assert detected.armed
+    assert detected.saved.frame.game_scores == [301]
+    assert detected.saved.frame.turns[0].throws == []
     assert len(detected.saved.frame.turns) == 1
-    assert len(events(detected, "manual_reset")) == 1
+    assert len(events(detected, "manual_reset")) == len(events(detected, "throw_removed")) == 1
+    detected.consume_board(board((19, 1)))
+    assert detected.saved.frame.game_scores == [282]
 
 
 def test_stopped_detector_preserves_visit_and_requires_running_detection(detected):
@@ -519,7 +522,7 @@ def test_dart_positions_from_detector_and_bots_are_kept_for_the_board(detected, 
 
 
 def flat(bed, multiplier, name, number, x=0.0, y=0.5, failed=False):
-    """A throw as Autodarts 2.0.2 and OcheCore list it."""
+    """A throw as Autodarts 2.1.1 and OcheCore list it."""
     return {
         "bed": bed, "bouncer": False, "coordsX": x, "coordsY": y, "failed": failed,
         "method": "UnanimousCam", "multiplier": multiplier, "segmentName": name, "segmentNumber": number,
@@ -530,7 +533,7 @@ def flat_board(event, status, *throws):
     return {"connected": True, "event": event, "running": True, "status": status, "throws": list(throws)}
 
 
-def test_autodarts_202_visit_scores_and_advances(detected):
+def test_autodarts_211_visit_scores_and_advances(detected):
     # One visit as the installed board sent it on 2026-11-05, including the first dart
     # listed under the preceding reset and the reset after the takeout.
     t20 = flat("Triple", 3, "T20", 20, -0.0098, 0.5761)
@@ -584,3 +587,32 @@ def test_flat_throws_need_a_consistent_count(detected):
     with pytest.raises(ConnectionProblem):
         detected.consume_board({**flat_board("throwDetected", "throw"), "throws": [{"bed": "Triple"}]})
     assert not events(detected, "throw")
+
+
+def test_autodarts_reset_after_a_takeout_drops_a_quick_dart(detected):
+    # Captured on 2026-11-05: a bull 1.6 s after a takeout, still under takeoutFinished,
+    # then the board's reset 2.06 s after the takeout clears it. Oche follows the count.
+    s6, bull = flat("SingleInner", 1, "S6", 6, 0.154, 0.006), flat("Single", 1, "25", 25, -0.008, 0.07)
+    next_bull, s10 = flat("Single", 1, "25", 25, 0.045, -0.055), flat("SingleInner", 1, "S10", 10, 0.171, -0.065)
+    double = flat("Double", 2, "Bull", 25, -0.014, -0.02)
+    for state in (
+        flat_board("manualReset", "throw"),
+        flat_board("throwDetected", "throw", s6),
+        flat_board("takeoutStarted", "takeoutInProgress", s6),
+        flat_board("takeoutFinished", "throw"),
+        flat_board("takeoutFinished", "throw", bull),
+        flat_board("throwDetected", "throw", bull),
+        flat_board("manualReset", "throw"),
+        flat_board("manualReset", "throw", next_bull),
+        flat_board("throwDetected", "throw", next_bull, double),
+        flat_board("throwDetected", "takeout", next_bull, double, s10),
+        flat_board("takeoutStarted", "takeoutInProgress", next_bull, double, s10),
+        flat_board("takeoutFinished", "throw"),
+    ):
+        detected.consume_board(state)
+    assert detected.armed and detected.detector_error is None
+    assert [[dart.segment.name for dart in turn.throws] for turn in reversed(detected.saved.frame.turns)] == [
+        ["S6"], ["S25", "D25", "S10"], [],
+    ]
+    assert detected.saved.frame.game_scores == [301 - 6 - 85]
+    assert len(events(detected, "throw_removed")) == len(events(detected, "manual_reset")) == 1
