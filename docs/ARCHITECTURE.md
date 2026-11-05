@@ -44,7 +44,7 @@ unselected engine is grey, and unsupported scoring stays amber rather than
 claiming readiness. A grey Manual indicator appears when Play selects manual
 scoring (also the fallback without enabled engines), and disappears when an
 engine is selected. `/api/status` supplies the engine snapshot and registered
-indicators so retained pages update them without reloading.
+indicators so open pages can refresh them without reloading.
 A `source` factory gives the runtime a game source:
 the runtime starts it, pauses it during local games, merges its status into
 `/api/status` and drops it when the integration is switched off. The Autodarts
@@ -71,15 +71,13 @@ does not require a cloud login; cloud readiness is reported separately.
 
 Every page renders the same sidebar (`app/templates/sidebar.html`). Camera Enhancer
 appears under Integrations; the local Autodarts supervisor appears under System.
-Home is one document, so switching between its sections preserves caller playback and draft
-form state. Its pages use direct routes such as `/integrations/caller`, `/profiles`
-and `/events`; old hash links are normalized on entry. The retained navigation
-shell maps those routes to one Home document and updates browser history without
-reloading audio or drafts. Camera Enhancer uses `/integrations/cameras`, with a
-redirect from the old supervisor query URL. Home, Camera Enhancer and System pages are
-retained during application navigation to keep browser audio, camera previews and
-setup sessions attached; when a retained page is shown again, only the sidebar's
-visibility and panel list are refreshed. Design tokens live in
+Home pages use direct routes such as `/integrations/caller`, `/profiles` and
+`/events`; old hash links are normalized on entry. Navigation is a normal browser
+page load, so each route, history entry and reload has one URL owner. Embedded engine
+terminals remain iframes inside their own integration pages, but Oche never embeds
+another complete Oche application. WLED effects continue in the server-side runtime
+when the browser navigates or reloads. Camera Enhancer uses `/integrations/cameras`,
+with a redirect from the old supervisor query URL. Design tokens live in
 `app/static/css/theme.css`; Home's styles are scoped to `.core-workspace` and map
 those tokens. Modal select menus remain inside the Home scope. The theme manager
 uses `/api/ui` on the same origin.

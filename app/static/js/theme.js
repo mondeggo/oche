@@ -47,7 +47,7 @@
     if (meta) meta.content = theme;
     refresh();
     if (changed) window.dispatchEvent(new CustomEvent('oche:themechange', { detail: { theme } }));
-    // Retained pages and Caller audio keep running while their appearance updates.
+    // Embedded Oche tools can share the current appearance. External panels keep their own.
     for (const frame of document.querySelectorAll('iframe')) {
       try {
         const child = frame.contentWindow;

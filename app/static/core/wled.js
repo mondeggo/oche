@@ -1484,7 +1484,12 @@ import {
     prepare: () => editor.prepare(),
     async reload() { await refreshing; await load(true); await refreshWled(true); },
   });
+  window.addEventListener("beforeunload", (event) => {
+    if (changed) {
+      event.preventDefault();
+      event.returnValue = "";
+    }
+  });
   window.addEventListener("hashchange", refreshWled);
-  window.addEventListener("oche:route", refreshWled);
   poll(refreshWled);
 })();

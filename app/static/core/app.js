@@ -291,7 +291,6 @@ $("events-pause").addEventListener("click", () => {
   if (!eventsPaused) refreshEvents();
 });
 window.addEventListener("hashchange", () => navigate(true));
-window.addEventListener("oche:route", () => navigate(true));
 navigate();
 poll(refresh);
 

@@ -5,27 +5,22 @@ import vm from "node:vm";
 import test from "node:test";
 import { sourceControls } from "../app/static/core/sources.mjs";
 import { callerTestState, eventSource } from "../app/static/core/client.mjs";
-import { canonicalUrl, homeRoutes, isHome, pageForUrl, persistent, viewKey } from "../app/static/js/routes.mjs";
+import { canonicalUrl, homeRoutes, isHome, pageForUrl } from "../app/static/js/routes.mjs";
 import { metricSeries } from "../app/static/js/metrics.mjs";
 
 const core = new URL("../app/static/core/", import.meta.url);
 
-test("legacy links resolve to direct routes and Home views share one retained document", () => {
+test("legacy links resolve to direct routes", () => {
   const base = "http://localhost:8180/";
   for (const [page, path] of Object.entries(homeRoutes)) {
     const url = canonicalUrl(`${base}#${page}`, base);
     assert.equal(url.pathname, path);
     assert.equal(url.hash, "");
     assert.equal(pageForUrl(url), page);
-    assert.equal(viewKey(url), "home");
-    assert.equal(persistent(path), true);
   }
   const camera = canonicalUrl("/supervisor?service=cameras", base);
   assert.equal(camera.pathname, "/integrations/cameras");
   assert.equal(isHome(camera.pathname), false);
-  assert.equal(persistent(camera.pathname), true);
-  assert.notEqual(viewKey(camera), "home");
-  assert.notEqual(viewKey(new URL("/supervisor?service=system", base)), viewKey(new URL("/supervisor?service=updates", base)));
 });
 
 test("home navigation opens Play instead of the removed Overview", () => {
@@ -37,85 +32,44 @@ test("home navigation opens Play instead of the removed Overview", () => {
   assert.equal(Object.hasOwn(homeRoutes, "overview"), false);
 });
 
-function navigationContext(path = "/integrations", parent = null) {
-  const handlers = {}, frames = [];
-  const original = { hidden: false };
-  let context, routeEvents = 0;
-  const history = { pushState: (state, title, href) => { context.location = new URL(href, context.location.href); } };
-  history.replaceState = history.pushState;
-  const document = { title: "Oche", getElementById: id => id === "oche-page" ? original : null,
-    addEventListener(type, listener) { handlers[type] = listener; }, body: { appendChild: frame => frames.push(frame) },
-    createElement: () => ({ hidden: true, listeners: {}, contentDocument: null,
-      remove() { this.removed = true; },
-      addEventListener(type, listener) { this.listeners[type] = listener; } }),
+function navigationContext(path = "/integrations") {
+  const navigations = [], replacements = [];
+  let context;
+  const location = new URL(path, "http://localhost:8180");
+  location.assign = href => navigations.push(href);
+  const history = {
+    replaceState(state, title, href) {
+      replacements.push(href);
+      context.location = new URL(href, context.location.href);
+    },
   };
-  context = vm.createContext({ URL, resolveUrl: canonicalUrl, isHome, persistent, viewKey,
-    location: new URL(path, "http://localhost:8180"), history, document,
-    Event: class { constructor(type) { this.type = type; } },
-    fetch: () => Promise.reject(new Error("Offline sidebar refresh")),
-    addEventListener: (type, listener) => { handlers[type] = listener; },
-    dispatchEvent: event => { if (event.type === "oche:route") routeEvents++; },
-  });
-  context.window = document.defaultView = context;
-  context.parent = parent || context;
-  const code = readFileSync(new URL("../app/static/js/navigation.js", import.meta.url), "utf8").replace(/^import .+;\r?\n/gm, "");
+  context = vm.createContext({ URL, resolveUrl: canonicalUrl, location, history });
+  context.window = context;
+  const code = readFileSync(new URL("../app/static/js/navigation.js", import.meta.url), "utf8")
+    .replace(/^import .+;\r?\n/gm, "");
   vm.runInContext(code, context);
-  return { context, frames, handlers, original, routeEvents: () => routeEvents };
+  return { context, navigations, replacements };
 }
 
-test("retained navigation updates direct URLs and back navigation preserves the camera view", () => {
-  const { context, frames, handlers, routeEvents } = navigationContext();
+test("programmatic navigation uses direct browser URLs", () => {
+  const { context, navigations } = navigationContext("/config");
   context.ocheNavigate("/integrations/caller");
-  assert.equal(context.location.pathname, "/integrations/caller");
-  assert.equal(frames.length, 0);
-  assert.ok(routeEvents() > 0);
-  context.ocheNavigate("/integrations/cameras");
-  assert.equal(frames.length, 1);
-  const camera = frames[0];
-  camera.draft = "preserved";
-  context.ocheNavigate("/events");
-  assert.equal(camera.hidden, true);
-  context.location = new URL("http://localhost:8180/integrations/cameras");
-  handlers.popstate();
-  assert.equal(frames.length, 1);
-  assert.equal(camera.hidden, false);
-  assert.equal(camera.draft, "preserved");
+  context.ocheNavigate("/local/tournament?id=example");
+  context.ocheNavigate("/");
+  assert.deepEqual(navigations, [
+    "http://localhost:8180/integrations/caller",
+    "http://localhost:8180/local/tournament?id=example",
+    "http://localhost:8180/local",
+  ]);
+  assert.equal(context.ocheNavigate, context.window.ocheNavigate);
 });
 
-test("tournament links and redirects in embedded Play update the outer URL and return to Play", () => {
-  const shell = navigationContext("/config");
-  shell.context.ocheNavigate("/local");
-  const play = navigationContext("/local", shell.context);
-  let prevented = false;
-  play.handlers.click({ button: 0, target: { closest: () => ({
-    href: "http://localhost:8180/local/tournament", hasAttribute: () => false,
-  }) }, preventDefault() { prevented = true; } });
-  assert.equal(prevented, true);
-  assert.equal(shell.context.location.pathname, "/local/tournament");
-  assert.equal(shell.frames[0].removed, true);
-  const tournament = navigationContext("/local/tournament", shell.context);
-  tournament.context.ocheNavigate("/local/tournament?id=example");
-  assert.equal(shell.context.location.search, "?id=example");
-  tournament.context.ocheNavigate("/local");
-  assert.equal(shell.context.location.pathname, "/local");
-  assert.equal(shell.context.location.search, "");
-  assert.equal(shell.frames.at(-1).src, "http://localhost:8180/local");
-  shell.context.location = new URL("http://localhost:8180/local/tournament?id=example");
-  shell.handlers.popstate();
-  assert.equal(shell.frames.at(-1).src, "http://localhost:8180/local/tournament?id=example");
-});
-
-test("a workspace that finishes loading late opens the latest requested integration", () => {
-  const { context, frames } = navigationContext("/config");
-  context.ocheNavigate("/integrations");
-  context.ocheNavigate("/integrations/caller");
-  assert.equal(frames.length, 1);
-  const home = { location: new URL("http://localhost:8180/integrations"), Event: context.Event,
-    dispatchEvent() {}, history: { replaceState(state, title, href) { home.location = new URL(href, home.location); } } };
-  frames[0].contentDocument = { defaultView: home, title: "Caller" };
-  frames[0].listeners.load();
-  assert.equal(home.location.pathname, "/integrations/caller");
-  assert.equal(context.location.pathname, "/integrations/caller");
+test("legacy entry URLs are replaced once and navigation never creates nested Oche documents", () => {
+  const { replacements } = navigationContext("/#events");
+  assert.deepEqual(replacements, ["http://localhost:8180/events"]);
+  const source = readFileSync(new URL("../app/static/js/navigation.js", import.meta.url), "utf8");
+  assert.equal(source.includes("iframe"), false);
+  assert.equal(source.includes("preventDefault"), false);
 });
 
 test("event sources distinguish raw local states and normalized local games from cloud traffic", () => {
@@ -344,7 +298,7 @@ test("camera activation persists sidebar visibility and a rejected save preserve
   assert.equal($("cameras-toggle").getAttribute("aria-checked"), "false");
   assert.equal($("nav-link-cameras").hidden, true);
   assert.equal($("cameras-integration-error").textContent, "Save failed");
-  // Settings changes also appear when the retained Home page polls again.
+  // Settings changes also appear when the open Home page polls again.
   saved = true;
   await context.refresh();
   assert.equal($("nav-link-cameras").hidden, false);

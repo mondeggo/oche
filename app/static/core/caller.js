@@ -510,7 +510,6 @@ import {
     },
   });
   window.addEventListener("hashchange", refreshCaller);
-  window.addEventListener("oche:route", refreshCaller);
   window.addEventListener("pagehide", () => {
     stopAudio();
     socket?.close();

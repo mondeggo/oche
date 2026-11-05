@@ -1095,7 +1095,6 @@ $("w2-discover").addEventListener("click", () => work(async () => {
 }));
 window.addEventListener("beforeunload", event => { if (dirty || editingName) { event.preventDefault(); event.returnValue = ""; } });
 window.addEventListener("hashchange", refresh);
-  window.addEventListener("oche:route", refresh);
 poll(refresh);
 const editor = {
   async prepare() {

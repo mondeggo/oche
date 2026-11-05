@@ -1,4 +1,4 @@
-// Keep the waiting screen in the outer page, above retained service iframes.
+// Keep the waiting screen in the page that owns the update, above embedded tools.
 (() => {
   let owner = window;
   try {
@@ -85,7 +85,7 @@
         stop();
         heading.textContent = tr("Oche is ready");
         description.textContent = tr("Reloading the interface…");
-        location.reload(); // Reload the outer shell and all retained views.
+        location.reload();
       }
       return;
     }

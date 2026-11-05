@@ -1,5 +1,22 @@
 # Validation
 
+## Navigation and football defaults (2026-11-05)
+
+- Automated: 814 Python tests passed, 2 skipped and 82 subtests passed. Both
+  JavaScript files passed 71 tests, including direct browser navigation, legacy
+  URL canonicalisation, football defaults and the absence of nested Oche
+  documents.
+- Ruff on the repository's configured CI scope, translation coverage, JavaScript
+  syntax and whitespace checks passed.
+- WLED event automation remains in the server-side runtime. The navigation change
+  does not alter effect dispatch; WLED list edits now retain the existing
+  unsaved-changes protection when leaving the page.
+- New football games default to rounds, bull-or-inner-single kick-off, beginner
+  movement and own goals. The reference dartboard is shown in the right panel.
+- Browser interaction and visual acceptance were not run for this change.
+- Docker and hardware acceptance were not run. No camera or physical WLED
+  controller was used.
+
 ## Integration status and manual fallback (2026-11-04)
 
 - All 721 Python tests and 82 subtests passed. Sidebar/API checks cover no enabled
