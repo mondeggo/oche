@@ -24,7 +24,7 @@ Point `OCHE_UPDATE_FEED` at a release's `updates.json`, for example
 Build the container for the target architecture:
 
 ```sh
-docker build -f docker/Dockerfile --platform linux/amd64 --build-arg OCHE_VERSION=0.2.0 -t oche:local .
+docker build -f docker/Dockerfile --platform linux/amd64 --build-arg OCHE_VERSION=0.3.0 -t oche:local .
 ```
 
 Use `linux/arm64` for ARM64. The dependency environment is locked by `uv.lock`.
@@ -35,7 +35,7 @@ Export the application bundle and manifest from the prepared image:
 mkdir -p output
 docker run --rm --user root -v "$PWD/output:/output" --entrypoint python oche:local \
   /opt/oche-tools/package_updates.py \
-  --base-url https://YOUR-RELEASE-HOST/oche/v0.2.0
+  --base-url https://YOUR-RELEASE-HOST/oche/v0.3.0
 ```
 
 Host the archive at the declared HTTPS URL. For multiple architectures, combine

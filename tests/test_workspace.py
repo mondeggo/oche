@@ -9,6 +9,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 import oche_runtime as store
+from app import __version__
 from app.core.config import Settings
 from app.main import create_app
 from app.navigation import HOME_ROUTES
@@ -49,6 +50,7 @@ def test_workspace_assets_and_ids_are_valid_and_core_has_no_second_application(a
         for asset in document.assets:
             assert client.get(asset).status_code == 200, asset
         assert "app-profile" in document.ids
+        assert f"Oche {__version__}" in page.text
         assert not hasattr(application.state.runtime.settings, "port")
         assert not hasattr(application.state.runtime.settings, "host")
         assert client.get("/healthz").json()["ok"] is True

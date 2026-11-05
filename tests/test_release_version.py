@@ -1,7 +1,10 @@
 import subprocess
+import tomllib
+from pathlib import Path
 
 import pytest
 
+from app import __version__
 from scripts import release_version
 
 
@@ -20,6 +23,11 @@ def test_current_project_version_is_publishable():
     version, changed = release_version.detect(None)
     assert release_version.check(version) == version
     assert changed is True
+
+
+def test_runtime_version_matches_project():
+    project = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
+    assert __version__ == project["project"]["version"]
 
 
 def test_unchanged_version_is_not_published_again(tmp_path, monkeypatch):

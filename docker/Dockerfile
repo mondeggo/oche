@@ -44,9 +44,10 @@ ENV OCHE_BUNDLES_DIR=/opt/oche-dev-bundles OCHE_DEV_RELOAD=1
 # Produce the same archive format shipped by the application release workflow.
 FROM runtime AS packages
 USER root
-ARG OCHE_VERSION=0.2.0
+ARG OCHE_VERSION=
 COPY app /opt/oche-bundles/oche/app
-RUN printf '%s\n' "$OCHE_VERSION" > /opt/oche-bundles/oche/VERSION \
+RUN OCHE_VERSION="${OCHE_VERSION:-$(python -c 'import tomllib; print(tomllib.load(open("/app/pyproject.toml", "rb"))["project"]["version"])')}" \
+    && printf '%s\n' "$OCHE_VERSION" > /opt/oche-bundles/oche/VERSION \
     && python /opt/oche-tools/package_updates.py --runtime-only \
     && python /opt/oche-tools/package_updates.py --base-url https://build.invalid/releases
 
