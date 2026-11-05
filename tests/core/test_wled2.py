@@ -89,6 +89,29 @@ def test_matrix_lights_start_with_their_event_effects_off():
     assert all(effect.enabled for effect in kept.rules.effects.values())
 
 
+def test_split_panels_are_drawn_as_one_chain_from_the_controller():
+    # A panel split on the WLED page saves both halves on one 2D segment, neither wired
+    # after the other; the canvas shows controller → My score → Opponent score.
+    config = scene().compile()
+    for target in config.devices[0].targets:
+        target.placement = None
+    lights = {light.id: light for light in Layout.from_config(config).lights}
+    assert lights["mine"].connection.after_light_id is None
+    assert lights["opponent"].connection.after_light_id == "mine"
+    assert lights["ring"].connection.after_light_id is None
+    # Panel order follows their place on the segment, not the list order.
+    config.devices[0].targets.reverse()
+    lights = {light.id: light for light in Layout.from_config(config).lights}
+    assert lights["opponent"].connection.after_light_id == "mine"
+    # Wiring drawn on the canvas is kept as saved.
+    layout = scene()
+    layout.lights[1].connection.after_light_id = "opponent"
+    layout.lights[2].connection.after_light_id = None
+    lights = {light.id: light for light in Layout.from_config(layout.compile()).lights}
+    assert lights["mine"].connection.after_light_id == "opponent"
+    assert lights["opponent"].connection.after_light_id is None
+
+
 def test_chain_preserves_address_ranges_and_matrix_panels():
     layout = scene()
     layout.lights[2].connection.after_light_id = "mine"

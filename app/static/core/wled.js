@@ -945,6 +945,17 @@ import {
         opponent.name = tr("Opponent score");
         opponent.matrix.x += width;
         opponent.matrix.source = "opponent_remaining";
+        // On the visual canvas the second panel sits beside the first, wired after it.
+        if (target.placement) {
+          const place = target.placement;
+          opponent.placement = {
+            ...place,
+            id: null,
+            position: { x: Math.min(1000, place.position.x + place.width + 30), y: place.position.y },
+            after_light_id: place.id || target.id,
+            wired: true,
+          };
+        }
         current.targets.push(opponent);
         render();
         markChanged();

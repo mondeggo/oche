@@ -2,6 +2,7 @@
 
 import asyncio
 import hashlib
+from itertools import pairwise
 from typing import Literal
 
 from pydantic import Field, model_validator
@@ -212,6 +213,19 @@ class Layout(Model, PlaySources):
                     parent.connection.controller_id, parent.connection.segment
                 ) != (wire.controller_id, wire.segment):
                     wire.after_light_id = None
+        # Panels split from one 2D segment sit side by side on it, and its data line runs
+        # from the controller through each panel in turn. Without saved canvas wiring,
+        # draw that chain in panel order instead of a wire from the controller to each.
+        panels = {}
+        for light in lights:
+            wire = light.connection
+            if light.kind == "matrix" and wire and wire.controller_id is not None:
+                panels.setdefault((wire.controller_id, wire.segment), []).append(light)
+        for group in panels.values():
+            if len(group) > 1 and not any(light.connection.after_light_id for light in group):
+                group.sort(key=lambda light: (light.matrix.y, light.matrix.x))
+                for previous, light in pairwise(group):
+                    light.connection.after_light_id = previous.id
         return cls(enabled=config.enabled, run_on_cloud=config.run_on_cloud,
                    run_on_local=config.run_on_local, board=config.board,
                    controllers=controllers, lights=lights)
