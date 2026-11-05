@@ -576,5 +576,13 @@ test("checkout hints remain unthrown slots and preserve manual entry", () => {
   assert.equal(actual.firstElementChild.textContent, "S20");
   const cleared = context.dartSlot(null, 1, false, true);
   assert.equal(cleared.dataset.hint, undefined);
-  assert.equal(cleared.firstElementChild.children[0].textContent, "2");
+  // Like OcheCore, an empty slot reads "–", with no number or "Enter" caption.
+  assert.equal(cleared.firstElementChild.children[0].textContent, "–");
+  assert.equal(cleared.firstElementChild.children.length, 1);
+  assert.equal(context.dartSlot(null, 2, false, false).textContent, "–");
+  // In a manual game the last dart is a button that takes it back.
+  const last = context.dartSlot({ segment: { name: "T20", number: 20, multiplier: 3 } }, 1, true, false, null, false, false, true);
+  assert.equal(last.firstElementChild.tag, "button");
+  assert.equal(last.firstElementChild.className, "game-dart-remove");
+  assert.equal(last.firstElementChild.attributes["aria-label"], "Take back dart 2: T20");
 });

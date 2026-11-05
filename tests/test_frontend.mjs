@@ -10,7 +10,7 @@ import { engineHealth, localEventsHealth, localHealth, manualHealth, syncHealthR
 import { cloudHealth } from "../app/core/integrations/autodarts/static/health.mjs";
 import { CELLS, ORDER as FOOTBALL_ORDER, cellOutline, cellPosition, cellDart, pitchPoint, goalNet } from "../app/static/core/football-pitch.mjs";
 import { dartRegion, pitchPosition } from "../app/static/core/football.mjs";
-import { boardMarkup, boardPoint, checkout, funnyName, hitKey, playerStats, seats } from "../app/static/core/game.mjs";
+import { WDF_RINGS, boardMarkup, boardPoint, checkout, funnyName, hitKey, hitRegion, playerStats, seats } from "../app/static/core/game.mjs";
 
 function appearanceContext(messages = {}, fetcher = async () => ({ ok: true,
   json: async () => ({ theme: "dark", language: "en", profile_id: "default" }) })) {
@@ -599,6 +599,16 @@ test("the board marks segments by key and places coordinates with y pointing up"
   assert.ok(markup.indexOf("board-wires") < markup.indexOf("board-number"));
   assert.equal(markup.match(/class="board-number"/g).length, 20);
   assert.ok(markup.endsWith('<g class="board-darts"></g>'));
+  // X01 draws OcheCore's 9.7 mm rings; the default keeps the rings Oche scores football with.
+  assert.ok(boardMarkup(WDF_RINGS).includes(`<circle r="${WDF_RINGS.tripleIn}"/>`));
+  assert.equal(WDF_RINGS.tripleIn, 57.47);
+  assert.ok(!markup.includes('<circle r="57.47"/>'));
+  assert.equal(hitRegion({ number: 20, multiplier: 1 }, { x: 0, y: 100 / 170 }), "I20");
+  assert.equal(hitRegion({ number: 20, multiplier: 1 }, { x: 0, y: 110 / 170 }), "O20");
+  assert.equal(hitRegion({ number: 20, multiplier: 1 }, null), null);
+  assert.equal(hitRegion({ number: 20, multiplier: 3 }, null), "T20");
+  assert.equal(hitRegion({ number: 25, multiplier: 2 }, null), "B");
+  assert.equal(hitRegion({ number: 0, multiplier: 0 }, { x: 1, y: 1 }), null);
 });
 
 test("players are seated clockwise around the board", () => {

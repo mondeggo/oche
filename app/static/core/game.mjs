@@ -80,7 +80,11 @@ export function funnyName(taken = [], bot = false, random = Math.random) {
 /* Dartboard drawing: 100 units is the outer edge of the double ring, as in dart coordinates. */
 export const BOARD_ORDER = [20, 1, 18, 4, 13, 6, 10, 15, 2, 17, 3, 19, 7, 16, 8, 11, 14, 9, 12, 5];
 const MM = value => Number((value / 170 * 100).toFixed(2));
-const RING = { bull: MM(6.35), outerBull: MM(15.9), tripleIn: MM(99), tripleOut: MM(107), doubleIn: MM(162), doubleOut: 100 };
+/* The rings Oche scores bots and football with. */
+export const OCHE_RINGS = { bull: MM(6.35), outerBull: MM(15.9), tripleIn: MM(99), tripleOut: MM(107), doubleIn: MM(162), doubleOut: 100 };
+/* WDF rings between wire centres, 9.7 mm wide, as OcheCore draws and scores them. X01 shows the
+   darts a vision engine scored, so its board is drawn like OcheCore's. */
+export const WDF_RINGS = { bull: MM(6.35), outerBull: MM(15.9), tripleIn: MM(97.7), tripleOut: MM(107.4), doubleIn: MM(160.3), doubleOut: 100 };
 
 function polar(radius, degrees) {
   const angle = degrees * Math.PI / 180;
@@ -95,7 +99,7 @@ function sector(inner, outer, from, to) {
 
 /** Static SVG content for the board; segments carry data-hit keys such as T20, S25 or D25.
     Wires are drawn once over the beds, as rings and spokes, like OcheCore's live board. */
-export function boardMarkup() {
+export function boardMarkup(RING = OCHE_RINGS) {
   // OcheCore's proportions: a 222 mm surround with the numbers at 199 mm.
   const parts = [`<circle r="${MM(222)}" class="board-surround"/>`];
   BOARD_ORDER.forEach((number, index) => {
@@ -122,6 +126,17 @@ export function boardMarkup() {
   });
   parts.push('<g class="board-darts"></g>');
   return parts.join("");
+}
+
+/** The data-region of a scored dart: its single half from the position, split in the middle of
+    the treble as OcheCore does, so it suits either ring set. Null for a miss or an unplaced single. */
+export function hitRegion(segment, coords) {
+  const { number, multiplier } = segment || {};
+  if (!number || !multiplier) return null;
+  if (number === 25) return multiplier === 2 ? "B" : "OB";
+  if (multiplier !== 1) return `${multiplier === 3 ? "T" : "D"}${number}`;
+  if (!coords) return null;
+  return `${Math.hypot(coords.x, coords.y) * 170 < 102.5 ? "I" : "O"}${number}`;
 }
 
 /** The data-hit key of a scored segment, or null for a miss. */

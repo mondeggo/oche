@@ -1,6 +1,6 @@
 import { tr } from "../js/i18n.mjs";
 import { $, api } from "./client.mjs";
-import { boardMarkup, boardPoint, checkout, funnyName, hitKey, playerStats, seats } from "./game.mjs";
+import { WDF_RINGS, boardMarkup, boardPoint, checkout, funnyName, hitKey, hitRegion, playerStats, seats } from "./game.mjs";
 
 import { cellDart } from "./football-pitch.mjs";
 import { dartRegion, regionLabel, renderFootball } from "./football.mjs";
@@ -208,7 +208,7 @@ function dartSlot(dart, index, latest, next = false, hint = null, football = fal
   slot.className = "game-dart";
   if (!dart) {
     slot.dataset.empty = "true";
-    slot.textContent = String(index + 1);
+    slot.textContent = "–";
     slot.setAttribute("aria-label", tr("Dart {0}: not thrown", { 0: index + 1 }));
     if (next) {
       slot.dataset.next = "true";
@@ -219,10 +219,13 @@ function dartSlot(dart, index, latest, next = false, hint = null, football = fal
       button.setAttribute("aria-haspopup", "dialog");
       button.setAttribute("aria-controls", "local-manual");
       const number = document.createElement("span");
-      number.textContent = hint ? tr(hint) : String(index + 1);
-      const label = document.createElement("small");
-      label.textContent = hint ? tr("Suggested") : tr("Enter");
-      button.append(number, label);
+      number.textContent = hint ? tr(hint) : "–";
+      button.append(number);
+      if (hint) {
+        const label = document.createElement("small");
+        label.textContent = tr("Suggested");
+        button.append(label);
+      }
       slot.replaceChildren(button);
     }
     if (hint) {
@@ -298,7 +301,7 @@ function renderBoard(turn) {
   const marks = [];
   turn.throws.forEach((dart, index) => {
     const state = index === turn.throws.length - 1 ? "latest" : "hit";
-    const region = dart.coords && dart.segment?.number ? dartRegion(dart) : null;
+    const region = hitRegion(dart.segment, dart.coords);
     const key = hitKey(dart.segment);
     const beds = region ? board.querySelectorAll(`[data-region="${region}"]`)
       : key ? board.querySelectorAll(`[data-hit="${key}"]`) : [];
@@ -330,7 +333,14 @@ function renderBoard(turn) {
 /* Players sit on both sides of the board. In X01 the current visit is a line above the board,
    as on OcheCore's live board. In football it stays below, and a single player keeps it under
    their card so the board can use the full height. */
+let boardRings = null;
 function placeStage(count, board, football) {
+  const rings = football ? "oche" : "wdf";
+  if (rings !== boardRings) {
+    boardRings = rings;
+    $("local-board-svg").innerHTML = boardMarkup(football ? undefined : WDF_RINGS);
+    revision = "";
+  }
   const stage = $("local-stage");
   stage.dataset.board = String(board);
   stage.dataset.count = String(count);

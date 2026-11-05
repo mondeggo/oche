@@ -102,11 +102,9 @@ button.game-mode .game-tag { border-color: var(--outline); background: var(--lim
 .game-auto { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 
 /* Game screen */
-/* The exit button on the left with the game's details, title first, as rounded badges below it. */
-/* Who is throwing sits in the header row, centred over the board, level with End game. */
-.game-bar { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: start; column-gap: 16px; margin-bottom: 12px; }
-.game-bar > .game-turn-head { grid-column: 2; min-height: 40px; }
-.game-bar-side { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; min-width: 0; }
+/* One compact line: the game's details as rounded badges, title first, then End game.
+   Who is throwing sits under the board. */
+.game-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin-bottom: 12px; }
 .game-bar-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .game-bar-actions .game-back { margin: 0; }
 .game-bar .game-title { margin: 0; border-color: var(--outline); background: var(--lime); color: var(--on-pop); font-family: var(--font-body); font-size: .8rem; font-weight: 800; line-height: normal; letter-spacing: 0; }
@@ -161,7 +159,7 @@ button.game-mode .game-tag { border-color: var(--outline); background: var(--lim
 
 /* Dartboard, scaled to the space between the players and the window height */
 /* --board-fit is set by the page so the whole game screen fits the window height. */
-.game-board { width: max(300px, min(var(--board-fit, 100dvh - 270px), 100cqw - 404px)); margin: 0; border-radius: 50%; filter: drop-shadow(0 6px 0 var(--pop-color)); transition: box-shadow .3s ease; }
+.game-board { width: max(300px, min(var(--board-fit, 100dvh - 270px), 100cqw - 404px)); margin: 0; border-radius: 50%; filter: drop-shadow(0 14px 14px var(--shadow)); transition: box-shadow .3s ease; }
 .game-board[data-halo="red"] { --halo: var(--danger-bright); }
 .game-board[data-halo="yellow"] { --halo: var(--warning); }
 .game-board[data-halo="green"] { --halo: var(--success-bright); }
@@ -204,7 +202,7 @@ button.game-mode .game-tag { border-color: var(--outline); background: var(--lim
 .game-dart { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; height: 84px; min-width: 0; padding: 6px; overflow: hidden; border: var(--line-width) solid var(--outline); border-radius: var(--radius-sm); background: var(--card); box-shadow: var(--pop-sm); font-variant-numeric: tabular-nums; }
 .game-dart span { max-width: 100%; overflow: hidden; font-family: var(--font-display); font-size: 2.6rem; line-height: 1.1; text-overflow: ellipsis; white-space: nowrap; }
 .game-dart small { color: var(--fg-dim); font-size: .8rem; font-weight: 700; line-height: 1; }
-.game-dart[data-empty="true"] { border-style: dashed; border-color: var(--border-strong); background: var(--bg-inset); box-shadow: none; color: var(--border-strong); font-size: 1rem; font-weight: 700; }
+.game-dart[data-empty="true"] { border-style: dashed; border-color: var(--border-strong); background: var(--bg-inset); box-shadow: none; color: var(--border-strong); font-size: 1.8rem; font-weight: 700; }
 .game-dart[data-latest="true"] { box-shadow: var(--pop-sm), inset 0 -4px 0 var(--primary); }
 .game-visit-total { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 84px; padding: 6px 12px; border: var(--line-width) solid var(--outline); border-radius: var(--radius-sm); background: var(--lime); color: var(--on-pop); box-shadow: var(--pop-sm); }
 .game-visit-total span { font-family: var(--font-mono); font-size: .66rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; opacity: .8; }
@@ -240,7 +238,7 @@ button.game-mode .game-tag { border-color: var(--outline); background: var(--lim
 
 /* A slight offset balances the board against the solo player's card and visit. */
 @media (min-width: 1201px) {
-  .game-screen[data-solo="true"] :is(.game-center, .game-turn-head) { transform: translateX(clamp(16px, 3vw, 48px)); }
+  .game-screen[data-solo="true"] .game-center { transform: translateX(clamp(16px, 3vw, 48px)); }
 }
 
 /* When three columns no longer fit, stack the solo player and board centrally. */
@@ -251,8 +249,6 @@ button.game-mode .game-tag { border-color: var(--outline); background: var(--lim
 }
 
 @media (max-width: 900px) {
-  .game-bar { grid-template-columns: minmax(0, 1fr); row-gap: 12px; }
-  .game-bar > .game-turn-head { grid-column: 1; min-height: 0; }
   #main:has(.game-page[data-view="setup"]) { --setup-gutter: 20px; }
   .game-stage { display: flex; flex-wrap: wrap; gap: 16px; }
   .game-stage .game-side { display: contents; }

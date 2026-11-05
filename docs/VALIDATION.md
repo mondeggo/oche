@@ -16,6 +16,10 @@
   gone, and the last manual dart is a button that takes it back (checked in the
   rendered page and through `/api/local/undo`); the surround is 222 mm with the
   numbers at 199 mm. Headless Edge, dark theme, 1400 × 900.
+- Then: the game's badges and End game share one line, who throws sits under the
+  board, empty dart slots read "–", and the X01 board uses OcheCore's 9.7 mm
+  rings and a soft shadow (football keeps Oche's scoring rings). Headless Edge,
+  light theme, 1400 × 900, beside a screenshot of OcheCore's live page.
 
 ## OcheCore scoring and the Autodarts 2.1.1 board format (2026-11-05)
 
