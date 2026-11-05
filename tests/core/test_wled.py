@@ -1263,6 +1263,21 @@ async def test_native_matrix_scores_must_fit_segment_geometry(width, height, sta
         validate_capabilities(board, info)
 
 
+@pytest.mark.parametrize(
+    "source,color",
+    [
+        ("remaining", "#ff0000"),
+        ("turn_score", "#ff0000"),
+        ("local_remaining", "#00ff00"),
+        ("opponent_remaining", "#ff0000"),
+    ],
+)
+def test_score_digits_default_to_red_and_my_score_to_green(source, color):
+    assert Matrix(source=source).appearance.color == color
+    # A colour the user chose, white included, is kept.
+    assert Matrix(source=source, appearance={"color": "#ffffff"}).appearance.color == "#ffffff"
+
+
 def score_panels():
     return device(
         targets=[

@@ -110,7 +110,8 @@ class Matrix(Model):
         "last_dart",
     ] = "remaining"
     player_slot: PlayerSlot = 1
-    appearance: Appearance = Field(default_factory=Appearance)
+    # Red digits, like a classic darts scoreboard.
+    appearance: Appearance = Field(default_factory=lambda: Appearance(color="#ff0000"))
 
     @model_validator(mode="after")
     def valid_dimensions(self):

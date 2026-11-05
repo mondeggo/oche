@@ -150,7 +150,7 @@ import {
       serpentine: true,
       rotation: 0,
       source: "remaining",
-      appearance: appearance(),
+      appearance: appearance("#ff0000"),
     },
   });
 
