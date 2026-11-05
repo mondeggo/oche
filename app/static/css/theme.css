@@ -49,14 +49,20 @@
   --shadow: #00000066;
   --overlay: #1A2B23EB;
   --toggle-thumb: #FFFDF7;
-  --board-surround: #0B140F;
-  --board-number: #F5F1E7;
-  --board-dark: #1E2622;
-  --board-light: #F4E8CC;
-  --board-red: #E0483C;
-  --board-green: #2B8A60;
-  --board-wire: #8A938E;
-  --board-hit: #3CC8F5;
+  /* High-contrast board, as on OcheCore's live board: near-black and cream singles,
+     saturated rings. Darts 1-3 have their own colours, none of them the yellow of a hit bed. */
+  --board-surround: #131A17;
+  --board-number: #FBF4E4;
+  --board-dark: #07090B;
+  --board-light: #ECD5C4;
+  --board-red: #E3263F;
+  --board-green: #00975A;
+  --board-wire: #A7B8BF;
+  --board-hit: #FFD463;
+  --board-ink: #17261F;
+  --board-dart-1: #FFFDF7;
+  --board-dart-2: #8BDEF4;
+  --board-dart-3: #FF7B66;
 
   /* Pop colours keep the same value in both themes; text on them is always ink. */
   --lime: #DDF56F;

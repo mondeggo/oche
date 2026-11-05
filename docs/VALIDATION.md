@@ -1,5 +1,17 @@
 # Validation
 
+## X01 dartboard look (2026-11-06)
+
+- Automated: 830 Python tests passed, 2 skipped and 82 subtests passed. Both
+  JavaScript files passed 71 tests, including the board's single wire layer (six
+  rings, twenty spokes) between the beds and the numbers.
+- Browser acceptance (headless Microsoft Edge, 1400 × 900 at 1× and 2×, dark and
+  light): a manual X01 game with S20 (outer), T20 and S1 (inner) shows each dart's
+  bed tinted yellow, darts 1–3 as cream, cyan and coral dots numbered above, and
+  the newest pulsing. Not verified: detected darts from a running engine, the
+  faded board while detection is stopped, and the football boards that share the
+  drawing.
+
 ## OcheCore scoring and the Autodarts 2.1.1 board format (2026-11-05)
 
 - Automated: 825 Python tests passed, 2 skipped and 82 subtests passed. Both

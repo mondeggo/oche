@@ -591,6 +591,14 @@ test("the board marks segments by key and places coordinates with y pointing up"
   assert.equal(hitKey({ number: 0, multiplier: 1 }), null);
   assert.deepEqual(boardPoint({ x: 0, y: 0.6 }), [0, -60]);
   assert.deepEqual(boardPoint({ x: 3, y: 0 }), [120, 0]);
+  // Wires are one layer of six rings and twenty spokes, drawn over the beds and under the numbers.
+  const wires = markup.slice(markup.indexOf('<g class="board-wires">'), markup.indexOf("</g>"));
+  assert.equal(wires.match(/<circle /g).length, 6);
+  assert.equal(wires.match(/<path /g).length, 20);
+  assert.ok(markup.indexOf('data-region="B"') < markup.indexOf("board-wires"));
+  assert.ok(markup.indexOf("board-wires") < markup.indexOf("board-number"));
+  assert.equal(markup.match(/class="board-number"/g).length, 20);
+  assert.ok(markup.endsWith('<g class="board-darts"></g>'));
 });
 
 test("players are seated clockwise around the board", () => {

@@ -93,7 +93,8 @@ function sector(inner, outer, from, to) {
   return `M${ax} ${ay}A${outer} ${outer} 0 0 1 ${bx} ${by}L${cx} ${cy}A${inner} ${inner} 0 0 0 ${dx} ${dy}Z`;
 }
 
-/** Static SVG content for the board; segments carry data-hit keys such as T20, S25 or D25. */
+/** Static SVG content for the board; segments carry data-hit keys such as T20, S25 or D25.
+    Wires are drawn once over the beds, as rings and spokes, like OcheCore's live board. */
 export function boardMarkup() {
   const parts = ['<circle r="125" class="board-surround"/>'];
   BOARD_ORDER.forEach((number, index) => {
@@ -105,11 +106,20 @@ export function boardMarkup() {
       `<path d="${sector(RING.tripleOut, RING.doubleIn, from, to)}" class="board-${single}" data-hit="S${number}" data-region="O${number}"/>`,
       `<path d="${sector(RING.doubleIn, RING.doubleOut, from, to)}" class="board-${ring}" data-hit="D${number}" data-region="D${number}"/>`,
     );
-    const [x, y] = polar(112, index * 18);
-    parts.push(`<text x="${x}" y="${y}" class="board-number">${number}</text>`);
   });
   parts.push(`<circle r="${RING.outerBull}" class="board-green" data-hit="S25" data-region="OB"/>`,
-    `<circle r="${RING.bull}" class="board-red" data-hit="D25" data-region="B"/>`, '<g class="board-darts"></g>');
+    `<circle r="${RING.bull}" class="board-red" data-hit="D25" data-region="B"/>`);
+  const wires = Object.values(RING).map(radius => `<circle r="${radius}"/>`);
+  BOARD_ORDER.forEach((_, index) => {
+    const [ax, ay] = polar(RING.outerBull, index * 18 - 9), [bx, by] = polar(RING.doubleOut, index * 18 - 9);
+    wires.push(`<path d="M${ax} ${ay}L${bx} ${by}"/>`);
+  });
+  parts.push(`<g class="board-wires">${wires.join("")}</g>`);
+  BOARD_ORDER.forEach((number, index) => {
+    const [x, y] = polar(115, index * 18);
+    parts.push(`<text x="${x}" y="${y}" class="board-number">${number}</text>`);
+  });
+  parts.push('<g class="board-darts"></g>');
   return parts.join("");
 }
 

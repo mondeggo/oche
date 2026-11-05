@@ -281,29 +281,36 @@ function playerCard(player, index, frame, stats, won, setup) {
   return card;
 }
 
-/* Marks the visit's darts: a numbered dot where coordinates exist, else the segment hit. The newest one blinks. */
+/* Marks the visit's darts like OcheCore's live board: each dart's bed is tinted, and a dart
+   with coordinates is a small dot in its own colour with its number above. The newest one pulses. */
 function renderBoard(turn) {
   const board = $("local-board-svg");
   for (const path of board.querySelectorAll("[data-state]")) delete path.dataset.state;
   const marks = [];
   turn.throws.forEach((dart, index) => {
     const state = index === turn.throws.length - 1 ? "latest" : "hit";
-    if (!dart.coords) {
-      const key = hitKey(dart.segment);
-      if (key) for (const path of board.querySelectorAll(`[data-hit="${key}"]`)) path.dataset.state = state;
-      return;
-    }
+    const region = dart.coords && dart.segment?.number ? dartRegion(dart) : null;
+    const key = hitKey(dart.segment);
+    const beds = region ? board.querySelectorAll(`[data-region="${region}"]`)
+      : key ? board.querySelectorAll(`[data-hit="${key}"]`) : [];
+    // Without a position, the blinking bed is the only sign of the newest dart.
+    for (const path of beds) path.dataset.state = dart.coords ? "hit" : state;
+    if (!dart.coords) return;
     const [x, y] = boardPoint(dart.coords);
     const mark = document.createElementNS(SVG, "g");
     mark.setAttribute("class", "game-dart-mark");
     mark.dataset.state = state;
+    mark.dataset.dart = String(index % 3 + 1);
     mark.setAttribute("transform", `translate(${x} ${y})`);
     const pulse = document.createElementNS(SVG, "circle");
     pulse.setAttribute("class", "game-dart-pulse");
-    pulse.setAttribute("r", "6");
+    pulse.setAttribute("r", "2.2");
+    // About the size of a dart's barrel, so it marks a spot within a ring.
     const dot = document.createElementNS(SVG, "circle");
-    dot.setAttribute("r", "6");
+    dot.setAttribute("class", "game-dart-dot");
+    dot.setAttribute("r", "2.2");
     const label = document.createElementNS(SVG, "text");
+    label.setAttribute("y", "-5.6");
     label.textContent = String(index + 1);
     mark.append(pulse, dot, label);
     marks.push(mark);

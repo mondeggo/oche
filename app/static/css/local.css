@@ -172,13 +172,19 @@ button.game-mode .game-tag { border-color: var(--outline); background: var(--lim
 .board-light { fill: var(--board-light); }
 .board-red { fill: var(--board-red); }
 .board-green { fill: var(--board-green); }
-.game-board [data-hit] { stroke: var(--board-wire); stroke-width: .4; }
-.board-number { fill: var(--board-number); font-size: 11px; font-weight: 700; text-anchor: middle; dominant-baseline: central; }
+/* Wires are one layer over the beds, as on OcheCore's live board; clicks reach the beds. */
+.board-wires { fill: none; stroke: var(--board-wire); stroke-width: .45; stroke-linejoin: round; opacity: .72; pointer-events: none; }
+.board-number { fill: var(--board-number); font-family: var(--font-display); font-size: 12.5px; font-weight: 800; text-anchor: middle; dominant-baseline: central; pointer-events: none; }
 .game-board path[data-state], .game-board circle[data-state] { fill: var(--board-hit); }
 .game-board [data-hit][data-state="latest"] { animation: game-blink 1s ease-in-out infinite; }
-.game-dart-mark circle { fill: var(--board-hit); stroke: var(--board-surround); stroke-width: 1.2; }
-.game-dart-mark text { fill: var(--board-surround); font-size: 8px; font-weight: 800; text-anchor: middle; dominant-baseline: central; }
-.game-dart-mark .game-dart-pulse { fill: none; stroke: var(--board-hit); stroke-width: 2; opacity: 0; transform-box: fill-box; transform-origin: center; }
+/* A stopped detector cannot score, so the board fades like OcheCore's. */
+.game-board[data-halo="red"] svg { opacity: .55; transition: opacity .2s ease; }
+.game-dart-mark { --dart: var(--board-dart-1); pointer-events: none; }
+.game-dart-mark[data-dart="2"] { --dart: var(--board-dart-2); }
+.game-dart-mark[data-dart="3"] { --dart: var(--board-dart-3); }
+.game-dart-dot { fill: var(--dart); stroke: var(--board-ink); stroke-width: .8; }
+.game-dart-mark text { fill: var(--board-number); font-family: var(--font-display); font-size: 6.5px; font-weight: 900; text-anchor: middle; dominant-baseline: central; paint-order: stroke; stroke: var(--board-ink); stroke-width: 1.8px; stroke-linejoin: round; }
+.game-dart-mark .game-dart-pulse { fill: none; stroke: var(--dart); stroke-width: 1.2; opacity: 0; transform-box: fill-box; transform-origin: center; }
 .game-dart-mark[data-state="latest"] .game-dart-pulse { animation: game-pulse 1.2s ease-out infinite; }
 @keyframes game-blink { 50% { fill-opacity: .3; } }
 @keyframes game-pulse { from { opacity: .9; transform: scale(1); } to { opacity: 0; transform: scale(2.8); } }
