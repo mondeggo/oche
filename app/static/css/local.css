@@ -27,11 +27,12 @@ button.game-mode:active:not(:disabled) { transform: translateY(2px); box-shadow:
 /* Categories share one grid; the tag's colour tells them apart. */
 /* Category pills wear their category's colour; with one pressed, the others fade. */
 .game-filters { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 16px; }
-.game-filter { min-height: 36px; padding: 6px 16px; border: var(--line-width) solid var(--outline); border-radius: 999px; background: var(--lime); color: var(--on-pop); font-size: .85rem; font-weight: 800; box-shadow: var(--pop-sm); }
-.game-filter[data-filter="practice"] { background: var(--cyan); }
-.game-filter[data-filter="party"] { background: var(--yellow); }
-.game-filter[data-filter="arcade"] { background: var(--coral); }
-.game-filter:hover:not(:disabled) { filter: brightness(1.05); }
+.game-filter { --pill: var(--lime); min-height: 36px; padding: 6px 16px; border: var(--line-width) solid var(--outline); border-radius: 999px; background: var(--pill); color: var(--on-pop); font-size: .85rem; font-weight: 800; box-shadow: var(--pop-sm); }
+.game-filter[data-filter="practice"] { --pill: var(--cyan); }
+.game-filter[data-filter="party"] { --pill: var(--yellow); }
+.game-filter[data-filter="arcade"] { --pill: var(--coral); }
+/* Keep the category colour on hover instead of the buttons' primary hover colour. */
+.game-filter:hover:not(:disabled) { background: var(--pill); color: var(--on-pop); }
 .game-filters[data-active="true"] .game-filter[aria-pressed="false"] { opacity: .45; box-shadow: none; }
 .game-filter[aria-pressed="true"] { outline: 2px solid var(--fg); outline-offset: 2px; }
 /* The engine choice folds into an icon beside Tournament; its dot shows detection. */
