@@ -1,8 +1,9 @@
 /* Play on Oche: game modes, match setup and the game screen. */
-/* The bottom padding keeps the last controls clear of the floating Recent visits button. */
 /* The game screen spans the whole content area so the cards can centre between the board and
-   the sidebar or window edge. */
-#main:has(.game-page[data-view="match"]) { max-width: none; padding-bottom: 72px; }
+   the sidebar or window edge. It fills the window, so its footer is on the floating Recent visits
+   button's line: 20 px of padding plus a 50 px footer centre both 45 px above the window edge. */
+#main:has(.game-page[data-view="match"]) { max-width: none; padding-bottom: 20px; }
+.game-screen:not([hidden]) { display: flex; flex-direction: column; min-height: calc(100dvh - 60px); }
 .game-view[hidden], .game-page [hidden] { display: none; }
 .game-error { color: var(--danger-bright); border-color: var(--danger-bright); }
 
@@ -106,9 +107,10 @@ button.game-mode .game-tag { border-color: var(--outline); background: var(--lim
    The footer holds the game's details as badges at the bottom left, title first, and who is
    throwing in the middle, level with Recent visits. */
 .game-bar { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 10px 16px; margin-bottom: 12px; }
-.game-bar-visit { min-width: 0; }
+/* The visit keeps its full width beside End game, so the dart tiles stay wide. */
+.game-bar-visit { width: 640px; max-width: 100%; min-width: 0; }
 .game-bar-visit:empty { display: none; }
-.game-foot { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 8px 16px; min-height: 48px; margin-top: 8px; }
+.game-foot { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 8px 16px; min-height: 50px; margin-top: auto; padding-top: 8px; }
 .game-foot > .game-chips { justify-self: start; }
 .game-bar-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .game-bar-actions .game-back { margin: 0; }
@@ -255,7 +257,7 @@ button.game-mode .game-tag { border-color: var(--outline); background: var(--lim
 
 @media (max-width: 900px) {
   .game-bar, .game-foot { grid-template-columns: minmax(0, 1fr); }
-  .game-bar-visit { justify-self: stretch; }
+  .game-bar-visit { justify-self: stretch; width: auto; }
   .game-foot { padding-right: 64px; }
   #main:has(.game-page[data-view="setup"]) { --setup-gutter: 20px; }
   .game-stage { display: flex; flex-wrap: wrap; gap: 16px; }

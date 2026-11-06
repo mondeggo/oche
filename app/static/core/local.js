@@ -471,7 +471,8 @@ function fitBoard(force = false) {
   fitted = key;
   if (state?.options.mode === "football" && !$("local-match").hidden) {
     const arena = $("local-football").parentElement;
-    const available = innerHeight - arena.getBoundingClientRect().top - scrollY - parseFloat(getComputedStyle($("main")).paddingBottom) - 4;
+    const available = innerHeight - arena.getBoundingClientRect().top - scrollY - parseFloat(getComputedStyle($("main")).paddingBottom)
+      - $("local-foot").offsetHeight - 4;
     const compact = innerWidth <= 700;
     const extra = $("local-football").offsetHeight - $("local-football").querySelector(".football-field").offsetHeight;
     const controls = compact ? $("local-stage").offsetHeight + 8 : 0;
