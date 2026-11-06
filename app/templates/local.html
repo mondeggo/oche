@@ -1,10 +1,10 @@
 {% extends "base.html" %}
-{%- macro mode(name, tag, label, text, available=False) -%}
+{%- macro mode(name, tag, label, text, key=None) -%}
 {%- set body -%}
-<span class="game-mode-head"><span class="game-mode-name">{{ name }}</span><span class="game-tag" data-tag="{{ tag }}">{{ label if available else _("Coming soon") }}</span></span>
+<span class="game-mode-head"><span class="game-mode-name">{{ name }}</span><span class="game-tag" data-tag="{{ tag }}">{{ label if key else _("Coming soon") }}</span></span>
 <span class="game-mode-text">{{ text }}</span>
 {%- endset -%}
-{%- if available %}<button type="button" class="game-mode" data-mode="{{ tag }}">{{ body }}</button>
+{%- if key %}<button type="button" class="game-mode" data-mode="{{ key }}">{{ body }}</button>
 {%- else %}<div class="game-mode" aria-disabled="true">{{ body }}</div>{% endif -%}
 {%- endmacro -%}
 {%- macro choice(name, value, label, checked=False) -%}
@@ -50,24 +50,15 @@
       <p class="hint">{{ _("Starting a local game pauses cloud game events. Clear the board before starting detection.") }}</p>
     </div>
   </section>
-  <h2 class="game-group">{{ _("Match") }}</h2>
+  {#- One grid; each card's tag names its category in that category's colour. #}
   <div class="game-modes">
-    {{ mode("X01", "x01", _("Match"), _("Race from 501 or 301 down to exactly zero"), True) }}
-    {{ mode("Cricket", "match", _("Match"), _("Close 15 to 20 and the bull before your opponents")) }}
-  </div>
-  <h2 class="game-group">{{ _("Practice") }}</h2>
-  <div class="game-modes">
-    {{ mode(_("Around the Clock"), "practice", _("Practice"), _("Hit every number from 1 to 20 in order")) }}
-    {{ mode(_("Count Up"), "practice", _("Practice"), _("Score as many points as you can in eight rounds")) }}
-    {{ mode("Bob's 27", "practice", _("Practice"), _("Hit each double to gain points; miss them all and lose points")) }}
-  </div>
-  <h2 class="game-group">{{ _("Party") }}</h2>
-  <div class="game-modes">
-    {{ mode("Shanghai", "party", _("Party"), _("Hit a single, double and triple of the round's number")) }}
-  </div>
-  <h2 class="game-group">{{ _("Arcade") }}</h2>
-  <div class="game-modes">
-    {{ mode(_("Football"), "football", _("Arcade"), _("Score goals with your darts"), True) }}
+    {{ mode("X01", "match", _("Match"), _("Race from 501 or 301 down to exactly zero"), "x01") }}
+    {{ mode("Cricket", "match", _("Match"), _("Close 15 to 20 and the bull before your opponents"), "cricket") }}
+    {{ mode(_("Around the Clock"), "practice", _("Practice"), _("Hit every number from 1 to 20 in order"), "atc") }}
+    {{ mode(_("Count Up"), "practice", _("Practice"), _("Score as many points as you can in eight rounds"), "countup") }}
+    {{ mode("Bob's 27", "practice", _("Practice"), _("Hit each double to gain points; miss them all and lose points"), "bobs27") }}
+    {{ mode("Shanghai", "party", _("Party"), _("Hit a single, double and triple of the round's number"), "shanghai") }}
+    {{ mode(_("Football"), "arcade", _("Arcade"), _("Score goals with your darts"), "football") }}
     {{ mode("Pac-Man", "arcade", _("Arcade"), _("Clear the maze and avoid the ghosts")) }}
     {{ mode("Mario 64", "arcade", _("Arcade"), _("Explore worlds and collect stars")) }}
   </div>
@@ -88,7 +79,7 @@
     </div>
     <div class="game-settings" role="group" aria-labelledby="local-options-title">
       <h2 id="local-options-title">{{ _("Settings") }}</h2>
-      <p id="local-football-rules" class="hint" hidden></p>
+      <p id="local-rules" class="hint" hidden></p>
       <div class="game-options">
         <fieldset id="local-format-option" class="game-option" hidden><legend>{{ _("Match format") }}</legend>
           <div class="game-choices">{{ choice("football-format", "goals", _("Goals")) }}{{ choice("football-format", "rounds", _("Rounds"), True) }}</div></fieldset>
@@ -110,6 +101,14 @@
         <fieldset id="local-own-goals-option" class="game-option" hidden><legend>{{ _("Own goals") }}</legend>
           <div class="game-choices">{{ choice("own-goals", "off", _("Off")) }}{{ choice("own-goals", "on", _("On"), True) }}</div>
           <p class="hint">{{ _("A legal move into your own goal scores for your opponent when enabled. When disabled, the ball stays put.") }}</p></fieldset>
+        <fieldset id="local-cricket-option" class="game-option" hidden><legend>{{ _("Scoring") }}</legend>
+          <div class="game-choices">{{ choice("cricket-scoring", "standard", _("Standard"), True) }}{{ choice("cricket-scoring", "cutthroat", _("Cut-throat")) }}</div>
+          <p class="hint">{{ _("Standard: extra marks on a number you closed score for you. Cut-throat: they score against opponents who have not closed it, and the lowest score wins.") }}</p></fieldset>
+        <fieldset id="local-ring-option" class="game-option" hidden><legend>{{ _("Target ring") }}</legend>
+          <div class="game-choices">{{ choice("atc-ring", "any", _("Any"), True) }}{{ choice("atc-ring", "double", _("Doubles")) }}{{ choice("atc-ring", "triple", _("Trebles")) }}</div></fieldset>
+        <fieldset id="local-bull-option" class="game-option" hidden><legend>{{ _("Finish on the bull") }}</legend>
+          <div class="game-choices">{{ choice("atc-bull", "off", _("Off"), True) }}{{ choice("atc-bull", "on", _("On")) }}</div>
+          <p class="hint">{{ _("Either bull counts after 20.") }}</p></fieldset>
         <fieldset id="local-score-option" class="game-option"><legend>{{ _("Starting score") }}</legend>
           <div class="game-choices">{{ choice("score", "501", "501", True) }}{{ choice("score", "301", "301") }}</div></fieldset>
         <fieldset id="local-out-option" class="game-option"><legend>{{ _("Finish") }}</legend>
@@ -135,12 +134,17 @@
     <fieldset class="game-option"><legend>{{ _("Play speed") }}</legend>
       <div class="game-choices">{{ choice("speed", "slow", _("Slow")) }}{{ choice("speed", "normal", _("Normal"), True) }}{{ choice("speed", "fast", _("Fast")) }}</div>
       <p class="hint">{{ _("Applies to every bot in this game.") }}</p></fieldset>
+    <fieldset id="local-bot-difficulty" class="game-option" hidden><legend>{{ _("Difficulty") }}</legend>
+      <div class="game-levels game-auto">
+        {%- for mode, label, text in [("easy", _("Easy"), _("Often misses")), ("medium", _("Medium"), _("A club player")), ("hard", _("Hard"), _("Rarely misses"))] %}<button type="submit" class="btn-neutral" name="level" value="difficulty-{{ mode }}"><span>{{ label }}</span><small>{{ text }}</small></button>{% endfor -%}
+      </div>
+      <p class="hint">{{ _("The bot plays by this game's rules and aims for its best target.") }}</p></fieldset>
     <fieldset id="local-bot-auto" class="game-option" hidden><legend>{{ _("Auto difficulty") }}</legend>
       <div class="game-levels game-auto">
         {%- for mode, label, text in [("easy", _("Easy"), _("About 15% below the players")), ("medium", _("Medium"), _("Matches the players")), ("hard", _("Hard"), _("About 15% above the players"))] %}<button type="submit" class="btn-neutral" name="level" value="auto-{{ mode }}"><span>{{ label }}</span><small>{{ text }}</small></button>{% endfor -%}
       </div>
       <p class="hint">{{ _("An auto bot follows the human players' three-dart average in this game. It starts near 45 and adjusts after every visit.") }}</p></fieldset>
-    <fieldset class="game-option"><legend>{{ _("Bot level") }}</legend>
+    <fieldset id="local-bot-levels" class="game-option"><legend>{{ _("Bot level") }}</legend>
       <div class="game-levels">
         <button id="local-bot-auto-open" type="button" class="btn-neutral" aria-pressed="false" aria-controls="local-bot-auto"><span>{{ _("Auto") }}</span><small>{{ _("Adapts") }}</small></button>
         {%- for level in range(1, 12) %}<button type="submit" class="btn-neutral" name="level" value="{{ level }}"><span>{{ _("Level {0}", **{"0": level}) }}</span><small>{{ 10 + 10 * level }}+</small></button>{% endfor -%}
@@ -156,6 +160,9 @@
       <a id="local-tournament-return" class="game-back" href="/local/tournament" hidden>{{ _("Tournament") }}</a>
     </div>
     <div id="local-bar-visit" class="game-bar-visit"></div>
+    <div class="game-bar-end">
+      <button id="football-board-toggle" type="button" class="game-back" aria-controls="local-board" aria-pressed="true" hidden>{{ _("Hide dartboard") }}</button>
+    </div>
   </header>
   <p id="local-detector-detail" class="hint game-detail" role="status"></p>
   <div id="local-winner" class="card game-winner" hidden>
@@ -169,17 +176,10 @@
   <div id="local-stage" class="game-stage">
   <div id="local-side-left" class="game-side"></div>
   <div id="local-center" class="game-center">
-  <div id="football-panel-actions" class="football-panel-actions">
-    <button id="football-board-toggle" type="button" class="btn-neutral" aria-controls="local-board" aria-pressed="true">{{ _("Hide dartboard") }}</button>
-  </div>
   <div id="football-guidance" class="football-guidance" hidden aria-live="polite">
     <p id="football-clock" class="football-clock"></p>
     <p id="football-message" class="football-message"></p>
     <p id="football-target" class="football-target"></p>
-    <div id="football-bullup-entry" hidden>
-      <label for="football-distance">{{ _("Distance from bull centre (mm)") }}</label>
-      <div class="btn-row"><input id="football-distance" type="number" min="0" max="1700" step="0.1" inputmode="decimal"><button id="football-bullup-submit" type="button">{{ _("Record distance") }}</button></div>
-    </div>
     <button id="football-confirm" type="button" hidden>{{ _("Confirm hit near wire") }}</button>
   </div>
   <section id="local-board" class="game-board" aria-label="{{ _('Dartboard') }}">

@@ -24,10 +24,12 @@ button.game-mode:active:not(:disabled) { transform: translateY(2px); box-shadow:
 .game-mode-name { font-family: var(--font-display); font-size: 1.15rem; font-weight: 400; letter-spacing: -.02em; }
 .game-mode-text { color: var(--fg-dim); font-size: .85rem; line-height: 1.35; }
 .game-tag { flex: none; padding: 2px 10px; border: var(--line-width) solid var(--border-strong); border-radius: 999px; background: var(--surface-2); color: var(--fg-dim); font-size: .75rem; font-weight: 800; }
+/* Categories share one grid; the tag's colour tells them apart. */
+.game-engines + .game-modes { margin-top: 24px; }
 button.game-mode .game-tag { border-color: var(--outline); background: var(--lime); color: var(--on-pop); }
-.game-modes > :nth-child(4n+2) .game-tag { background: var(--cyan); }
-.game-modes > :nth-child(4n+3) .game-tag { background: var(--yellow); }
-.game-modes > :nth-child(4n+4) .game-tag { background: var(--mint); }
+button.game-mode .game-tag[data-tag="practice"] { background: var(--cyan); }
+button.game-mode .game-tag[data-tag="party"] { background: var(--yellow); }
+button.game-mode .game-tag[data-tag="arcade"] { background: var(--coral); }
 .game-modes > .game-mode[aria-disabled="true"] .game-tag { border-color: var(--border-strong); background: var(--surface-2); color: var(--fg-dim); }
 
 /* Match setup */
@@ -114,6 +116,10 @@ button.game-mode .game-tag { border-color: var(--outline); background: var(--lim
 .game-foot > .game-chips { justify-self: start; }
 .game-bar-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .game-bar-actions .game-back { margin: 0; }
+/* Controls for the right-hand panel, such as football's dartboard toggle, end the row. */
+.game-bar-end { grid-column: 3; display: flex; justify-content: flex-end; gap: 8px; }
+.game-bar-end .game-back { margin: 0; }
+.game-bar-end:not(:has(> :not([hidden]))) { display: none; }
 .game-foot .game-title { margin: 0; border-color: var(--outline); background: var(--lime); color: var(--on-pop); font-family: var(--font-body); font-size: .8rem; font-weight: 800; line-height: normal; letter-spacing: 0; }
 .game-exit:hover:not(:disabled) { background: var(--coral); color: var(--on-pop); }
 .game-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
@@ -163,6 +169,17 @@ button.game-mode .game-tag { border-color: var(--outline); background: var(--lim
 .game-player-score { display: block; margin: 4px 0; font-family: var(--font-display); font-size: clamp(3rem, 50cqw, 7.5rem); font-weight: 400; line-height: 1.05; text-align: center; letter-spacing: -.04em; font-variant-numeric: tabular-nums; }
 .game-player:not([data-active="true"], [data-winner="true"]) .game-player-score { color: var(--fg-dim); }
 .game-player-meta { margin: 0; color: var(--fg-dim); font-size: .85rem; font-variant-numeric: tabular-nums; }
+/* A player out of Bob's 27 stays listed but fades. */
+.game-player[data-out="true"] { opacity: .55; }
+/* Cricket marks: each number above its slash, cross or closed circle. */
+.game-marks { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; margin: 0 0 8px; padding: 0; list-style: none; text-align: center; font-variant-numeric: tabular-nums; }
+.game-marks li { display: flex; flex-direction: column; gap: 1px; padding: 3px 0; border-radius: 6px; background: var(--bg-inset); }
+.game-marks span { color: var(--fg-dim); font-family: var(--font-mono); font-size: .7rem; font-weight: 800; }
+.game-marks strong { min-height: 1.3em; font-family: var(--font-display); font-size: 1rem; font-weight: 400; line-height: 1.3; }
+.game-marks li[data-closed="true"] { background: var(--mint); color: var(--on-pop); }
+.game-marks li[data-closed="true"] span { color: var(--on-pop); }
+.game-player:is([data-active="true"], [data-winner="true"]) .game-marks li:not([data-closed="true"]) { background: color-mix(in srgb, var(--on-pop) 12%, transparent); }
+.game-player:is([data-active="true"], [data-winner="true"]) .game-marks span { color: var(--on-pop); }
 
 /* Dartboard, scaled to the space between the players and the window height */
 /* --board-fit is set by the page so the whole game screen fits the window height. */
@@ -172,6 +189,8 @@ button.game-mode .game-tag { border-color: var(--outline); background: var(--lim
 .game-board[data-halo="green"] { --halo: var(--success-bright); }
 .game-board[data-halo]:not([data-halo=""]) { box-shadow: 0 0 0 2px var(--halo), 0 0 12px var(--halo); }
 .game-board svg { display: block; width: 100%; height: auto; }
+/* A manual bull-up dart is placed where the player taps. */
+.game-board[data-pick="true"] svg { cursor: crosshair; }
 .board-surround { fill: var(--board-surround); }
 .board-dark { fill: var(--board-dark); }
 .board-light { fill: var(--board-light); }
@@ -205,6 +224,8 @@ button.game-mode .game-tag { border-color: var(--outline); background: var(--lim
 /* Dart tiles keep one fixed size, thrown or not, so the visit never shifts. */
 .game-visit { display: grid; grid-template-columns: minmax(0, 1fr) 88px auto; gap: 10px; }
 .game-darts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 0; padding: 0; list-style: none; }
+/* A one-dart visit, such as a bull-up or penalty, keeps the tile size and sits in the middle. */
+.game-darts:has(> :only-child) { grid-template-columns: minmax(0, calc((100% - 20px) / 3)); justify-content: center; }
 /* Dart tiles follow OcheCore's slots: dashed while empty, a raised card once thrown. */
 .game-dart { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; height: 84px; min-width: 0; padding: 6px; overflow: hidden; border: var(--line-width) solid var(--outline); border-radius: var(--radius-sm); background: var(--card); box-shadow: var(--pop-sm); font-variant-numeric: tabular-nums; }
 .game-dart span { max-width: 100%; overflow: hidden; font-family: var(--font-display); font-size: 2.6rem; line-height: 1.1; text-overflow: ellipsis; white-space: nowrap; }
@@ -257,6 +278,7 @@ button.game-mode .game-tag { border-color: var(--outline); background: var(--lim
 
 @media (max-width: 900px) {
   .game-bar, .game-foot { grid-template-columns: minmax(0, 1fr); }
+  .game-bar-end { grid-column: auto; grid-row: 1; justify-self: end; }
   .game-bar-visit { justify-self: stretch; width: auto; }
   .game-foot { padding-right: 64px; }
   #main:has(.game-page[data-view="setup"]) { --setup-gutter: 20px; }

@@ -368,6 +368,23 @@ def test_local_api_offline_source_switch_and_persistence(settings):
         assert client.get("/api/game").json().get("source") != "local"
 
 
+def test_play_setup_reports_the_engine_readiness_before_a_game(settings, monkeypatch):
+    # Before a game the board feed is closed, so Play reads the engine's readiness instead.
+    def detector(request):
+        assert request.url.path == "/api/state"
+        return httpx.Response(200, json={"connected": True, "running": True, "status": "throw", "throws": []})
+
+    monkeypatch.setattr("app.services.engines.process_status", lambda: {"status": "running", "pid": 7})
+    with TestClient(create_app(settings, transport=httpx.MockTransport(detector))) as client:
+        local = client.get("/api/local").json()
+        assert not local["active"]
+        assert local["detector"]["state"] != "connected"
+        assert local["readiness"]["state"] == "detecting"
+    monkeypatch.setattr("app.services.engines.process_status", lambda: {"status": "stopped", "pid": None})
+    with TestClient(create_app(settings, transport=httpx.MockTransport(detector))) as client:
+        assert client.get("/api/local").json()["readiness"]["state"] == "stopped"
+
+
 def test_local_api_validation_and_origin_guards(settings):
     with TestClient(create_app(settings)) as client:
         assert client.post("/api/local/start", json={"input": "manual", "players": []}).status_code == 422
@@ -445,7 +462,7 @@ def test_bot_visits_play_themselves_and_block_manual_input(tmp_path):
     bot_turn = game.saved.frame.turns[1]
     assert len(bot_turn.throws) == 3 or bot_turn.busted
     assert game.saved.frame.player == 0
-    assert game.status()["options"]["players"][1] == {"name": "Robo", "bot": 11, "auto": None}
+    assert game.status()["options"]["players"][1] == {"name": "Robo", "bot": 11, "auto": None, "difficulty": None}
 
 
 def test_bot_turn_ignores_detection_and_counts_as_available(tmp_path):
@@ -502,7 +519,7 @@ def test_auto_bot_matches_human_visits_only(tmp_path):
         game.bot_step(now)
     # The other bots' visits do not move the auto bot.
     assert game.human_visits() == [180]
-    assert game.status()["options"]["players"][1] == {"name": "Robo", "bot": None, "auto": "hard"}
+    assert game.status()["options"]["players"][1] == {"name": "Robo", "bot": None, "auto": "hard", "difficulty": None}
 
 
 def test_dart_positions_from_detector_and_bots_are_kept_for_the_board(detected, tmp_path):

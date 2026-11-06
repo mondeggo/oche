@@ -17,9 +17,23 @@
       <g id="football-cells" role="group" aria-label="{{ _('Explore board cells') }}"></g>
       <g id="football-cell-labels" class="football-cell-labels" aria-hidden="true"></g>
       <polygon id="football-attack" class="football-attack" points="500,320 950,270 950,370" visibility="hidden" pointer-events="none"/>
+      {#- A classic black-and-white ball: a shaded sphere, a centre pentagon and five patches running off its edge. #}
+      <defs>
+        <radialGradient id="football-ball-shade" cx="35%" cy="30%" r="75%"><stop offset="0" stop-color="#ffffff"/><stop offset=".55" stop-color="#eef1ee"/><stop offset="1" stop-color="#aeb9b3"/></radialGradient>
+        <clipPath id="football-ball-clip"><circle r="13"/></clipPath>
+      </defs>
       <g id="football-ball" class="football-ball" pointer-events="none" transform="translate(500 320)">
-        <circle r="12" fill="#f7f9f6" stroke="#102b21" stroke-width="2"/>
-        <path d="M0 -6 6 -2 4 6 -4 6 -6 -2Z" fill="#102b21" stroke="#102b21" stroke-width="2"/>
+        <ellipse cx="2" cy="12" rx="11" ry="3.5" fill="#000" opacity=".28"/>
+        <circle r="13" fill="url(#football-ball-shade)"/>
+        <g clip-path="url(#football-ball-clip)">
+          <g fill="none" stroke="#5b6862" stroke-width=".8" stroke-linecap="round"><path d="M0 -4.3L0 -9.8M3.23 -12.15L5.17 -19.44M-3.23 -12.15L-5.17 -19.44M4.09 -1.33L9.32 -3.03M12.55 -0.68L20.09 -1.09M10.56 -6.83L16.89 -10.93M2.53 3.48L5.76 7.93M4.53 11.73L7.24 18.77M9.76 7.93L15.61 12.69M-2.53 3.48L-5.76 7.93M-9.76 7.93L-15.61 12.69M-4.53 11.73L-7.24 18.77M-4.09 -1.33L-9.32 -3.03M-10.56 -6.83L-16.89 -10.93M-12.55 -0.68L-20.09 -1.09"/></g>
+          <g fill="#1b2420" stroke="#1b2420" stroke-width=".6" stroke-linejoin="round">
+            <path d="M0 -4.3 4.09 -1.33 2.53 3.48 -2.53 3.48 -4.09 -1.33Z"/>
+            <path d="M0 -9.8 -3.23 -12.15 -2 -15.95 2 -15.95 3.23 -12.15ZM9.32 -3.03 10.56 -6.83 14.55 -6.83 15.79 -3.03 12.55 -0.68ZM5.76 7.93 9.76 7.93 10.99 11.73 7.76 14.08 4.53 11.73ZM-5.76 7.93 -4.53 11.73 -7.76 14.08 -10.99 11.73 -9.76 7.93ZM-9.32 -3.03 -12.55 -0.68 -15.79 -3.03 -14.55 -6.83 -10.56 -6.83Z"/>
+          </g>
+          <ellipse cx="-4.5" cy="-6" rx="4" ry="2.4" fill="#fff" opacity=".45" transform="rotate(-30 -4.5 -6)"/>
+        </g>
+        <circle r="13" fill="none" stroke="#102b21" stroke-width="1.6"/>
       </g>
     </svg>
   </div>

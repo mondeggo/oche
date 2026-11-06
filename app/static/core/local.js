@@ -1,6 +1,6 @@
 import { tr } from "../js/i18n.mjs";
 import { $, api } from "./client.mjs";
-import { WDF_RINGS, boardMarkup, boardPoint, checkout, funnyName, hitKey, hitRegion, playerStats, seats } from "./game.mjs";
+import { CRICKET, WDF_RINGS, boardMarkup, boardPoint, checkout, cricketMarks, funnyName, hitKey, hitRegion, playerStats, seats, targetBeds, targetHints, targetLabel } from "./game.mjs";
 
 import { cellDart } from "./football-pitch.mjs";
 import { dartRegion, regionLabel, renderFootball } from "./football.mjs";
@@ -13,9 +13,37 @@ const SVG = "http://www.w3.org/2000/svg";
 const DETECTOR = { stopped: "Stopped", waiting: "Waiting", waiting_for_clear: "Clear the board",
   connected: "Connected", unavailable: "Unavailable" };
 const AUTO = { easy: "Easy", medium: "Medium", hard: "Hard" };
-const isBot = player => Boolean(player?.bot || player?.auto);
+// Bots outside X01 play by the game's rules at a fixed difficulty; switching modes keeps them close.
+const DIFFICULTY_LEVEL = { easy: 3, medium: 6, hard: 9 };
+const levelDifficulty = level => level <= 4 ? "easy" : level <= 8 ? "medium" : "hard";
+const isBot = player => Boolean(player?.bot || player?.auto || player?.difficulty);
+const ROUND_MODES = ["countup", "bobs27", "shanghai"];
+
+/* The title, setup line and rules of each mode. */
+function modeInfo(mode) {
+  return {
+    x01: ["X01", tr("One leg · Single in · Saved on this device"), ""],
+    football: [tr("Football"), tr("Two players · Three darts per turn · Saved on this device"),
+      tr("Move the shared ball between neighbouring regions. Player 1 attacks D6; Player 2 attacks D11. After a goal, the conceding player kicks off with three fresh darts.")],
+    cricket: ["Cricket", tr("15 to 20 and the bull · Saved on this device"),
+      tr("Three marks close a number: a single is one mark, a double two and a treble three; the outer bull is one and the bullseye two. Close every number with the best score to win.")],
+    atc: [tr("Around the Clock"), tr("1 to 20 in order · Saved on this device"),
+      tr("Hit each number in turn; each hit moves you to the next one. The first player to finish wins.")],
+    countup: [tr("Count Up"), tr("Eight rounds · Saved on this device"),
+      tr("Every dart scores its points. The highest total after eight rounds wins.")],
+    bobs27: ["Bob's 27", tr("D1 to D20, then the bull · Saved on this device"),
+      tr("Start on 27. Each round, every hit on its double adds the double's value; miss it with all three darts and lose that value. A player below zero is out.")],
+    shanghai: ["Shanghai", tr("Seven rounds · Saved on this device"),
+      tr("Only the round's number scores. A single, double and treble of it in one visit is a Shanghai and wins at once; otherwise the highest total after seven rounds wins.")],
+  }[mode];
+}
 const TONE = { connected: "badge-green", waiting: "badge-yellow", waiting_for_clear: "badge-yellow",
   stopped: "badge-red", unavailable: "badge-red" };
+// Before a game: whether the chosen vision engine is detecting.
+const READINESS = { detecting: "Ready", starting: "Starting", calibrating: "Calibrating", waiting: "Waiting",
+  stopped: "Stopped", unavailable: "Unavailable" };
+const READY_TONE = { detecting: "badge-green", starting: "badge-yellow", calibrating: "badge-yellow",
+  waiting: "badge-yellow", stopped: "badge-red", unavailable: "badge-red" };
 // The board's halo shows detection: red when stopped, yellow while waiting, green when scoring.
 const HALO = { connected: "green", waiting: "yellow", waiting_for_clear: "yellow", stopped: "red", unavailable: "red" };
 
@@ -34,7 +62,11 @@ const setRadio = (name, value) => {
   if (input) input.checked = true;
 };
 
+let shownView = null;
 function show(view) {
+  // Opening a game collapses the sidebar for room; leaving the game restores it.
+  if (view !== shownView && (view === "match" || shownView === "match" || shownView === null)) window.ocheSidebar?.game(view === "match");
+  shownView = view;
   $("game-page").dataset.view = view;
   $("game-modes").hidden = view !== "modes";
   $("local-setup").hidden = view !== "setup";
@@ -42,7 +74,7 @@ function show(view) {
 }
 
 /* Players */
-function addPlayer(name = newName(), bot = null, auto = null) {
+function addPlayer(name = newName(), bot = null, auto = null, difficulty = null) {
   const rows = $("local-players");
   if (rows.children.length >= maxPlayers()) return null;
   const row = $("local-player-row").content.firstElementChild.cloneNode(true);
@@ -54,19 +86,25 @@ function addPlayer(name = newName(), bot = null, auto = null) {
   row.querySelector(".game-remove").addEventListener("click", () => { row.remove(); renderRoster(); });
   row.querySelector(".game-bot-level").addEventListener("click", () => openBots(row));
   rows.append(row);
-  setBot(row, bot, auto);
+  setBot(row, bot, auto, difficulty);
   return input;
 }
 
-/* A bot has a fixed level or, as an auto bot, a difficulty relative to the players. */
-function setBot(row, level, auto = null) {
+/* An X01 bot has a fixed level or, as an auto bot, a difficulty relative to the players.
+   Other games' bots have a fixed difficulty. */
+function setBot(row, level, auto = null, difficulty = null) {
   if (level) row.dataset.bot = String(level);
   else delete row.dataset.bot;
   if (auto) row.dataset.autoBot = auto;
   else delete row.dataset.autoBot;
+  if (difficulty) row.dataset.difficulty = difficulty;
+  else delete row.dataset.difficulty;
   const chip = row.querySelector(".game-bot-level");
-  chip.hidden = !level && !auto;
-  if (auto) {
+  chip.hidden = !level && !auto && !difficulty;
+  if (difficulty) {
+    chip.textContent = tr(AUTO[difficulty]);
+    chip.setAttribute("aria-label", tr("Change bot difficulty, currently {0}", { 0: tr(AUTO[difficulty]) }));
+  } else if (auto) {
     chip.textContent = tr("Auto · {0}", { 0: tr(AUTO[auto]) });
     chip.setAttribute("aria-label", tr("Change bot level, currently auto ({0})", { 0: tr(AUTO[auto]) }));
   } else if (level) {
@@ -80,7 +118,7 @@ function renderRoster() {
   const rows = [...$("local-players").children];
   rows.forEach((row, index) => {
     const input = row.querySelector("input");
-    const label = row.dataset.bot || row.dataset.autoBot ? tr("Bot {0}", { 0: index + 1 }) : tr("Player {0}", { 0: index + 1 });
+    const label = rowIsBot(row) ? tr("Bot {0}", { 0: index + 1 }) : tr("Player {0}", { 0: index + 1 });
     input.placeholder = label;
     input.setAttribute("aria-label", label);
     if (row.dataset.auto && !randomNames()) input.value = label;
@@ -92,14 +130,20 @@ function renderRoster() {
   $("local-player-count").textContent = tr("{0} of {1}", { 0: rows.length, 1: maxPlayers() });
 }
 
+const rowIsBot = row => Boolean(row.dataset.bot || row.dataset.autoBot || row.dataset.difficulty);
+
 function openBots(row = null) {
   editingBot = row;
   $("local-bot-dialog").returnValue = "";
-  const current = row?.dataset.autoBot ? `auto-${row.dataset.autoBot}` : row?.dataset.bot;
+  const x01 = selectedMode === "x01";
+  $("local-bot-levels").hidden = !x01;
+  $("local-bot-difficulty").hidden = x01;
+  const current = row?.dataset.difficulty ? `difficulty-${row.dataset.difficulty}`
+    : row?.dataset.autoBot ? `auto-${row.dataset.autoBot}` : row?.dataset.bot;
   for (const button of $("local-bot-dialog").querySelectorAll("button[name=level]")) {
     button.setAttribute("aria-pressed", String(Boolean(row) && button.value === current));
   }
-  showAuto(Boolean(row?.dataset.autoBot));
+  showAuto(x01 && Boolean(row?.dataset.autoBot));
   $("local-bot-dialog").showModal();
 }
 
@@ -114,10 +158,11 @@ function closeBots() {
   const row = editingBot;
   editingBot = null;
   const auto = value.startsWith("auto-") ? value.slice(5) : null;
-  const level = auto ? null : Number(value);
-  if (!(auto in AUTO) && !(Number.isInteger(level) && level >= 1)) return;
-  if (row?.isConnected) setBot(row, level, auto);
-  else addPlayer(newName(true), level, auto);
+  const difficulty = value.startsWith("difficulty-") ? value.slice(11) : null;
+  const level = auto || difficulty ? null : Number(value);
+  if (!(auto in AUTO) && !(difficulty in AUTO) && !(Number.isInteger(level) && level >= 1)) return;
+  if (row?.isConnected) setBot(row, level, auto, difficulty);
+  else addPlayer(newName(true), level, auto, difficulty);
 }
 
 const randomNames = () => radio("names") === "random";
@@ -131,21 +176,30 @@ function newName(bot = false) {
 function renameGenerated() {
   const rows = [...$("local-players").querySelectorAll("li[data-auto]")];
   for (const row of rows) row.querySelector("input").value = "";
-  for (const row of rows) row.querySelector("input").value = newName(Boolean(row.dataset.bot || row.dataset.autoBot));
+  for (const row of rows) row.querySelector("input").value = newName(rowIsBot(row));
   renderRoster();
 }
 
 function configureMode(mode) {
   selectedMode = mode;
-  const football = mode === "football";
+  const football = mode === "football", x01 = mode === "x01";
   if (football) footballBoard = true;
-  $("local-setup-title").textContent = football ? tr("Football") : "X01";
-  $("local-setup-description").textContent = football ? tr("Two players · Three darts per turn · Saved on this device") : tr("One leg · Single in · Saved on this device");
-  for (const id of ["score", "out", "board"]) $("local-" + id + "-option").hidden = football;
+  const [title, description, rules] = modeInfo(mode);
+  $("local-setup-title").textContent = title;
+  $("local-setup-description").textContent = description;
+  for (const id of ["score", "out"]) $("local-" + id + "-option").hidden = !x01;
+  $("local-board-option").hidden = football;
+  $("local-cricket-option").hidden = mode !== "cricket";
+  for (const id of ["ring", "bull"]) $("local-" + id + "-option").hidden = mode !== "atc";
   for (const id of ["goals", "kickoff", "movement", "own-goals", "format", "rounds", "tiebreak", "stoppage"]) $("local-" + id + "-option").hidden = !football;
   footballSettings();
-  $("local-football-rules").hidden = !football;
-  $("local-football-rules").textContent = tr("Move the shared ball between neighbouring regions. Player 1 attacks D6; Player 2 attacks D11. After a goal, the conceding player kicks off with three fresh darts.");
+  $("local-rules").hidden = !rules;
+  $("local-rules").textContent = rules;
+  // X01 bots have levels; the other games' bots have a difficulty.
+  for (const row of $("local-players").children) {
+    if (!x01 && (row.dataset.bot || row.dataset.autoBot)) setBot(row, null, null, row.dataset.autoBot || levelDifficulty(Number(row.dataset.bot)));
+    else if (x01 && row.dataset.difficulty) setBot(row, DIFFICULTY_LEVEL[row.dataset.difficulty]);
+  }
   while ($("local-players").children.length > maxPlayers()) $("local-players").lastElementChild.remove();
   while ($("local-players").children.length < (football ? 2 : 1)) addPlayer();
   renderRoster();
@@ -173,6 +227,9 @@ function prefill(value) {
   setRadio("kickoff", options.football_kickoff || "outer");
   setRadio("movement", options.football_beginner ? "beginner" : "strict");
   setRadio("own-goals", options.football_own_goals ? "on" : "off");
+  setRadio("cricket-scoring", options.cricket_scoring || "standard");
+  setRadio("atc-ring", options.atc_ring || "any");
+  setRadio("atc-bull", options.atc_bull ? "on" : "off");
   configureMode(options.mode || "x01");
   renderInput();
 }
@@ -189,10 +246,15 @@ function renderDetector(value) {
   const detector = value.detector;
   const manual = value.options.input === "manual" && value.active;
   const label = manual ? tr("Manual input") : tr(DETECTOR[detector.state] || "Waiting");
-  for (const id of ["local-detector", "local-setup-detector"]) {
-    $(id).textContent = label;
-    $(id).className = `badge ${manual ? "badge-green" : TONE[detector.state] || ""}`.trim();
-  }
+  $("local-detector").textContent = label;
+  $("local-detector").className = `badge ${manual ? "badge-green" : TONE[detector.state] || ""}`.trim();
+  // The game's detector only reads the board during a game, so setup shows the engine's readiness.
+  const ready = value.readiness;
+  const setup = value.active || !ready ? [label, TONE[detector.state], ""]
+    : [tr(READINESS[ready.state] || "Waiting"), READY_TONE[ready.state], tr(ready.reason)];
+  $("local-setup-detector").textContent = setup[0];
+  $("local-setup-detector").className = `badge ${setup[1] || ""}`.trim();
+  $("local-setup-detector").title = setup[2];
   const board = $("local-board");
   board.dataset.halo = manual || !value.active ? "" : HALO[detector.state] || "";
   board.title = manual || !value.active ? "" : tr("Local detection: {0}", { 0: label });
@@ -203,7 +265,7 @@ function renderDetector(value) {
 }
 
 /* Game screen */
-function dartSlot(dart, index, latest, next = false, hint = null, football = false, bullup = false, removable = false) {
+function dartSlot(dart, index, latest, next = false, hint = null, football = false, bullup = false, removable = false, caption = tr("Suggested")) {
   const slot = document.createElement("li");
   slot.className = "game-dart";
   if (!dart) {
@@ -223,7 +285,7 @@ function dartSlot(dart, index, latest, next = false, hint = null, football = fal
       button.append(number);
       if (hint) {
         const label = document.createElement("small");
-        label.textContent = tr("Suggested");
+        label.textContent = caption;
         button.append(label);
       }
       slot.replaceChildren(button);
@@ -235,16 +297,16 @@ function dartSlot(dart, index, latest, next = false, hint = null, football = fal
         tr("Enter dart {0}, suggested {1}", { 0: index + 1, 1: tr(hint) }));
       else {
         const label = document.createElement("span"); label.textContent = tr(hint);
-        const caption = document.createElement("small"); caption.textContent = tr("Suggested");
-        slot.replaceChildren(label, caption);
+        const small = document.createElement("small"); small.textContent = caption;
+        slot.replaceChildren(label, small);
       }
     }
     return slot;
   }
-  const name = bullup && dart.coords ? `${(Math.hypot(dart.coords.x, dart.coords.y) * 170).toFixed(1)} mm` : football ? (dartRegion(dart) ? regionLabel(dartRegion(dart)) : tr("Miss")) : dart.segment.name === "MISS" ? tr("Miss")
+  const name = bullup && dart.coords ? (Math.hypot(dart.coords.x, dart.coords.y) * 170).toFixed(1) : football ? (dartRegion(dart) ? regionLabel(dartRegion(dart)) : tr("Miss")) : dart.segment.name === "MISS" ? tr("Miss")
     : dart.segment.number === 25 ? (dart.segment.multiplier === 2 ? tr("Bull") : "25") : dart.segment.name;
   const points = document.createElement("small");
-  points.textContent = football ? "" : String(dart.segment.number * dart.segment.multiplier);
+  points.textContent = bullup ? "mm" : football ? "" : String(dart.segment.number * dart.segment.multiplier);
   const label = document.createElement("span");
   label.textContent = name;
   slot.append(label, points);
@@ -262,7 +324,8 @@ function dartSlot(dart, index, latest, next = false, hint = null, football = fal
   return slot;
 }
 
-function playerCard(player, index, frame, stats, won, setup) {
+function playerCard(player, index, frame, stats, won, setup, value) {
+  const mode = value.options.mode, targets = value.targets;
   const card = document.createElement("article");
   card.className = "game-player";
   // Rows without the board list players in turn order; the sides seat them clockwise.
@@ -275,7 +338,8 @@ function playerCard(player, index, frame, stats, won, setup) {
   if (isBot(setup)) {
     const tag = document.createElement("span");
     tag.className = "game-tag";
-    tag.textContent = setup.auto ? tr("Bot · Auto · {0}", { 0: tr(AUTO[setup.auto]) })
+    tag.textContent = setup.difficulty ? tr("Bot · {0}", { 0: tr(AUTO[setup.difficulty]) })
+      : setup.auto ? tr("Bot · Auto · {0}", { 0: tr(AUTO[setup.auto]) })
       : tr("Bot · {0}+", { 0: 10 + 10 * setup.bot });
     name.append(" ", tag);
   }
@@ -284,13 +348,59 @@ function playerCard(player, index, frame, stats, won, setup) {
   score.textContent = frame.gameScores[index];
   const meta = document.createElement("p");
   meta.className = "game-player-meta";
-  const { average, last, busted } = stats[index];
-  const parts = [tr("Avg {0}", { 0: average === null ? "–" : average.toFixed(1) })];
-  if (busted) parts.push(tr("Last: bust"));
-  else if (last !== undefined) parts.push(tr("Last: {0}", { 0: last }));
+  const { average, last, busted, marks } = stats[index];
+  const bullup = value.football?.phase === "bullup" ? value.football.bullup : null;
+  if (bullup) {
+    // The bull-up shows each distance; the closer player is marked once both have thrown.
+    const distance = bullup[index];
+    score.textContent = distance === null ? "–" : distance.toFixed(1);
+    const decided = bullup.every(item => item !== null) && Math.abs(bullup[0] - bullup[1]) > 0.01;
+    card.dataset.winner = String(decided && distance === Math.min(...bullup));
+    if (decided) card.dataset.active = "false";
+    meta.textContent = distance === null ? tr("Throw at the bull") : tr("mm from the bull");
+    card.append(name, score, meta);
+    return card;
+  }
+  const parts = [mode === "cricket" ? tr("MPR {0}", { 0: marks === null ? "–" : marks.toFixed(1) })
+    : tr("Avg {0}", { 0: average === null ? "–" : average.toFixed(1) })];
+  if (mode === "atc") {
+    // The next target is the big number; a finished player shows a tick.
+    const next = targets.sequence[targets.progress[index]];
+    score.textContent = next === undefined ? "✓" : tr(targetLabel(next, value.options.atc_ring));
+    parts.splice(0, 1, tr("{0} of {1} hit", { 0: targets.progress[index], 1: targets.sequence.length }));
+  }
+  // Bob's 27 gains and loses doubles, so an average says nothing.
+  if (mode === "bobs27") parts.splice(0, 1);
+  if (targets?.out[index]) {
+    card.dataset.out = "true";
+    parts.push(tr("Out"));
+  } else if (busted) parts.push(tr("Last: bust"));
+  else if (last !== undefined) parts.push(tr("Last: {0}", { 0: mode === "bobs27" && last > 0 ? `+${last}` : last }));
   meta.textContent = parts.join(" · ");
-  card.append(name, score, meta);
+  card.append(name, score);
+  if (mode === "cricket") card.append(cricketRow(targets.marks[index]));
+  card.append(meta);
   return card;
+}
+
+/* Cricket marks: a slash, a cross, then a circled cross once a number is closed. */
+function cricketRow(marks) {
+  const row = document.createElement("ol");
+  row.className = "game-marks";
+  CRICKET.forEach((number, position) => {
+    const item = document.createElement("li");
+    const count = Math.min(marks[position], 3);
+    item.dataset.closed = String(count === 3);
+    item.setAttribute("aria-label", tr("{0}: {1} of 3 marks", { 0: number === 25 ? tr("Bull") : number, 1: count }));
+    const label = document.createElement("span");
+    label.textContent = number === 25 ? "B" : String(number);
+    const mark = document.createElement("strong");
+    mark.setAttribute("aria-hidden", "true");
+    mark.textContent = ["", "/", "X", "Ⓧ"][count];
+    item.append(label, mark);
+    row.append(item);
+  });
+  return row;
 }
 
 /* Marks the visit's darts like OcheCore's live board: each dart's bed is tinted, and a dart
@@ -345,13 +455,17 @@ function placeStage(count, board, football) {
   stage.dataset.board = String(board);
   stage.dataset.count = String(count);
   $("local-board").hidden = !board;
+  // Without the reference board, football's guidance and visit join End game in one row, so the pitch keeps its size.
+  stage.hidden = football && !board;
   const solo = board && count === 1;
   $("local-match").dataset.solo = String(solo);
-  const turn = $("local-turn");
-  if (!football) {
+  const turn = $("local-turn"), guidance = $("football-guidance");
+  if (!football || !board) {
     if (turn.parentElement !== $("local-bar-visit")) $("local-bar-visit").append(turn);
+    if (football && guidance.parentElement !== $("local-bar-visit")) $("local-bar-visit").prepend(guidance);
     return;
   }
+  if (guidance.parentElement !== $("local-center")) $("local-center").prepend(guidance);
   const home = solo ? $("local-side-left") : $("local-center");
   if (turn.parentElement !== home || turn.previousElementSibling?.id === "football-guidance") home.append(turn);
 }
@@ -361,55 +475,124 @@ let entryVisit = null;
 function manualEntry(value) {
   if (value?.football?.pending) return JSON.stringify(value.football.pending);
   if (["bullup", "finished"].includes(value?.football?.phase)) return null;
-  if (!value?.active || value.options.input !== "manual" || value.frame.winner >= 0
+  if (!value?.active || value.options.input !== "manual" || value.finished || value.frame.winner >= 0
     || isBot(value.options.players[value.frame.player])) return null;
   const turn = value.frame.turns[0];
   if (turn.finishedAt || turn.throws.length >= 3) return null;
   return JSON.stringify([value.frame.id, turn.id, turn.playerId, turn.round, turn.throws]);
 }
 
+/* The game's details beside its title, as short badges; an empty one is hidden. */
+function renderChips(value) {
+  const { options, frame, targets } = value, mode = options.mode;
+  const chips = {
+    score: mode === "x01" ? String(options.starting_score)
+      : mode === "football" ? (options.football_format === "rounds" ? tr("{0} rounds", { 0: options.football_rounds }) : tr("First to {0} goals", { 0: options.goals_to_win }))
+      : mode === "cricket" ? tr(options.cricket_scoring === "cutthroat" ? "Cut-throat" : "Standard")
+      : mode === "atc" ? tr({ any: "Any", double: "Doubles", triple: "Trebles" }[options.atc_ring])
+      : tr("{0} rounds", { 0: targets.rounds }),
+    out: mode === "x01" ? tr(options.double_out ? "Double out" : "Straight out")
+      : mode === "football" ? tr(options.football_beginner ? "Beginner" : "Strict")
+      : mode === "atc" && options.atc_bull ? tr("Bull finish") : "",
+    round: mode === "football" && options.football_format === "rounds" ? value.football.clock
+      : ROUND_MODES.includes(mode) ? tr("Round {0} of {1}", { 0: Math.min(frame.round + 1, targets.rounds), 1: targets.rounds })
+      : tr("Round {0}", { 0: frame.round + 1 }),
+  };
+  for (const [id, text] of Object.entries(chips)) {
+    $("local-chip-" + id).textContent = text;
+    $("local-chip-" + id).parentElement.hidden = !text;
+  }
+}
+
+/* Who won, or how a game without a winner ended. Solo practice games report the result. */
+function resultText(value) {
+  const { frame, options, targets } = value, mode = options.mode;
+  const solo = frame.players.length === 1 && targets;
+  const name = index => frame.players[index].name;
+  if (solo) {
+    const darts = frame.turns.reduce((total, turn) => total + turn.throws.length, 0);
+    if (targets.out[0]) return tr("{0} is out", { 0: name(0) });
+    return ["atc", "cricket"].includes(mode) ? tr("{0} finished in {1} darts", { 0: name(0), 1: darts })
+      : tr("{0} scored {1}", { 0: name(0), 1: frame.gameScores[0] });
+  }
+  if (frame.winner >= 0) return tr("{0} wins!", { 0: name(frame.winner) });
+  return targets?.out.every(Boolean) ? tr("Everyone is out") : tr("Draw");
+}
+
+/* Who throws the bull-up dart now, how far it landed, and who starts. */
+function bullupText(value) {
+  const { frame, football } = value, turn = frame.turns[0];
+  const name = index => frame.players[index].name;
+  const [first, second] = football.bullup;
+  if (first !== null && second !== null) {
+    return Math.abs(first - second) <= 0.01 ? tr("Tie — both throw again")
+      : tr("{0} is closer and starts", { 0: name(first < second ? 0 : 1) });
+  }
+  const distance = football.bullup[frame.player];
+  if (turn.finishedAt && distance !== null) return tr("{0} is {1} mm from the bull", { 0: name(frame.player), 1: distance.toFixed(1) });
+  return football.event === "bullup_tie" ? tr("Bull-up tied — throw again")
+    : tr("{0}: throw one dart at the bull", { 0: name(frame.player) });
+}
+
+/* Outlines the beds the current player aims for, like football's legal targets. */
+function markTargets(value) {
+  if (!value.targets || value.finished) return;
+  const beds = targetBeds(value.options.mode, value.targets, value.frame.player, value.options.atc_ring);
+  for (const key of beds) {
+    for (const node of $("local-board-svg").querySelectorAll(`[data-hit="${key}"]`)) node.dataset.target = "true";
+  }
+}
+
 function renderMatch(value) {
   const frame = value.frame;
-  const football = value.options.mode === "football";
-  $("local-match").dataset.variant = football ? "football" : "x01";
-  $("football-guidance").hidden = !football;
-  $("football-panel-actions").hidden = !football;
-  $("local-match-title").textContent = football ? tr("Football") : "X01";
+  const mode = value.options.mode;
+  const football = mode === "football";
+  // Football's bull-up uses the X01 screen and board; the pitch opens once a player starts.
+  const bullup = football && value.football.phase === "bullup";
+  $("local-match").dataset.variant = bullup ? "bullup" : mode;
+  $("football-guidance").hidden = !football || bullup;
+  $("football-board-toggle").hidden = !football || bullup;
+  $("local-match-title").textContent = modeInfo(mode)[0];
   $("local-single-bed").hidden = !football || !footballKeypad || radio("ring") !== "1";
   $("football-input-board").hidden = !football || footballKeypad;
   $("local-rings").hidden = $("local-keys").hidden = football && !footballKeypad;
   $("football-input-toggle").hidden = !football;
   $("football-input-toggle").textContent = tr(footballKeypad ? "Use round board" : "Use keypad");
-  $("local-history-score-label").textContent = football ? tr("Goals") : tr("Remaining");
+  $("local-history-score-label").textContent = football ? tr("Goals") : mode === "x01" ? tr("Remaining")
+    : mode === "cricket" ? tr("Marks") : mode === "atc" ? tr("Hits") : tr("Total");
   const turn = frame.turns[0];
   const manual = value.options.input === "manual";
-  const won = frame.winner >= 0 || value.football?.phase === "finished";
+  const won = value.finished;
   if (value.tournament) $("local-tournament-return").href = `/local/tournament?id=${encodeURIComponent(value.tournament.id)}`;
   $("local-tournament-return").hidden = $("local-tournament-continue").hidden = !value.tournament;
   $("local-rematch").hidden = $("local-new").hidden = Boolean(value.tournament);
   const player = frame.players[frame.player];
   const bot = !won && isBot(value.options.players[frame.player]);
-  $("local-chip-score").textContent = football ? (value.options.football_format === "rounds" ? tr("{0} rounds", { 0: value.options.football_rounds }) : tr("First to {0} goals", { 0: value.options.goals_to_win })) : String(value.options.starting_score);
-  $("local-chip-out").textContent = football ? tr(value.options.football_beginner ? "Beginner" : "Strict") : tr(value.options.double_out ? "Double out" : "Straight out");
-  $("local-chip-round").textContent = football && value.options.football_format === "rounds" ? value.football.clock : tr("Round {0}", { 0: frame.round + 1 });
+  renderChips(value);
   $("local-winner").hidden = !won;
-  placeStage(frame.players.length, football ? footballBoard : value.options.show_board, football);
-  $("local-football").parentElement.dataset.reference = String(footballBoard);
+  const boardShown = bullup || (football ? footballBoard : value.options.show_board);
+  placeStage(frame.players.length, boardShown, football && !bullup);
+  $("local-football").parentElement.dataset.reference = String(!football || footballBoard);
   $("football-board-toggle").textContent = tr(footballBoard ? "Hide dartboard" : "Show dartboard");
   $("football-board-toggle").setAttribute("aria-pressed", String(footballBoard));
   $("local-turn").hidden = $("local-turn-head").hidden = won;
   const entry = manualEntry(value);
   if ($("local-manual").open && entry !== entryVisit) $("local-manual").close();
   // With the board shown, its halo replaces the detection badge.
-  $("local-detector").parentElement.hidden = (football ? footballBoard : value.options.show_board) && !manual;
+  $("local-detector").parentElement.hidden = boardShown && !manual;
   $("local-next").title = manual || bot ? ""
     : tr("Detected visits advance when you remove the darts. Use Next turn after clearing the board to finish an interrupted visit.");
-  if (won) $("local-winner-name").textContent = frame.winner < 0 ? tr("Draw") : tr("{0} wins!", { 0: frame.players[frame.winner].name });
-  $("local-phase").textContent = bot ? tr(turn.busted ? "{0} · Bust" : "{0} is throwing…", { 0: player.name })
+  if (won) $("local-winner-name").textContent = resultText(value);
+  // A manual bull-up dart is placed by tapping the board where it landed.
+  $("local-board").dataset.pick = String(bullup && manual && !bot && !turn.finishedAt && !working);
+  $("local-phase").textContent = bullup && (turn.finishedAt || !bot) ? bullupText(value)
+    : bot ? tr(turn.busted ? "{0} · Bust" : "{0} is throwing…", { 0: player.name })
     : turn.busted ? tr("{0} · Bust — remove darts", { 0: player.name })
     : tr("{0} to throw", { 0: player.name });
   $("local-phase").dataset.bust = String(Boolean(turn.busted));
+  // X01 suggests a checkout; target games show what to aim for next.
   const route = football || turn.finishedAt || won ? null
+    : value.targets ? targetHints(mode, value.targets, frame.player, turn.throws, value.options.atc_ring)
     : checkout(frame.gameScores[frame.player], 3 - turn.throws.length, value.options.double_out);
   const removable = manual && !bot && !(won && Boolean(value.tournament));
   const dartsSignature = JSON.stringify([turn.throws, entry, route, football, removable]);
@@ -418,7 +601,7 @@ function renderMatch(value) {
     $("local-darts").replaceChildren(...(value.football && ["bullup", "penalties"].includes(value.football.phase) ? [0] : [0, 1, 2]).map(index => dartSlot(turn.throws[index], index,
       index === turn.throws.length - 1, entry !== null && index === turn.throws.length,
       route?.[index - turn.throws.length], football, value.football?.phase === "bullup",
-      removable && index === turn.throws.length - 1)));
+      removable && index === turn.throws.length - 1, value.targets ? tr("Target") : tr("Suggested"))));
   }
   for (const button of $("local-darts").querySelectorAll("button")) button.disabled = working;
   $("local-visit").textContent = turn.busted ? tr("Bust") : turn.points;
@@ -436,9 +619,10 @@ function renderMatch(value) {
   // Only redraw on changes so the blinking animation is not restarted by every poll.
   renderBoard(turn);
   renderFootball(value);
+  markTargets(value);
   const stats = playerStats(frame);
   const cards = frame.players.map((item, index) =>
-    playerCard(item, index, frame, stats, won, value.options.players[index]));
+    playerCard(item, index, frame, stats, won, value.options.players[index], value));
   const { left, right } = seats(cards.length);
   // Keep the visit line when it sits under a single player's card.
   $("local-side-left").replaceChildren(...left.map(index => cards[index]), ...$("local-side-left").querySelectorAll("#local-turn"));
@@ -449,7 +633,7 @@ function renderMatch(value) {
     const row = document.createElement("tr");
     const owner = frame.players.find(candidate => candidate.id === item.playerId);
     for (const text of [item.round + 1, owner?.name || "", item.throws.map(dart => football && dartRegion(dart) ? regionLabel(dartRegion(dart)) : dart.segment.name).join(" · "),
-      item.busted ? tr("Bust") : item.points, item.score]) {
+      item.busted ? tr("Bust") : item.points, mode === "cricket" ? cricketMarks(item) : item.score]) {
       const cell = document.createElement("td");
       cell.textContent = text;
       row.append(cell);
@@ -469,7 +653,7 @@ function fitBoard(force = false) {
     $("local-winner").hidden, $("local-detector-detail").hidden, $("local-stage").dataset.count, state?.football?.phase, state?.football?.pending, state?.football?.event, state?.frame?.turns[0]?.finishedAt].join();
   if (!force && key === fitted) return;
   fitted = key;
-  if (state?.options.mode === "football" && !$("local-match").hidden) {
+  if (state?.options.mode === "football" && state.football?.phase !== "bullup" && !$("local-match").hidden) {
     const arena = $("local-football").parentElement;
     const available = innerHeight - arena.getBoundingClientRect().top - scrollY - parseFloat(getComputedStyle($("main")).paddingBottom)
       - $("local-foot").offsetHeight - 4;
@@ -547,12 +731,16 @@ function setupOptions() {
     football_kickoff: radio("kickoff"),
     football_beginner: radio("movement") === "beginner",
     football_own_goals: radio("own-goals") === "on",
+    cricket_scoring: radio("cricket-scoring"),
+    atc_ring: radio("atc-ring"),
+    atc_bull: radio("atc-bull") === "on",
     players: [...$("local-players").children].map((row, index) => {
       const bot = Number(row.dataset.bot) || null;
       const auto = row.dataset.autoBot || null;
+      const difficulty = row.dataset.difficulty || null;
       const name = row.querySelector("input").value.trim()
-        || (bot || auto ? tr("Bot {0}", { 0: index + 1 }) : tr("Player {0}", { 0: index + 1 }));
-      return bot ? { name, bot } : auto ? { name, auto } : { name };
+        || (rowIsBot(row) ? tr("Bot {0}", { 0: index + 1 }) : tr("Player {0}", { 0: index + 1 }));
+      return difficulty ? { name, difficulty } : bot ? { name, bot } : auto ? { name, auto } : { name };
     }),
     starting_score: Number(radio("score")),
     double_out: radio("out") === "double",
@@ -652,7 +840,7 @@ function submitManualDart(dart) {
     return result;
   }).then(() => {
     if (!$("local-manual").open) {
-      const target = state.frame.winner >= 0 ? $(state.tournament ? "local-tournament-continue" : "local-rematch")
+      const target = state.finished ? $(state.tournament ? "local-tournament-continue" : "local-rematch")
         : $("local-darts").querySelector(".game-dart-entry") || $("local-next");
       target.focus();
     }
@@ -714,10 +902,14 @@ function footballSettings() {
   $("football-custom-rounds").parentElement.hidden = radio("football-rounds") !== "custom";
 }
 for (const name of ["football-format", "football-rounds"]) document.querySelectorAll(`input[name="${name}"]`).forEach(input => input.addEventListener("change", footballSettings));
-$("football-bullup-submit").addEventListener("click", () => {
-  const input = $("football-distance");
-  if (!input.value || !input.reportValidity() || working) return;
-  action(() => post("throw", { number: 25, multiplier: 1, distance_mm: Number(input.value) })).then(() => { input.value = ""; });
+$("local-board-svg").addEventListener("click", event => {
+  if ($("local-board").dataset.pick !== "true" || working) return;
+  // 100 board units are the double ring's outer edge, 170 mm from the centre; y points up.
+  const point = new DOMPoint(event.clientX, event.clientY).matrixTransform($("local-board-svg").getScreenCTM().inverse());
+  const hit = event.target.closest("[data-hit]")?.dataset.hit;
+  const mm = units => Math.max(-300, Math.min(300, Number((units * 1.7).toFixed(1))));
+  action(() => post("throw", { number: hit ? Number(hit.slice(1)) : 0, multiplier: hit ? "SDT".indexOf(hit[0]) + 1 : 1,
+    x_mm: mm(point.x), y_mm: mm(-point.y) }));
 });
 $("football-confirm").addEventListener("click", () => {
   entryVisit = manualEntry(state);

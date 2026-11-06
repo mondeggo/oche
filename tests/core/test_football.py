@@ -294,6 +294,18 @@ def test_own_goal_can_win_for_opponent_and_undo_restores_both_scores(tmp_path):
     assert local.saved.football.ball == "O6"
 
 
+def test_a_tapped_bullup_dart_keeps_its_position(tmp_path):
+    # Play's bull-up board sends where the dart was tapped, in millimetres with y up.
+    local = LocalGames(tmp_path, None, EventBus())
+    local.start(LocalOptions(mode="football", players=["A", "B"], input="manual"))
+    dart = LocalDart(number=25, multiplier=1, x_mm=6, y_mm=-8)
+    local.throw(dart.segment(), coords=dart.coordinates())
+    assert local.saved.football.bullup[0] == pytest.approx(10)
+    assert local.saved.frame.turns[0].throws[0].coords.model_dump() == pytest.approx({"x": 6 / 170, "y": -8 / 170})
+    with pytest.raises(ValidationError):
+        LocalDart(number=25, multiplier=1, x_mm=6)
+
+
 def test_bullup_closest_ties_undo_and_persistence(tmp_path):
     local = LocalGames(tmp_path, None, EventBus())
     local.start(LocalOptions(mode="football", players=["A", "B"], input="manual"))

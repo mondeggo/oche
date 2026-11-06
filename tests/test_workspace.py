@@ -167,12 +167,23 @@ def test_football_setup_defaults_and_board_controls(application):
             ("own-goals", "on"),
         ):
             assert re.search(rf'name="{field}" value="{value}" checked', page)
-        center = page[page.index('id="local-center"') : page.index('id="local-manual"')]
-        assert 'id="football-panel-actions"' in center
-        assert 'id="football-board-toggle"' in center
-        football = page[page.index('id="local-football"') : page.index('id="football-panel-actions"')]
+        # The reference board's toggle sits beside End game, on the same row.
+        bar = page[page.index('class="game-bar"') : page.index('id="local-detector-detail"')]
+        assert 'id="local-stop"' in bar and 'id="football-board-toggle"' in bar
+        football = page[page.index('id="local-football"') : page.index('id="local-stage"')]
         assert 'id="football-board-toggle"' not in football
         assert 'Display shape: board to pitch' in page
+
+
+def test_game_modes_share_one_grid_and_only_the_arcade_waits(application):
+    with TestClient(application) as client:
+        page = client.get("/local").text
+        modes = page[page.index('id="game-modes"') : page.index('id="local-setup"')]
+        assert modes.count('class="game-modes"') == 1
+        assert 'class="game-group">Match' not in modes
+        for mode in ("x01", "cricket", "atc", "countup", "bobs27", "shanghai", "football"):
+            assert f'data-mode="{mode}"' in modes
+        assert modes.count('aria-disabled="true"') == 2
 
 
 def test_camera_card_and_sidebar_share_persisted_visibility(application, tmp_path):

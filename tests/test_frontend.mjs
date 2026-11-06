@@ -10,7 +10,7 @@ import { engineHealth, localEventsHealth, localHealth, manualHealth, syncHealthR
 import { cloudHealth } from "../app/core/integrations/autodarts/static/health.mjs";
 import { CELLS, ORDER as FOOTBALL_ORDER, cellOutline, cellPosition, cellDart, pitchPoint, goalNet } from "../app/static/core/football-pitch.mjs";
 import { dartRegion, pitchPosition } from "../app/static/core/football.mjs";
-import { WDF_RINGS, boardMarkup, boardPoint, checkout, funnyName, hitKey, hitRegion, playerStats, seats } from "../app/static/core/game.mjs";
+import { WDF_RINGS, boardMarkup, boardPoint, checkout, cricketMarks, funnyName, hitKey, hitRegion, playerStats, seats, targetBeds, targetHints, targetLabel } from "../app/static/core/game.mjs";
 
 function appearanceContext(messages = {}, fetcher = async () => ({ ok: true,
   json: async () => ({ theme: "dark", language: "en", profile_id: "default" }) })) {
@@ -784,4 +784,22 @@ test("goal nets stay outside the goal doubles throughout the morph", () => {
     assert.ok(side === "right" ? back > x : back < x);
     assert.ok(back > 0 && back < 1000);
   }
+});
+
+test("target games label targets, suggest the next darts and outline the beds", () => {
+  const dart = (number, multiplier) => ({ segment: { number, multiplier } });
+  assert.equal(targetLabel(7, "double"), "D7");
+  assert.equal(targetLabel(25, "triple"), "Bull");
+  const clock = { sequence: [...Array.from({ length: 20 }, (_, index) => index + 1), 25], progress: [18, 0] };
+  assert.deepEqual(targetHints("atc", clock, 0, [], "double"), ["D19", "D20", "Bull"]);
+  assert.deepEqual(targetBeds("atc", clock, 0, "triple"), ["T19"]);
+  assert.deepEqual(targetHints("bobs27", { target: 4 }, 0, [dart(4, 2)]), ["D4", "D4"]);
+  assert.deepEqual(targetBeds("bobs27", { target: 25 }, 0), ["D25"]);
+  assert.deepEqual(targetHints("shanghai", { target: 3 }, 0, [dart(3, 3)]), ["D3", "3"]);
+  const marks = [[3, 3, 3, 3, 3, 2, 3]];
+  assert.deepEqual(targetBeds("cricket", { marks }, 0), ["S20", "D20", "T20"]);
+  assert.equal(targetHints("countup", {}, 0, []), null);
+  assert.equal(cricketMarks({ throws: [dart(20, 3), dart(25, 2), dart(1, 3)] }), 5);
+  const frame = { players: [{ id: "a" }], turns: [{ playerId: "a", finishedAt: "x", points: 0, throws: [dart(20, 3), dart(19, 1), dart(2, 1)] }] };
+  assert.equal(playerStats(frame)[0].marks, 4);
 });

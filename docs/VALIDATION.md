@@ -1,5 +1,29 @@
 # Validation
 
+## Target games, bot difficulty and Play layout (2026-11-06)
+
+- Automated: 849 Python tests passed, 2 skipped and 82 subtests passed, including
+  every target game's rules, restore from disk, Easy/Medium/Hard bots playing each
+  game (and football) to the end, and the setup readiness from `/api/local`. Both
+  JavaScript files passed 72 tests.
+- Browser acceptance (headless Microsoft Edge, 1400 × 900, isolated data
+  directory, manual input): Cricket shows marks and MPR on the cards and outlines
+  the open numbers; Around the Clock (doubles) shows the next target as the big
+  number with targets in the empty slots; Bob's 27 shows the round's double and
+  the round badge; the game list is one grid coloured by category, with Pac-Man
+  and Mario 64 still Coming soon. Opening a game collapses the sidebar and leaving
+  it expands it again. The bot dialog offers Difficulty for football. Football's
+  Hide dartboard sits at the right of the End game row; hiding it removes the
+  right panel and keeps the header one line, and a one-dart slot is centred.
+  Football's bull-up has its own X01-board screen: two tapped-position darts
+  (10.8 and 30.1 mm) marked Alice closer and starting, and Next turn opened the
+  pitch with Alice to kick off. The scoreboard names read in the light theme;
+  the ball was checked at 5×.
+- Not verified: detected darts in the target games, the setup readiness badge
+  against a running OcheCore (only the API and its test), why OcheCore did not
+  start with Oche in the reported case, Shanghai and Count Up in the browser, and
+  phone widths for the new cards.
+
 ## X01 dartboard look (2026-11-06)
 
 - Automated: 830 Python tests passed, 2 skipped and 82 subtests passed. Both

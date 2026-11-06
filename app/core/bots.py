@@ -1,4 +1,4 @@
-"""Simulated opponents for local X01 games."""
+"""Simulated opponents for local games."""
 
 import math
 import random
@@ -18,6 +18,8 @@ AUTO = {"easy": 0.85, "medium": 1.0, "hard": 1.15}
 # Before the players have thrown, an automatic bot assumes this average, weighted as this many visits,
 # so a single lucky or poor visit does not swing it.
 PRIOR_AVERAGE, PRIOR_VISITS = 45.0, 3
+# Levels for the fixed difficulties of games other than X01, which aim by the game's rules.
+DIFFICULTY = {"easy": 3, "medium": 6, "hard": 9}
 # Seconds before each dart, and before the next player after a finished visit.
 SPEEDS = {"slow": (2.0, 3.0), "normal": (1.2, 2.0), "fast": (0.5, 1.0)}
 

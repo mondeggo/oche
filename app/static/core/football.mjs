@@ -100,7 +100,7 @@ function preparePitch() {
 
 export function renderFootball(value) {
   const game = value.football, frame = value.frame;
-  $("local-football").hidden = !game;
+  $("local-football").hidden = !game || game.phase === "bullup";
   for (const node of $("local-board-svg").querySelectorAll("[data-target]")) delete node.dataset.target;
   if (!game) return;
   if (matchId !== frame.id) { inspected = null; matchId = frame.id; }
@@ -128,8 +128,6 @@ export function renderFootball(value) {
     : game.ball === "OB" ? tr("Next targets: bullseye or any inner single.")
     : tr("Next targets: {0}", { 0: game.targets.map(regionLabel).join(" · ") });
   const bullup = game.phase === "bullup", penalties = game.phase === "penalties";
-  $("football-bullup-entry").hidden = !bullup || value.options.input !== "manual" || finished || value.options.players[frame.player].bot || value.options.players[frame.player].auto;
-  $("football-bullup-submit").disabled = finished;
   $("football-confirm").hidden = !game.pending;
   $("football-clock").textContent = value.options.football_format === "rounds" ? game.clock : tr("Half {0}", { 0: game.half });
   if (bullup) {

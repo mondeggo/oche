@@ -480,7 +480,7 @@ test("changing WLED views saves both drafts before loading and never discards a 
 
 test("manual dart entry follows the current human visit and rejects closed or automatic turns", () => {
   const source = readFileSync(new URL("local.js", core), "utf8");
-  const context = vm.createContext({ isBot: player => Boolean(player?.bot || player?.auto) });
+  const context = vm.createContext({ isBot: player => Boolean(player?.bot || player?.auto || player?.difficulty) });
   vm.runInContext(source.slice(source.indexOf("function manualEntry("), source.indexOf("function renderMatch(")), context);
   const game = { active: true, options: { input: "manual", players: [{ name: "Player 1" }] },
     frame: { id: "match", winner: -1, player: 0,
@@ -495,7 +495,9 @@ test("manual dart entry follows the current human visit and rejects closed or au
     value => { value.options.input = "autodarts"; },
     value => { value.options.players[0].bot = 3; },
     value => { value.options.players[0].auto = "medium"; },
+    value => { value.options.players[0].difficulty = "hard"; },
     value => { value.frame.winner = 0; },
+    value => { value.finished = true; },
     value => { value.frame.turns[0].finishedAt = "finished"; },
     value => { value.frame.turns[0].throws = [{}, {}, {}]; },
   ]) {

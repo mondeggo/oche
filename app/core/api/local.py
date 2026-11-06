@@ -3,6 +3,7 @@
 from fastapi import APIRouter, Request
 
 from app.core.local import LocalDart, LocalOptions
+from app.services import engines
 
 router = APIRouter(prefix="/api/local")
 
@@ -10,8 +11,10 @@ router = APIRouter(prefix="/api/local")
 @router.get("")
 async def status(request: Request):
     runtime = request.app.state.runtime
+    # Before a game, Play shows whether the chosen vision engine is detecting, as the sidebar does.
+    await runtime.detection.check(engines.process_status())
     async with runtime.local.lock:
-        return runtime.local_status()
+        return {**runtime.local_status(), "readiness": runtime.detection.status()}
 
 
 @router.post("/start")

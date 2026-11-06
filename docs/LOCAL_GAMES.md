@@ -1,11 +1,17 @@
 # Local games
 
-Open **Play on Oche** in the sidebar (`/local`) and choose a game mode. The first
-mode is one-leg X01: 301 or 501, single in, straight or double out, and one to
-eight players sharing the board. Bull is 25; double bull is 50 and counts as a
-double for checkout. A bust restores the score from the beginning of the visit.
-The **Arcade** category includes playable Football. Other modes, including
-Pac-Man and Mario 64, are marked **Coming soon** and cannot be started yet.
+Open **Play on Oche** in the sidebar (`/local`) and choose a game mode. The modes
+share one grid; each card's tag names its category (Match, Practice, Party or
+Arcade) in that category's colour. The first mode is one-leg X01: 301 or 501,
+single in, straight or double out, and one to eight players sharing the board.
+Bull is 25; double bull is 50 and counts as a double for checkout. A bust restores
+the score from the beginning of the visit. Cricket, Around the Clock, Count Up,
+Bob's 27, Shanghai and Football are playable too (see
+[Target games](#target-games) and [Football](#football)). Pac-Man and Mario 64 are
+marked **Coming soon** and cannot be started yet.
+
+Opening a game collapses the sidebar to its icon rail to give the game more room;
+leaving the game expands it again, unless it was already collapsed.
 
 The setup screen is one centered column, up to 680 px wide, with one panel: the
 players and, below them, labelled settings (starting score, finish, player names, dartboard and input) with
@@ -28,7 +34,11 @@ hint about advancing detected visits is the tooltip of **Next turn**.
 Averages use the up to 100 recent visits the service keeps.
 
 **Add bot** opens **Bot settings**: choose a play speed (Slow, Normal or Fast,
-shared by every bot in the game), then **Auto** or a level from 1 to 11. A level's
+shared by every bot in the game). In games other than X01, which have no
+three-dart average to match, choose **Easy**, **Medium** or **Hard**: the bot
+plays by the game's rules (see each game below) with the accuracy of X01 levels 3,
+6 or 9. Switching the setup between X01 and another game keeps bots close to their
+level. In X01, choose **Auto** or a level from 1 to 11. A level's
 label is its approximate three-dart scoring average, from 20+ to 120+. **Auto**
 opens **Auto difficulty** under the play speed: **Easy**, **Medium** or **Hard**.
 An auto bot aims for about 85%, 100% or 115% of the human players' three-dart
@@ -253,15 +263,22 @@ Game controls share the main application lifecycle, port and origin guards:
 | Method | Path | Action |
 | --- | --- | --- |
 | GET | `/api/local` | Saved game, display snapshot and detector status |
-| POST | `/api/local/start` | Start with `players`, `starting_score`, `double_out`, `input`, `bot_speed`, `show_board`, `random_names` |
+| POST | `/api/local/start` | Start with `mode`, `players`, `starting_score`, `double_out`, `cricket_scoring`, `atc_ring`, `atc_bull`, the football options, `input`, `bot_speed`, `show_board`, `random_names` |
 | POST | `/api/local/stop` | End local play and resume cloud processing |
 | POST | `/api/local/throw` | Manual dart: `number` and `multiplier` |
 | POST | `/api/local/undo` | Undo a manual dart in the current visit |
 | POST | `/api/local/next` | Accept the current visit and advance |
 
-Each entry in `players` is a name, `{"name": ..., "bot": 1-11}` or
-`{"name": ..., "auto": "easy" | "medium" | "hard"}` (not both); a plain name is a
-human player. `bot_speed` is `slow`, `normal` (default) or `fast`.
+Each entry in `players` is a name, `{"name": ..., "bot": 1-11}`,
+`{"name": ..., "auto": "easy" | "medium" | "hard"}` or
+`{"name": ..., "difficulty": "easy" | "medium" | "hard"}` (one of them); a plain
+name is a human player. `mode` is `x01` (default), `cricket`, `atc`, `countup`,
+`bobs27`, `shanghai` or `football`. `/api/local` also returns `finished` (a win
+or a game that ended without one), `targets` for the target games and `readiness`:
+the chosen vision engine's detection state. The setup screen's **Local detection**
+badge shows `readiness` before a game (Ready, Starting, Calibrating, Waiting,
+Stopped or Unavailable, with the reason as its tooltip), because the game's own
+board feed only runs during a game. `bot_speed` is `slow`, `normal` (default) or `fast`.
 `show_board` and `random_names` default to `true`; `random_names` only restores
 the setup choice. Darts in `/api/local` frames include `coords`
 when a position is known.
@@ -305,6 +322,47 @@ also saves its tournament and match identifiers, so a result can be recovered
 after a restart even if the bracket write was interrupted. These files contain
 player names and use the same private, atomic storage as other local game data.
 
+## Target games
+
+Cricket, Around the Clock, Count Up, Bob's 27 and Shanghai use the X01 game
+screen: the board, the player cards seated around it, the visit line beside
+**End game**, the footer badges and **Recent visits**. Each takes one to eight
+players. A visit is replayed from the state at its start, as in football, so undo
+and detector corrections are exact. A visit of fewer than three darts ends with
+**Next turn** (or a detected takeout) and is scored as finished. Remaining dart
+slots show the next **Target**, and the board outlines the beds the player aims
+for. A game that ends without a winner, such as a tie, shows **Draw**; a solo
+game shows the result instead of a winner.
+
+- **Cricket** (Match): 15–20 and the bull. A single is one mark, a double two and
+  a treble three; the outer bull is one and the bullseye two. Three marks close a
+  number. **Standard**: further marks on a closed number score its value for you
+  while any opponent has it open. **Cut-throat**: they score against each opponent
+  who has it open, and the lowest score wins. Closing every number with the best
+  score (or, in cut-throat, the lowest) wins at once. Cards show each number's
+  marks as /, X and a closed circle; the average is marks per round (MPR).
+- **Around the Clock** (Practice): 1 to 20 in order, each hit moving to the next.
+  **Target ring** is Any, Doubles or Trebles; **Finish on the bull** adds the bull
+  after 20, where either bull counts. The card's big number is the next target.
+  The first player to finish wins.
+- **Count Up** (Practice): every dart scores its points; the highest total after
+  eight rounds wins.
+- **Bob's 27** (Practice): start on 27 and play D1 to D20, then the bullseye. Each
+  hit on the round's double adds its value; a visit without one loses it. Below
+  zero, a player is out and skipped. After the bull round, the highest score still
+  in wins; if everyone is out, no one does.
+- **Shanghai** (Party): seven rounds, scoring only the round's number. A single,
+  double and treble of it in one visit is a Shanghai and wins at once; otherwise
+  the highest total after seven rounds wins.
+
+Bots aim by these rules: Cricket bots close their highest open number and score on
+a number they closed when behind; Around the Clock and Bob's 27 bots aim at the
+target in the chosen ring; Shanghai bots collect the treble, double and single;
+Count Up bots aim at T20. The frame's `variant` (`Cricket`, `ATC`, `Count Up`,
+`Bob's 27`, `Shanghai`) is the one the caller already understands: segment calls
+for Cricket, Around the Clock and Bob's 27, the next target in Around the Clock,
+and visit points (Cricket's turn total) at the end of a visit.
+
 Checkout suggestions appear in the remaining dart slots as muted **Suggested**
 labels. They update after each throw or undo and disappear when the visit ends.
 Actual darts retain their scored appearance; selecting the next manual slot still
@@ -326,10 +384,14 @@ bots can also play. D6 is the right goal and D11 the left; the goal doubles form
 - **Movement:** strict shared edges or beginner diagonals as well (default).
 - **Own goals:** on by default.
 
-Both players throw one dart for the bull-up. The closest starts; equal distances
-(within 0.01 mm) repeat the bull-up. Manual input asks for the measured distance
-from the centre in millimetres; vision uses the hit coordinates. The ball starts
-at the centre regardless of where the winning bull-up dart lands.
+The bull-up has its own screen before the pitch: the X01 board with the two
+players beside it, each card showing that player's distance from the bull. Each
+player throws one dart; with manual input, tap the board where it landed, and
+vision uses the hit coordinates. The footer asks who throws, then names who is
+closer and starts; **Next turn** then opens the pitch. Equal distances (within
+0.01 mm) repeat the bull-up. The ball starts at the centre regardless of where the
+winning bull-up dart lands. The API still accepts a measured `distance_mm`, or a
+tapped position as `x_mm` and `y_mm` (both, in millimetres with y up).
 
 ### Play and goals
 
@@ -399,7 +461,7 @@ distinct inner/outer singles, plus a Miss button. **Use keypad** retains the exi
 number buttons as an alternative. Vision coordinates remain in the original round
 board coordinate system.
 
-Goal nets sit immediately beyond the D6/D11 scoring cells and follow the morph. A compact match scoreboard shows both scores and the round-based clock (Goals mode shows the round count). The reference dartboard starts shown in the right panel; its toggle stays there, while manual entry always keeps its round-board input.
+Goal nets sit immediately beyond the D6/D11 scoring cells and follow the morph. A compact match scoreboard, dark in both themes like the dartboard, shows both scores and the round-based clock (Goals mode shows the round count). The ball is a shaded black-and-white football. The reference dartboard starts shown in the right panel. **Hide dartboard**, at the right end of the End game row, hides the whole right panel: its guidance, current visit and **Next turn** join End game in one row, so the pitch keeps its size. A one-dart visit, such as a bull-up or penalty, keeps the tile size and sits in the middle. Manual entry always keeps its round-board input.
 
 The pitch and reference dartboard scale to available viewport height; small
 screens place the compact board and input controls below the pitch.

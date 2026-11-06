@@ -46,19 +46,78 @@ export function checkout(remaining, darts = 3, doubleOut = true) {
   return null;
 }
 
-/** Three-dart average and last visit per player, from completed visits the service retains. */
+/** Three-dart average, Cricket marks per round and last visit per player, from completed visits the service retains. */
 export function playerStats(frame) {
   return frame.players.map(player => {
     const turns = frame.turns.filter(turn => turn.playerId === player.id && turn.throws.length && turn.finishedAt);
     const darts = turns.reduce((total, turn) => total + turn.throws.length, 0);
     const points = turns.reduce((total, turn) => total + (turn.busted ? 0 : turn.points), 0);
+    const marks = turns.reduce((total, turn) => total + cricketMarks(turn), 0);
     const last = turns[0];
     return {
       average: darts ? (points / darts) * 3 : null,
+      marks: darts ? (marks / darts) * 3 : null,
       last: last ? (last.busted ? null : last.points) : undefined,
       busted: Boolean(last?.busted),
     };
   });
+}
+
+/* Target games: Cricket, Around the Clock, Bob's 27 and Shanghai. Scoring stays in the service. */
+export const CRICKET = [15, 16, 17, 18, 19, 20, 25];
+
+/** Marks a visit put on the Cricket numbers: a single is one, a double two and a treble three. */
+export function cricketMarks(turn) {
+  return turn.throws.reduce((total, dart) => total + (CRICKET.includes(dart.segment.number) ? dart.segment.multiplier : 0), 0);
+}
+
+/** How a target reads in a dart slot or on a card: 7, D7, T7 or Bull. */
+export function targetLabel(number, ring = "any") {
+  if (number === 25) return "Bull";
+  return `${{ any: "", single: "", double: "D", triple: "T" }[ring]}${number}`;
+}
+
+/** The current target number for the player, or null when the game has none. */
+function currentTarget(mode, targets, player) {
+  if (mode === "atc") return targets.sequence[targets.progress[player]] ?? null;
+  return ["bobs27", "shanghai"].includes(mode) ? targets.target : null;
+}
+
+/** What the remaining darts of the visit aim for, one label per dart, or null. */
+export function targetHints(mode, targets, player, throws, ring = "any") {
+  const left = 3 - throws.length;
+  if (left < 1) return null;
+  if (mode === "atc") {
+    // Each hit moves on, so the next darts aim at the following numbers.
+    const from = targets.progress[player];
+    return targets.sequence.slice(from, from + left).map(number => targetLabel(number, ring));
+  }
+  const number = currentTarget(mode, targets, player);
+  if (number === null) return null;
+  if (mode === "bobs27") return Array(left).fill(targetLabel(number, "double"));
+  if (mode === "shanghai") {
+    // A Shanghai needs the single, double and treble of the number in one visit.
+    const thrown = new Set(throws.filter(dart => dart.segment.number === number).map(dart => dart.segment.multiplier));
+    const missing = [["triple", 3], ["double", 2], ["single", 1]].filter(([, multiplier]) => !thrown.has(multiplier));
+    const names = missing.map(([bed]) => targetLabel(number, bed));
+    return names.length ? names.slice(0, left) : Array(left).fill(targetLabel(number));
+  }
+  return null;
+}
+
+/** The data-hit keys of the beds the current player aims for. */
+export function targetBeds(mode, targets, player, ring = "any") {
+  if (mode === "cricket") {
+    // Every number the player has still to close.
+    return CRICKET.filter((_, index) => targets.marks[player][index] < 3)
+      .flatMap(number => number === 25 ? ["S25", "D25"] : ["S", "D", "T"].map(bed => `${bed}${number}`));
+  }
+  const number = currentTarget(mode, targets, player);
+  if (number === null) return [];
+  if (number === 25) return mode === "bobs27" ? ["D25"] : ["S25", "D25"];
+  if (mode === "bobs27") return [`D${number}`];
+  if (mode === "atc" && ring !== "any") return [`${ring === "double" ? "D" : "T"}${number}`];
+  return ["S", "D", "T"].map(bed => `${bed}${number}`);
 }
 
 const ADJECTIVES = ["Lucky", "Sneaky", "Fluffy", "Grumpy", "Turbo", "Wobbly", "Sleepy", "Cheeky", "Mighty", "Dizzy",

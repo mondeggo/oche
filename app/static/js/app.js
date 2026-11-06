@@ -58,6 +58,24 @@ import { engineHealth, localEventsHealth, manualHealth, syncHealthRows } from '.
   });
   compact.addEventListener('change', () => { setDrawer(false); labelRail(); });
   labelRail();
+  // A game collapses the sidebar to the rail for more room, and restores it when the game ends.
+  // The flag survives a reload during the game.
+  const gameKey = storageKey + '.game';
+  const forGame = value => {
+    try {
+      if (value === undefined) return sessionStorage.getItem(gameKey) === '1';
+      sessionStorage.setItem(gameKey, value ? '1' : '0');
+    } catch (_) { /* Restore nothing after a reload. */ }
+    return false;
+  };
+  window.ocheSidebar = {
+    ...window.ocheSidebar,
+    game(playing) {
+      const collapsed = shell.classList.contains('sidebar-collapsed');
+      if (playing && !collapsed && !compact.matches) { forGame(true); setCollapsed(true); }
+      else if (!playing && forGame()) { forGame(false); if (collapsed) setCollapsed(false); }
+    },
+  };
 })();
 
 // Enabled integrations own their indicators; Manual is shown without a selected engine.
@@ -115,7 +133,7 @@ import { engineHealth, localEventsHealth, manualHealth, syncHealthRows } from '.
     }
   }
 
-  window.ocheSidebar = { refresh };
+  window.ocheSidebar = { ...window.ocheSidebar, refresh };
   refresh();
   setInterval(refresh, 5000);
 })();
