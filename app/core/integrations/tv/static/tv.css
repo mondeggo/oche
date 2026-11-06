@@ -8,11 +8,16 @@
 
 /* Between games: a practice board with the darts on the board, like OcheCore's live view. */
 .game-practice:not([hidden]) { display: flex; flex-direction: column; align-items: center; gap: 16px; min-height: calc(100dvh - 44px); }
-.game-practice-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 24px; width: 100%; }
+.game-practice-head { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 12px 24px; width: 100%; }
+.game-practice-head > .badge { justify-self: end; }
 .game-practice-head h1 { margin: 0; }
 .game-practice-head .subtitle { margin: 4px 0 0; }
-.game-practice .game-practice-board { width: max(280px, min(100%, 100dvh - 300px)); }
-.game-practice-visit { width: min(100%, 640px); grid-template-columns: minmax(0, 1fr) 88px; }
+.game-practice .game-practice-board { width: max(280px, min(100%, 100dvh - 200px)); }
+.game-practice-visit { width: 640px; max-width: 100%; grid-template-columns: minmax(0, 1fr) 88px; }
+@media (max-width: 900px) {
+  .game-practice-head { grid-template-columns: minmax(0, 1fr); }
+  .game-practice-head > .badge { justify-self: start; }
+}
 
 /* Remote: Play for a phone or tablet; the TV shows the board. */
 #main:has(.game-page[data-display="remote"]) { max-width: none; padding: 16px 16px 24px; --setup-gutter: 16px; }
@@ -23,6 +28,8 @@
 .game-page[data-display="remote"] .game-bar-visit { width: auto; }
 .game-page[data-display="remote"] .game-foot { padding-right: 64px; }
 .game-page[data-display="remote"] .game-screen:not([hidden]) { min-height: calc(100dvh - 40px); }
+/* Start game floats over a fade into the page instead of Play's full-width footer band. */
+.game-page[data-display="remote"] .game-start { margin-inline: 0; padding-inline: 0; border-top: 0; background: linear-gradient(transparent, var(--bg) 45%); box-shadow: none; }
 /* Dart entry stays open below the visit, with large keys for a thumb. */
 .game-page[data-display="remote"] #local-manual[open]:not(:modal) { position: static; inset: auto; display: grid; width: 100%; max-width: none; max-height: none; margin: 16px 0 0; box-shadow: var(--pop); }
 .game-page[data-display="remote"] #local-manual:not(:modal) .card-head .icon-button { display: none; }

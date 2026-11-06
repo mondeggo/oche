@@ -80,16 +80,17 @@
 
 {%- if display == "tv" %}
 <section id="local-practice" class="game-view game-practice" aria-labelledby="local-practice-title" hidden>
+  {#- The darts sit in the top row, as on the game screens and OcheCore's live view. #}
   <header class="game-practice-head">
     <div><p class="eyebrow">{{ _("Practice") }}</p><h1 id="local-practice-title">{{ _("Waiting for a game") }}</h1>
     <p class="subtitle">{{ _("Throw to practise. A game started in Play shows here.") }}</p></div>
+    <div class="game-visit game-practice-visit">
+      <ol id="local-practice-darts" class="game-darts" aria-label="{{ _('Darts') }}"></ol>
+      <div class="game-visit-total"><span>{{ _("Visit") }}</span><strong id="local-practice-total">0</strong></div>
+    </div>
     <span id="local-practice-state" class="badge">{{ _("Waiting") }}</span>
   </header>
   <div class="game-board game-practice-board"><svg id="local-practice-svg" viewBox="-131 -131 262 262" role="img" aria-label="{{ _('Dartboard with the darts on the board') }}"></svg></div>
-  <div class="game-visit game-practice-visit">
-    <ol id="local-practice-darts" class="game-darts" aria-label="{{ _('Darts') }}"></ol>
-    <div class="game-visit-total"><span>{{ _("Visit") }}</span><strong id="local-practice-total">0</strong></div>
-  </div>
 </section>
 {%- endif %}
 

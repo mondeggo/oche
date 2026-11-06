@@ -478,14 +478,16 @@ shows Play without the sidebar on two pages, both linked from
 
 - **`/tv`**, for the TV's browser: whatever local game is on, read-only, with no
   buttons. Between games it shows a practice board with the darts on the board, as
-  detected by the vision engine Play uses, like OcheCore's live view, with the
-  engine's readiness. Nothing on the practice board is scored or sent to the
+  detected by the vision engine Play uses, like OcheCore's live view: the darts
+  and their total in the top row, as on the game screens, and the engine's
+  readiness on the right. Nothing on the practice board is scored or sent to the
   integrations. While it is open, it keeps the read-only board feed open, as the
   Events screen does.
 - **`/tv/remote`**, for a phone or tablet: Play itself (game list, setup, and the
   game) shaped for touch. The board stays on the TV, except for tapping the
   football bull-up dart. With manual input, dart entry stays open below the visit
-  with large keys, followed by compact player cards.
+  with large keys, followed by compact player cards. **Start game** floats over a
+  fade instead of Play's full-width footer band.
 
 Both pages follow the same game, so a game started on the remote or in Play shows
 on the TV at once. Switched off, the integration's pages return 404.
