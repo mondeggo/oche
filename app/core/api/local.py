@@ -17,6 +17,16 @@ async def status(request: Request):
         return {**runtime.local_status(), "readiness": runtime.detection.status()}
 
 
+@router.get("/live")
+async def live(request: Request):
+    """The board's darts outside a game; polling keeps the read-only feed open for a practice board."""
+    runtime = request.app.state.runtime
+    await runtime.detection.check(engines.process_status())
+    async with runtime.local.lock:
+        runtime.local.monitor()
+        return {"board": runtime.local.live, "readiness": runtime.detection.status()}
+
+
 @router.post("/start")
 async def start(options: LocalOptions, request: Request):
     return await request.app.state.runtime.start_local(options)

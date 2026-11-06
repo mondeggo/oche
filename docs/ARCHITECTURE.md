@@ -13,7 +13,8 @@ Stable launcher
     ├── HTTPS, persistent settings, panels and updates
     └── app/core/integrations/registry.py
         ├── autodarts/  board software, setup terminal, Camera Enhancer, cloud account, Play on Autodarts
-        └── ochecore/   offline board service, setup terminal and management page
+        ├── ochecore/   offline board service, setup terminal and management page
+        └── tv/         TV view and phone or tablet remote, both Play without the sidebar
 ```
 
 Integrations that install and run a program live in their own package under

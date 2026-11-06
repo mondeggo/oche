@@ -385,6 +385,33 @@ def test_play_setup_reports_the_engine_readiness_before_a_game(settings, monkeyp
         assert client.get("/api/local").json()["readiness"]["state"] == "stopped"
 
 
+def test_practice_board_reads_darts_without_scoring(tmp_path):
+    game = LocalGames(tmp_path, None, EventBus())
+    game.read_live(
+        {
+            "status": "throw",
+            "throws": [
+                {"segmentNumber": 20, "multiplier": 3, "bed": "Triple", "coordsX": 0.01, "coordsY": 0.6},
+                {"segmentNumber": 5, "multiplier": 0, "bed": "Outside"},
+            ],
+        }
+    )
+    assert [dart["segment"]["name"] for dart in game.live["darts"]] == ["T20", "MISS"]
+    assert game.live["darts"][0]["coords"] == {"x": 0.01, "y": 0.6}
+    assert not game.bus.normalized_history
+    game.read_live({"status": "throw", "numThrows": 2, "throws": []})
+    assert game.live["darts"] == [] and game.live["error"]
+
+
+def test_live_api_keeps_the_feed_open_for_a_practice_board(settings):
+    with TestClient(create_app(settings)) as client:
+        local = client.app.state.runtime.local
+        assert not local.wants_feed()
+        live = client.get("/api/local/live").json()
+        assert live["board"] is None and "state" in live["readiness"]
+        assert local.wants_feed()
+
+
 def test_local_api_validation_and_origin_guards(settings):
     with TestClient(create_app(settings)) as client:
         assert client.post("/api/local/start", json={"input": "manual", "players": []}).status_code == 422

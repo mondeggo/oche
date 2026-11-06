@@ -1570,5 +1570,21 @@
   "Tie — both throw again": "Tie — both throw again",
   "{0} is closer and starts": "{0} is closer and starts",
   "{0} is {1} mm from the bull": "{0} is {1} mm from the bull",
-  "{0}: throw one dart at the bull": "{0}: throw one dart at the bull"
+  "{0}: throw one dart at the bull": "{0}: throw one dart at the bull",
+  "Game categories": "Game categories",
+  "All": "All",
+  "Waiting for a game": "Waiting for a game",
+  "Throw to practise. A game started in Play shows here.": "Throw to practise. A game started in Play shows here.",
+  "Dartboard with the darts on the board": "Dartboard with the darts on the board",
+  "Pitch help and display": "Pitch help and display",
+  "Oche - TV view": "Oche - TV view",
+  "TV view": "TV view",
+  "Show games on a TV and run them from a phone or tablet. Both pages follow the game started in Play.": "Show games on a TV and run them from a phone or tablet. Both pages follow the game started in Play.",
+  "TV": "TV",
+  "Full screen, without the sidebar. It shows the game on, and a practice board with the darts on the board between games. Open it in the TV's browser.": "Full screen, without the sidebar. It shows the game on, and a practice board with the darts on the board between games. Open it in the TV's browser.",
+  "Open TV view ↗": "Open TV view ↗",
+  "Remote": "Remote",
+  "Play shaped for a phone or tablet: choose a game, add players, enter darts and go to the next turn.": "Play shaped for a phone or tablet: choose a game, add players, enter darts and go to the next turn.",
+  "Open remote ↗": "Open remote ↗",
+  "A full-screen game view for a TV, and a remote to run games from a phone or tablet.": "A full-screen game view for a TV, and a remote to run games from a phone or tablet."
 }

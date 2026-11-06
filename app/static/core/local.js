@@ -47,6 +47,10 @@ const READY_TONE = { detecting: "badge-green", starting: "badge-yellow", calibra
 // The board's halo shows detection: red when stopped, yellow while waiting, green when scoring.
 const HALO = { connected: "green", waiting: "yellow", waiting_for_clear: "yellow", stopped: "red", unavailable: "red" };
 
+// An integration can show Play as a TV view (read-only, with a practice board between games)
+// or as a remote for a phone or tablet, both without the sidebar.
+const DISPLAY = $("game-page").dataset.display || "";
+const TV = DISPLAY === "tv", REMOTE = DISPLAY === "remote";
 let state = null;
 let working = false;
 let revision = "";
@@ -65,12 +69,13 @@ const setRadio = (name, value) => {
 let shownView = null;
 function show(view) {
   // Opening a game collapses the sidebar for room; leaving the game restores it.
-  if (view !== shownView && (view === "match" || shownView === "match" || shownView === null)) window.ocheSidebar?.game(view === "match");
+  if (!DISPLAY && view !== shownView && (view === "match" || shownView === "match" || shownView === null)) window.ocheSidebar?.game(view === "match");
   shownView = view;
   $("game-page").dataset.view = view;
   $("game-modes").hidden = view !== "modes";
   $("local-setup").hidden = view !== "setup";
   $("local-match").hidden = view !== "match";
+  if (TV) $("local-practice").hidden = view !== "practice";
 }
 
 /* Players */
@@ -405,8 +410,7 @@ function cricketRow(marks) {
 
 /* Marks the visit's darts like OcheCore's live board: each dart's bed is tinted, and a dart
    with coordinates is a small dot in its own colour with its number above. The newest one pulses. */
-function renderBoard(turn) {
-  const board = $("local-board-svg");
+function renderBoard(turn, board = $("local-board-svg")) {
   for (const path of board.querySelectorAll("[data-state]")) delete path.dataset.state;
   const marks = [];
   turn.throws.forEach((dart, index) => {
@@ -455,14 +459,18 @@ function placeStage(count, board, football) {
   stage.dataset.board = String(board);
   stage.dataset.count = String(count);
   $("local-board").hidden = !board;
-  // Without the reference board, football's guidance and visit join End game in one row, so the pitch keeps its size.
+  // The scoreboard sits beside End game; without the reference board the visit joins it, so the pitch keeps its size.
   stage.hidden = football && !board;
   const solo = board && count === 1;
   $("local-match").dataset.solo = String(solo);
   const turn = $("local-turn"), guidance = $("football-guidance");
+  const scoreboard = document.querySelector(".football-scoreboard");
+  scoreboard.hidden = !football;
+  if (football && scoreboard.parentElement !== $("local-bar-visit")) $("local-bar-visit").prepend(scoreboard);
   if (!football || !board) {
     if (turn.parentElement !== $("local-bar-visit")) $("local-bar-visit").append(turn);
-    if (football && guidance.parentElement !== $("local-bar-visit")) $("local-bar-visit").prepend(guidance);
+    // Without the board, the guidance is one line beside who is throwing.
+    if (football && guidance.parentElement !== $("local-turn-head")) $("local-turn-head").append(guidance);
     return;
   }
   if (guidance.parentElement !== $("local-center")) $("local-center").prepend(guidance);
@@ -473,6 +481,7 @@ function placeStage(count, board, football) {
 let dartsRevision = "";
 let entryVisit = null;
 function manualEntry(value) {
+  if (TV) return null;
   if (value?.football?.pending) return JSON.stringify(value.football.pending);
   if (["bullup", "finished"].includes(value?.football?.phase)) return null;
   if (!value?.active || value.options.input !== "manual" || value.finished || value.frame.winner >= 0
@@ -551,7 +560,7 @@ function renderMatch(value) {
   const bullup = football && value.football.phase === "bullup";
   $("local-match").dataset.variant = bullup ? "bullup" : mode;
   $("football-guidance").hidden = !football || bullup;
-  $("football-board-toggle").hidden = !football || bullup;
+  $("football-board-toggle").hidden = $("football-help").hidden = !football || bullup || REMOTE;
   $("local-match-title").textContent = modeInfo(mode)[0];
   $("local-single-bed").hidden = !football || !footballKeypad || radio("ring") !== "1";
   $("football-input-board").hidden = !football || footballKeypad;
@@ -570,7 +579,8 @@ function renderMatch(value) {
   const bot = !won && isBot(value.options.players[frame.player]);
   renderChips(value);
   $("local-winner").hidden = !won;
-  const boardShown = bullup || (football ? footballBoard : value.options.show_board);
+  // The remote leaves the board to the TV, except for tapping the bull-up dart.
+  const boardShown = bullup || (!REMOTE && (football ? footballBoard : value.options.show_board));
   placeStage(frame.players.length, boardShown, football && !bullup);
   $("local-football").parentElement.dataset.reference = String(!football || footballBoard);
   $("football-board-toggle").textContent = tr(footballBoard ? "Hide dartboard" : "Show dartboard");
@@ -578,6 +588,8 @@ function renderMatch(value) {
   $("local-turn").hidden = $("local-turn-head").hidden = won;
   const entry = manualEntry(value);
   if ($("local-manual").open && entry !== entryVisit) $("local-manual").close();
+  // The remote keeps dart entry open below the visit instead of in a popup.
+  if (REMOTE && entry !== null && !$("local-manual").open && !working) openEntry(tr("Enter dart {0}", { 0: turn.throws.length + 1 }), false);
   // With the board shown, its halo replaces the detection badge.
   $("local-detector").parentElement.hidden = boardShown && !manual;
   $("local-next").title = manual || bot ? ""
@@ -594,7 +606,7 @@ function renderMatch(value) {
   const route = football || turn.finishedAt || won ? null
     : value.targets ? targetHints(mode, value.targets, frame.player, turn.throws, value.options.atc_ring)
     : checkout(frame.gameScores[frame.player], 3 - turn.throws.length, value.options.double_out);
-  const removable = manual && !bot && !(won && Boolean(value.tournament));
+  const removable = !TV && manual && !bot && !(won && Boolean(value.tournament));
   const dartsSignature = JSON.stringify([turn.throws, entry, route, football, removable]);
   if (dartsSignature !== dartsRevision) {
     dartsRevision = dartsSignature;
@@ -619,6 +631,7 @@ function renderMatch(value) {
   // Only redraw on changes so the blinking animation is not restarted by every poll.
   renderBoard(turn);
   renderFootball(value);
+  if (REMOTE) $("local-football").hidden = true;
   markTargets(value);
   const stats = playerStats(frame);
   const cards = frame.players.map((item, index) =>
@@ -687,9 +700,25 @@ function render(value) {
   } else {
     revision = "";
     if ($("local-manual").open) $("local-manual").close();
-    show(choosing ? "setup" : "modes");
+    show(TV ? "practice" : choosing ? "setup" : "modes");
   }
   $("local-start").disabled = working;
+}
+
+/* The TV view between games: the darts on the board, like OcheCore's live view. */
+let practiceRevision = "";
+function renderPractice(live) {
+  const ready = live.readiness;
+  $("local-practice-state").textContent = tr(READINESS[ready?.state] || "Waiting");
+  $("local-practice-state").className = `badge ${READY_TONE[ready?.state] || ""}`.trim();
+  $("local-practice-state").title = ready ? tr(ready.reason) : "";
+  const darts = (live.board?.darts || []).map((dart, index) => ({ id: String(index), ...dart }));
+  const signature = JSON.stringify(darts);
+  if (signature === practiceRevision) return;
+  practiceRevision = signature;
+  renderBoard({ throws: darts }, $("local-practice-svg"));
+  $("local-practice-darts").replaceChildren(...[0, 1, 2].map(index => dartSlot(darts[index], index, index === darts.length - 1)));
+  $("local-practice-total").textContent = darts.reduce((total, dart) => total + dart.segment.number * dart.segment.multiplier, 0);
 }
 
 /* Actions */
@@ -757,6 +786,14 @@ document.querySelectorAll("[data-mode]").forEach(button => button.addEventListen
   show("setup");
   $("local-players").querySelector("input")?.select();
 }));
+function filterModes() {
+  const category = radio("category") || "all";
+  for (const card of $("game-modes").querySelectorAll(".game-mode")) card.hidden = category !== "all" && card.dataset.category !== category;
+  try { localStorage.setItem("oche.play.category", category); } catch (_) { /* Keep it for this visit. */ }
+}
+try { setRadio("category", localStorage.getItem("oche.play.category") || "all"); } catch (_) { /* Show every game. */ }
+filterModes();
+document.querySelectorAll('input[name="category"]').forEach(input => input.addEventListener("change", filterModes));
 $("local-back").addEventListener("click", () => { choosing = false; show("modes"); });
 $("local-add-player").addEventListener("click", () => addPlayer()?.select());
 $("local-add-bot").addEventListener("click", () => openBots());
@@ -815,15 +852,17 @@ $("local-setup").addEventListener("submit", event => {
     if (state?.active) $("local-match").scrollIntoView({ block: "start" });
   });
 });
+function openEntry(title, modal = !REMOTE) {
+  entryVisit = manualEntry(state);
+  if (entryVisit === null && !state?.football?.pending) return;
+  setRadio("ring", "1");
+  $("local-manual-title").textContent = title;
+  $("local-manual-error").hidden = true;
+  if (modal) { renderMatch(state); $("local-manual").showModal(); } else $("local-manual").show();
+}
 $("local-darts").addEventListener("click", event => {
   if (!event.target.closest(".game-dart-entry") || working) return;
-  entryVisit = manualEntry(state);
-  if (entryVisit === null) return;
-  setRadio("ring", "1");
-  $("local-manual-title").textContent = tr("Enter dart {0}", { 0: state.frame.turns[0].throws.length + 1 });
-  $("local-manual-error").hidden = true;
-  renderMatch(state);
-  $("local-manual").showModal();
+  openEntry(tr("Enter dart {0}", { 0: state.frame.turns[0].throws.length + 1 }));
 });
 $("local-keys").addEventListener("click", event => {
   const key = event.target.closest("button[data-number]");
@@ -883,11 +922,14 @@ async function refresh() {
     const [value, engines] = await Promise.all([api("/api/local"), api("/api/engines")]);
     renderEngineStart(engines);
     if (!working && currentGeneration === generation) render(value);
+    // Polling the board's darts keeps the read-only feed open for the practice board.
+    if (TV && !value.active) renderPractice(await api("/api/local/live"));
   } catch (cause) {
     fail(cause);
   }
 }
 $("local-board-svg").innerHTML = boardMarkup();
+if (TV) $("local-practice-svg").innerHTML = boardMarkup(WDF_RINGS);
 setInterval(refresh, 1000);
 document.addEventListener("visibilitychange", refresh);
 addEventListener("resize", () => fitBoard(true));
@@ -911,14 +953,7 @@ $("local-board-svg").addEventListener("click", event => {
   action(() => post("throw", { number: hit ? Number(hit.slice(1)) : 0, multiplier: hit ? "SDT".indexOf(hit[0]) + 1 : 1,
     x_mm: mm(point.x), y_mm: mm(-point.y) }));
 });
-$("football-confirm").addEventListener("click", () => {
-  entryVisit = manualEntry(state);
-  setRadio("ring", "1");
-  $("local-manual-title").textContent = tr("Confirm hit near wire");
-  $("local-manual-error").hidden = true;
-  renderMatch(state);
-  $("local-manual").showModal();
-});
+$("football-confirm").addEventListener("click", () => openEntry(tr("Confirm hit near wire"), true));
 
 $("football-input-toggle").addEventListener("click", () => { footballKeypad = !footballKeypad; renderMatch(state); });
 $("football-input-miss").addEventListener("click", () => {

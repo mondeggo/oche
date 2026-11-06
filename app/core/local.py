@@ -181,6 +181,8 @@ class LocalGames:
         self.http, self.bus = http, bus
         self.connection = LocalBoardConnection(http, board_url)
         self.monitor_until = 0.0
+        # The darts on the board outside a game, for a practice board.
+        self.live: dict | None = None
         self.feed_error: str | None = None
         self.normalizer = EventNormalizer(BOARD_ID, bus, play_source="local")
         self.saved: SavedLocalGame | None = None
@@ -255,8 +257,24 @@ class LocalGames:
             raise ConnectionProblem("Wait for the bot to finish its visit.")
 
     def monitor(self) -> None:
-        """Keep the read-only local feed alive while the Events screen polls."""
+        """Keep the read-only local feed alive while the Events screen or a practice board polls."""
         self.monitor_until = time.monotonic() + 10
+
+    def read_live(self, data: object) -> None:
+        """Keep the board's darts for a practice board; nothing is scored or emitted."""
+        try:
+            board, segments, positions = self.parse_board(data)
+        except ConnectionProblem as exc:
+            self.live = {"status": None, "darts": [], "error": str(exc)}
+            return
+        self.live = {
+            "status": board["status"],
+            "darts": [
+                {"segment": segment.model_dump(), "coords": coords.model_dump() if coords else None}
+                for segment, coords in zip(segments, positions, strict=True)
+            ],
+            "error": None,
+        }
 
     def wants_feed(self) -> bool:
         return bool(
@@ -918,7 +936,10 @@ class LocalGames:
                                 )
                                 if key is not None and self.scoring_key() == key:
                                     self.consume_board(data)
+                                elif not self.active:
+                                    self.read_live(data)
                 except (httpx.HTTPError, OSError, ValueError, ConnectionClosed, ConnectionProblem) as exc:
+                    self.live = None
                     self.feed_error = (
                         str(exc)
                         if isinstance(exc, ConnectionProblem)

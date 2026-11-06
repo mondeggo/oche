@@ -47,7 +47,8 @@ function drawPitch() {
   const goal = cellPosition(game.attacks[frame.player], morph);
   $("football-attack").setAttribute("points", `${x},${y} ${goal[0]},${goal[1] - 28} ${goal[0]},${goal[1] + 28}`);
 
-  $("football-follow").disabled = !inspected;
+  // Follow ball floats over the pitch while a cell is being explored.
+  $("football-follow").hidden = !inspected;
   $("football-explore").textContent = inspected
     ? tr("Exploring {0}: {1}", { 0: regionLabel(inspected), 1: targets.map(regionLabel).join(" · ") })
     : tr("Select a cell to explore its neighbours.");
@@ -81,7 +82,8 @@ function preparePitch() {
   }
   $("football-cells").addEventListener("click", event => {
     const cell = event.target.closest("[data-cell]")?.dataset.cell;
-    if (cell) { inspected = cell; drawPitch(); }
+    // Selecting the explored cell again returns to the live ball.
+    if (cell) { inspected = inspected === cell ? null : cell; drawPitch(); }
   });
   $("football-cells").addEventListener("keydown", event => {
     const cell = event.target.closest("[data-cell]")?.dataset.cell;

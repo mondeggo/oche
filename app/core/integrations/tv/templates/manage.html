@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}{{ _("Oche - TV view") }}{% endblock %}
+{% block content %}
+<section class="supervisor-page">
+  <header class="page-head">
+    <div>
+      <p class="eyebrow">{{ _("Integrations") }}</p>
+      <h1>{{ _("TV view") }}</h1>
+      <p class="subtitle">{{ _("Show games on a TV and run them from a phone or tablet. Both pages follow the game started in Play.") }}</p>
+    </div>
+  </header>
+  <div class="integration-grid">
+    <article class="panel integration-card">
+      <div class="integration-card-head"><h3>{{ _("TV") }}</h3></div>
+      <p class="muted">{{ _("Full screen, without the sidebar. It shows the game on, and a practice board with the darts on the board between games. Open it in the TV's browser.") }}</p>
+      <p><code>{{ request.base_url }}tv</code></p>
+      <a class="integration-card-link" href="/tv" target="_blank" rel="noopener">{{ _("Open TV view ↗") }}</a>
+    </article>
+    <article class="panel integration-card">
+      <div class="integration-card-head"><h3>{{ _("Remote") }}</h3></div>
+      <p class="muted">{{ _("Play shaped for a phone or tablet: choose a game, add players, enter darts and go to the next turn.") }}</p>
+      <p><code>{{ request.base_url }}tv/remote</code></p>
+      <a class="integration-card-link" href="/tv/remote" target="_blank" rel="noopener">{{ _("Open remote ↗") }}</a>
+    </article>
+  </div>
+</section>
+{% endblock %}

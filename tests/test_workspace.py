@@ -186,6 +186,34 @@ def test_game_modes_share_one_grid_and_only_the_arcade_waits(application):
         assert modes.count('aria-disabled="true"') == 2
 
 
+def test_tv_integration_shows_play_without_the_sidebar(application, tmp_path):
+    with (
+        TestClient(application) as client,
+        patch("app.config.CONFIG_FILE", tmp_path / "settings.json"),
+    ):
+        for path, display in (("/tv", "tv"), ("/tv/remote", "remote")):
+            page = client.get(path)
+            assert page.status_code == 200, path
+            assert 'id="app-sidebar"' not in page.text and "app-bare" in page.text
+            assert f'data-display="{display}"' in page.text
+            document = Document()
+            document.feed(page.text)
+            assert len(document.ids) == len(set(document.ids)), path
+            for asset in document.assets:
+                assert client.get(asset).status_code == 200, asset
+        # Only the TV view has the practice board; both keep Play's game list and its filter.
+        assert 'id="local-practice"' in client.get("/tv").text
+        assert 'id="local-practice"' not in client.get("/tv/remote").text
+        assert 'name="category"' in client.get("/tv/remote").text
+        manage = client.get("/integrations/tv").text
+        assert 'href="/tv"' in manage and 'href="/tv/remote"' in manage
+        assert 'href="/integrations/tv"' in manage[manage.index('<aside id="app-sidebar"') :]
+        assert 'data-integration-card="tv"' in client.get("/integrations").text
+        assert client.put("/api/integrations/tv", json={"enabled": False}).status_code == 200
+        assert client.get("/tv").status_code == 404
+        assert client.get("/tv/remote").status_code == 404
+
+
 def test_camera_card_and_sidebar_share_persisted_visibility(application, tmp_path):
     with (
         TestClient(application) as client,

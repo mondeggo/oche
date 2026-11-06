@@ -1570,5 +1570,21 @@
   "Tie — both throw again": "Empate — ambos lançam de novo",
   "{0} is closer and starts": "{0} ficou mais perto e começa",
   "{0} is {1} mm from the bull": "{0} ficou a {1} mm do bull",
-  "{0}: throw one dart at the bull": "{0}: lance um dardo ao bull"
+  "{0}: throw one dart at the bull": "{0}: lance um dardo ao bull",
+  "Game categories": "Categorias de jogos",
+  "All": "Todos",
+  "Waiting for a game": "À espera de um jogo",
+  "Throw to practise. A game started in Play shows here.": "Lance para treinar. Um jogo iniciado em Jogar aparece aqui.",
+  "Dartboard with the darts on the board": "Alvo com os dardos espetados",
+  "Pitch help and display": "Ajuda e vista do campo",
+  "Oche - TV view": "Oche - Vista TV",
+  "TV view": "Vista TV",
+  "Show games on a TV and run them from a phone or tablet. Both pages follow the game started in Play.": "Mostre os jogos numa TV e controle-os a partir de um telemóvel ou tablet. As duas páginas seguem o jogo iniciado em Jogar.",
+  "TV": "TV",
+  "Full screen, without the sidebar. It shows the game on, and a practice board with the darts on the board between games. Open it in the TV's browser.": "Ecrã inteiro, sem barra lateral. Mostra o jogo em curso e, entre jogos, um alvo de treino com os dardos espetados. Abra-a no navegador da TV.",
+  "Open TV view ↗": "Abrir a vista TV ↗",
+  "Remote": "Comando",
+  "Play shaped for a phone or tablet: choose a game, add players, enter darts and go to the next turn.": "Jogar adaptado a telemóvel ou tablet: escolha um jogo, adicione jogadores, introduza dardos e passe à vez seguinte.",
+  "Open remote ↗": "Abrir o comando ↗",
+  "A full-screen game view for a TV, and a remote to run games from a phone or tablet.": "Uma vista de jogo em ecrã inteiro para uma TV e um comando para controlar os jogos a partir de um telemóvel ou tablet."
 }

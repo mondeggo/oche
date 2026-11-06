@@ -2,7 +2,8 @@
 
 Open **Play on Oche** in the sidebar (`/local`) and choose a game mode. The modes
 share one grid; each card's tag names its category (Match, Practice, Party or
-Arcade) in that category's colour. The first mode is one-leg X01: 301 or 501,
+Arcade) in that category's colour, and the category pills above the grid show
+one category or **All** (remembered in this browser). The first mode is one-leg X01: 301 or 501,
 single in, straight or double out, and one to eight players sharing the board.
 Bull is 25; double bull is 50 and counts as a double for checkout. A bust restores
 the score from the beginning of the visit. Cricket, Around the Clock, Count Up,
@@ -446,13 +447,16 @@ confirmation. Without coordinates, singles and bull-up cannot be guessed.
 The pitch displays all 82 cells as nested rectangular bands and numbered wedges.
 Its corners align with the 18/4, 15/2, 7/16 and 9/12 boundaries, giving exactly five
 segments per side. **Display shape: board to pitch** continuously morphs the cells from circular
-to rectangular; the ball, labels and highlights use that same transformation.
+to rectangular; the ball, labels and highlights use that same transformation. It
+sits, with the pitch help, behind the **?** beside **Hide dartboard**, so the pitch
+gets the height.
 Narrow scoring bands are widened visually for legibility, without changing the
 cell boundaries used for scoring or their adjacency.
 
 Click a pitch cell to inspect its neighbours under the selected movement mode;
-this never records a dart. Arrow keys navigate cells, Enter/Space selects, and
-Escape or **Follow ball** returns to the live ball. The current player's blocked
+this never records a dart. The **?** lists them. Arrow keys navigate cells,
+Enter/Space selects, and Escape, clicking the cell again or **Follow ball** (floating
+over the pitch while exploring) returns to the live ball. The current player's blocked
 own goal is excluded when own goals are off. Inspection uses the backend's neighbour
 graph, while live highlights use its current legal targets, including kick-off.
 
@@ -461,10 +465,32 @@ distinct inner/outer singles, plus a Miss button. **Use keypad** retains the exi
 number buttons as an alternative. Vision coordinates remain in the original round
 board coordinate system.
 
-Goal nets sit immediately beyond the D6/D11 scoring cells and follow the morph. A compact match scoreboard, dark in both themes like the dartboard, shows both scores and the round-based clock (Goals mode shows the round count). The ball is a shaded black-and-white football. The reference dartboard starts shown in the right panel. **Hide dartboard**, at the right end of the End game row, hides the whole right panel: its guidance, current visit and **Next turn** join End game in one row, so the pitch keeps its size. A one-dart visit, such as a bull-up or penalty, keeps the tile size and sits in the middle. Manual entry always keeps its round-board input.
+Goal nets sit immediately beyond the D6/D11 scoring cells and follow the morph. A compact match scoreboard beside **End game**, dark in both themes like the dartboard, shows both scores and the round-based clock (Goals mode shows the round count). The ball is a shaded black-and-white football. The reference dartboard starts shown in the right panel. **Hide dartboard**, at the right end of the End game row, hides the whole right panel: the current visit and **Next turn** join the scoreboard, and the guidance becomes one line beside who is throwing, so the pitch keeps its size. A one-dart visit, such as a bull-up or penalty, keeps the tile size and sits in the middle. Manual entry always keeps its round-board input.
 
 The pitch and reference dartboard scale to available viewport height; small
 screens place the compact board and input controls below the pitch.
+
+## TV view and remote
+
+The **TV view** integration (on by default; switch it off under Integrations)
+shows Play without the sidebar on two pages, both linked from
+**Integrations → TV view**:
+
+- **`/tv`**, for the TV's browser: whatever local game is on, read-only, with no
+  buttons. Between games it shows a practice board with the darts on the board, as
+  detected by the vision engine Play uses, like OcheCore's live view, with the
+  engine's readiness. Nothing on the practice board is scored or sent to the
+  integrations. While it is open, it keeps the read-only board feed open, as the
+  Events screen does.
+- **`/tv/remote`**, for a phone or tablet: Play itself (game list, setup, and the
+  game) shaped for touch. The board stays on the TV, except for tapping the
+  football bull-up dart. With manual input, dart entry stays open below the visit
+  with large keys, followed by compact player cards.
+
+Both pages follow the same game, so a game started on the remote or in Play shows
+on the TV at once. Switched off, the integration's pages return 404.
+`GET /api/local/live` returns the board's darts outside a game and the engine's
+readiness, for the practice board.
 
 This is Oche's custom soccer rule set, using the left/right D11–D6 field idea from
 [GLD's football darts description](https://gldproducts.com/blogs/all/how-to-play-football-darts).

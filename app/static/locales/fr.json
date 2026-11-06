@@ -1570,5 +1570,21 @@
   "Tie — both throw again": "Égalité — les deux relancent",
   "{0} is closer and starts": "{0} est plus près et commence",
   "{0} is {1} mm from the bull": "{0} est à {1} mm du bull",
-  "{0}: throw one dart at the bull": "{0} : lancez une fléchette sur le bull"
+  "{0}: throw one dart at the bull": "{0} : lancez une fléchette sur le bull",
+  "Game categories": "Catégories de jeux",
+  "All": "Tous",
+  "Waiting for a game": "En attente d’une partie",
+  "Throw to practise. A game started in Play shows here.": "Lancez pour vous entraîner. Une partie lancée dans Jouer s’affiche ici.",
+  "Dartboard with the darts on the board": "Cible avec les fléchettes plantées",
+  "Pitch help and display": "Aide et affichage du terrain",
+  "Oche - TV view": "Oche - Vue TV",
+  "TV view": "Vue TV",
+  "Show games on a TV and run them from a phone or tablet. Both pages follow the game started in Play.": "Affichez les parties sur une TV et pilotez-les depuis un téléphone ou une tablette. Les deux pages suivent la partie lancée dans Jouer.",
+  "TV": "TV",
+  "Full screen, without the sidebar. It shows the game on, and a practice board with the darts on the board between games. Open it in the TV's browser.": "Plein écran, sans barre latérale. Elle affiche la partie en cours et, entre les parties, une cible d’entraînement avec les fléchettes plantées. Ouvrez-la dans le navigateur de la TV.",
+  "Open TV view ↗": "Ouvrir la vue TV ↗",
+  "Remote": "Télécommande",
+  "Play shaped for a phone or tablet: choose a game, add players, enter darts and go to the next turn.": "Jouer adapté au téléphone ou à la tablette : choisissez une partie, ajoutez des joueurs, saisissez les fléchettes et passez au tour suivant.",
+  "Open remote ↗": "Ouvrir la télécommande ↗",
+  "A full-screen game view for a TV, and a remote to run games from a phone or tablet.": "Une vue de jeu plein écran pour une TV, et une télécommande pour piloter les parties depuis un téléphone ou une tablette."
 }

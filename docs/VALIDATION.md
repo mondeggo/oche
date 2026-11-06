@@ -1,5 +1,22 @@
 # Validation
 
+## TV view, remote and football pitch space (2026-11-06)
+
+- Automated: 852 Python tests passed, 2 skipped and 82 subtests passed; both
+  JavaScript files passed 72 tests. The TV and remote pages render without the
+  sidebar with valid assets and unique IDs, return 404 when the integration is
+  off, and the practice board reads darts without scoring.
+- Browser acceptance (headless Microsoft Edge, isolated data directory, manual
+  input): Play's football pitch grows with the scoreboard beside End game and the
+  display shape and pitch help behind ? (Follow ball floats over the pitch while
+  exploring), 1400 × 900. `/tv` at 1920 × 1080 shows the football game with no
+  controls and, with no game, the practice board with the readiness badge
+  (Unavailable without an engine). `/tv/remote` at 390 × 844 and 1024 × 768
+  shows the X01 visit, the open keypad and compact cards; the category filter
+  shows only Practice games.
+- Not verified: the practice board with darts from a running engine, a real TV
+  browser, and touch input on a phone.
+
 ## Target games, bot difficulty and Play layout (2026-11-06)
 
 - Automated: 849 Python tests passed, 2 skipped and 82 subtests passed, including

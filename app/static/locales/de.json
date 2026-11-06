@@ -1570,5 +1570,21 @@
   "Tie — both throw again": "Gleichstand — beide werfen erneut",
   "{0} is closer and starts": "{0} ist näher und beginnt",
   "{0} is {1} mm from the bull": "{0} ist {1} mm vom Bull entfernt",
-  "{0}: throw one dart at the bull": "{0}: einen Pfeil auf das Bull werfen"
+  "{0}: throw one dart at the bull": "{0}: einen Pfeil auf das Bull werfen",
+  "Game categories": "Spielkategorien",
+  "All": "Alle",
+  "Waiting for a game": "Warten auf ein Spiel",
+  "Throw to practise. A game started in Play shows here.": "Werfen Sie zum Üben. Ein in Spielen gestartetes Spiel erscheint hier.",
+  "Dartboard with the darts on the board": "Dartscheibe mit den Pfeilen darauf",
+  "Pitch help and display": "Spielfeld: Hilfe und Anzeige",
+  "Oche - TV view": "Oche - TV-Ansicht",
+  "TV view": "TV-Ansicht",
+  "Show games on a TV and run them from a phone or tablet. Both pages follow the game started in Play.": "Zeigen Sie Spiele auf einem Fernseher und steuern Sie sie vom Handy oder Tablet. Beide Seiten folgen dem in Spielen gestarteten Spiel.",
+  "TV": "TV",
+  "Full screen, without the sidebar. It shows the game on, and a practice board with the darts on the board between games. Open it in the TV's browser.": "Vollbild, ohne Seitenleiste. Sie zeigt das laufende Spiel und zwischen Spielen eine Übungsscheibe mit den Pfeilen darauf. Öffnen Sie sie im Browser des Fernsehers.",
+  "Open TV view ↗": "TV-Ansicht öffnen ↗",
+  "Remote": "Fernbedienung",
+  "Play shaped for a phone or tablet: choose a game, add players, enter darts and go to the next turn.": "Spielen für Handy oder Tablet: Spiel wählen, Spieler hinzufügen, Pfeile eingeben und zum nächsten Zug wechseln.",
+  "Open remote ↗": "Fernbedienung öffnen ↗",
+  "A full-screen game view for a TV, and a remote to run games from a phone or tablet.": "Eine Vollbild-Spielansicht für den Fernseher und eine Fernbedienung, um Spiele vom Handy oder Tablet zu steuern."
 }

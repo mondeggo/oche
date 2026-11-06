@@ -48,6 +48,9 @@ code { font-family: var(--font-mono); font-size: .9em; }
 .app-shell.sidebar-collapsed { grid-template-columns: var(--rail-width) minmax(0, 1fr); }
 .app-shell > main { grid-column: 2; grid-row: 1; min-width: 0; }
 #oche-page[hidden] { display: none; }
+/* A bare page, such as a TV view or a remote, has no sidebar: the page is the whole screen. */
+.app-shell.app-bare, .app-shell.app-bare.sidebar-collapsed { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); }
+.app-bare > main { grid-column: 1; }
 
 .mobile-bar { display: none; }
 .sidebar-backdrop { display: none; }

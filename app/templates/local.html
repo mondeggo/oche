@@ -4,8 +4,8 @@
 <span class="game-mode-head"><span class="game-mode-name">{{ name }}</span><span class="game-tag" data-tag="{{ tag }}">{{ label if key else _("Coming soon") }}</span></span>
 <span class="game-mode-text">{{ text }}</span>
 {%- endset -%}
-{%- if key %}<button type="button" class="game-mode" data-mode="{{ key }}">{{ body }}</button>
-{%- else %}<div class="game-mode" aria-disabled="true">{{ body }}</div>{% endif -%}
+{%- if key %}<button type="button" class="game-mode" data-mode="{{ key }}" data-category="{{ tag }}">{{ body }}</button>
+{%- else %}<div class="game-mode" aria-disabled="true" data-category="{{ tag }}">{{ body }}</div>{% endif -%}
 {%- endmacro -%}
 {%- macro choice(name, value, label, checked=False) -%}
 <label class="game-choice"><input type="radio" name="{{ name }}" value="{{ value }}"{{ ' checked' if checked }}><span>{{ label }}</span></label>
@@ -14,7 +14,9 @@
 {% block content %}
 <link rel="stylesheet" href="/static/css/local.css">
 <link rel="stylesheet" href="/static/css/football.css">
-<div id="game-page" class="game-page" data-view="modes">
+{%- for href in page_styles | default([]) %}<link rel="stylesheet" href="{{ href }}">{% endfor %}
+{#- Integrations can show Play as a read-only TV view or as a remote for a phone or tablet. #}
+<div id="game-page" class="game-page" data-view="modes" data-display="{{ display | default('') }}">
 <p id="local-error" class="card game-error" role="alert" hidden></p>
 
 <section id="game-modes" class="game-view" aria-labelledby="game-modes-title">
@@ -50,7 +52,10 @@
       <p class="hint">{{ _("Starting a local game pauses cloud game events. Clear the board before starting detection.") }}</p>
     </div>
   </section>
-  {#- One grid; each card's tag names its category in that category's colour. #}
+  {#- One grid; each card's tag names its category in that category's colour, and the filter shows one. #}
+  <div class="game-choices game-filters" role="radiogroup" aria-label="{{ _('Game categories') }}">
+    {{- choice("category", "all", _("All"), True) }}{{ choice("category", "match", _("Match")) }}{{ choice("category", "practice", _("Practice")) }}{{ choice("category", "party", _("Party")) }}{{ choice("category", "arcade", _("Arcade")) -}}
+  </div>
   <div class="game-modes">
     {{ mode("X01", "match", _("Match"), _("Race from 501 or 301 down to exactly zero"), "x01") }}
     {{ mode("Cricket", "match", _("Match"), _("Close 15 to 20 and the bull before your opponents"), "cricket") }}
@@ -63,6 +68,21 @@
     {{ mode("Mario 64", "arcade", _("Arcade"), _("Explore worlds and collect stars")) }}
   </div>
 </section>
+
+{%- if display == "tv" %}
+<section id="local-practice" class="game-view game-practice" aria-labelledby="local-practice-title" hidden>
+  <header class="game-practice-head">
+    <div><p class="eyebrow">{{ _("Practice") }}</p><h1 id="local-practice-title">{{ _("Waiting for a game") }}</h1>
+    <p class="subtitle">{{ _("Throw to practise. A game started in Play shows here.") }}</p></div>
+    <span id="local-practice-state" class="badge">{{ _("Waiting") }}</span>
+  </header>
+  <div class="game-board game-practice-board"><svg id="local-practice-svg" viewBox="-131 -131 262 262" role="img" aria-label="{{ _('Dartboard with the darts on the board') }}"></svg></div>
+  <div class="game-visit game-practice-visit">
+    <ol id="local-practice-darts" class="game-darts" aria-label="{{ _('Darts') }}"></ol>
+    <div class="game-visit-total"><span>{{ _("Visit") }}</span><strong id="local-practice-total">0</strong></div>
+  </div>
+</section>
+{%- endif %}
 
 <form id="local-setup" class="game-view game-setup" aria-labelledby="local-setup-title" hidden>
   <header class="page-head">
@@ -161,6 +181,17 @@
     </div>
     <div id="local-bar-visit" class="game-bar-visit"></div>
     <div class="game-bar-end">
+      {#- Pitch help and display shape, folded away so the pitch gets the height. #}
+      <details id="football-help" class="football-help" hidden>
+        <summary class="game-back" aria-label="{{ _('Pitch help and display') }}" title="{{ _('Pitch help and display') }}">?</summary>
+        <div class="football-help-panel">
+          <p id="football-explore" class="football-explore" aria-live="polite">{{ _("Select a cell to explore its neighbours.") }}</p>
+          <div class="football-map-controls">
+            <label for="football-morph" title="{{ _('Blend the dartboard layout into the rectangular pitch view. This only changes how the game is displayed.') }}">{{ _("Display shape: board to pitch") }}</label>
+            <input id="football-morph" type="range" min="0" max="100" value="100" aria-label="{{ _('Board to pitch shape') }}">
+          </div>
+        </div>
+      </details>
       <button id="football-board-toggle" type="button" class="game-back" aria-controls="local-board" aria-pressed="true" hidden>{{ _("Hide dartboard") }}</button>
     </div>
   </header>

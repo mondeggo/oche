@@ -62,7 +62,8 @@ async function refresh() {
 }
 
 for (const [name, card] of cards) {
-  part(card, "engine-install").addEventListener("click", async () => {
+  // Integrations without an engine only have their switch.
+  part(card, "engine-install")?.addEventListener("click", async () => {
     if (working) return;
     working = true;
     part(card, "engine-install").disabled = true;

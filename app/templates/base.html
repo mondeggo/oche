@@ -15,7 +15,7 @@
     <link rel="stylesheet" href="/static/css/integrated.css">
   </head>
   <body>
-    <div id="oche-page" class="app-shell" data-sidebar-page="{{ sidebar_page }}" data-sidebar-default="{{ '1' if sidebar_collapsed else '0' }}">
+    <div id="oche-page" class="app-shell{{ ' app-bare' if bare }}" data-sidebar-page="{{ sidebar_page }}" data-sidebar-default="{{ '1' if sidebar_collapsed else '0' }}">
     <script>
       // Restore the sidebar width before the first paint so the page does not jump.
       (() => {
@@ -28,6 +28,7 @@
         shell.classList.toggle('sidebar-collapsed', collapsed);
       })();
     </script>
+    {%- if not bare %}
     <header class="mobile-bar">
       <a class="brand" href="/local" aria-label="{{ _('Oche Home') }}"><span class="brand-mark" aria-hidden="true"></span>Oche</a>
       <button id="nav-toggle" class="icon-button" type="button" aria-label="{{ _('Open menu') }}" aria-controls="app-sidebar" aria-expanded="false">
@@ -36,6 +37,7 @@
     </header>
     {% include "sidebar.html" %}
     <div class="sidebar-backdrop" id="sidebar-backdrop" hidden></div>
+    {%- endif %}
     <main id="main" tabindex="-1" class="{{ 'container-full' if full_width else 'container' }} {{ 'home-viewport' if core_page }} {{ 'container-wide' if active_nav in wide_pages }}">
       {% block content %}{% endblock %}
     </main>

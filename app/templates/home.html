@@ -115,6 +115,22 @@
             <p id="caller-integration-error" class="error" role="status" hidden></p>
             <a class="integration-card-link" id="caller-settings" href="/integrations/caller" hidden>{{ _("Settings →") }}</a>
           </article>
+          {%- for item in integrations_registry if not item.engine %}
+          <article class="panel integration-card" data-integration-card="{{ item.id }}">
+            <div class="integration-card-head">
+              <h3>{{ _(item.name) }}</h3>
+              <button class="switch" type="button" role="switch" aria-checked="{{ 'true' if item.enabled else 'false' }}" aria-label="{{ _('Enable {name}', name=_(item.name)) }}" data-integration-switch="{{ item.id }}">
+                <span data-switch-label>{{ _("On") if item.enabled else _("Off") }}</span>
+                <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
+              </button>
+            </div>
+            <p class="muted">{{ _(item.description) }}</p>
+            <p class="error" role="status" data-integration-error hidden></p>
+            {%- if item.pages %}
+            <a class="integration-card-link" href="{{ item.pages[0].href }}" data-integration-link {{ 'hidden' if not item.enabled }}>{{ _("Manage {name} →", name=_(item.name)) }}</a>
+            {%- endif %}
+          </article>
+          {%- endfor %}
           {%- for item in integrations_registry %}{% for card in item.cards %}
           <div class="integration-slot" data-integration-tools="{{ item.id }}" {{ 'hidden' if not item.enabled }}>{% include card %}</div>
           {%- endfor %}{% endfor %}

@@ -9,6 +9,7 @@
     <div class="football-score-centre"><span class="football-score-dash">–</span><span id="football-match-clock" class="football-match-clock" aria-live="polite"></span></div>
   </div>
   <div class="football-field">
+    <button id="football-follow" type="button" class="btn-neutral football-follow" hidden>{{ _("Follow ball") }}</button>
     <svg viewBox="0 0 1000 640" role="group" aria-labelledby="football-pitch-title football-pitch-description">
       <title id="football-pitch-title">{{ _("Football pitch") }}</title>
       <desc id="football-pitch-description">{{ _("D11 is the left goal. D6 is the right goal.") }}</desc>
@@ -37,10 +38,4 @@
       </g>
     </svg>
   </div>
-  <div class="football-map-controls">
-    <label for="football-morph" title="{{ _('Blend the dartboard layout into the rectangular pitch view. This only changes how the game is displayed.') }}">{{ _("Display shape: board to pitch") }}</label>
-    <input id="football-morph" type="range" min="0" max="100" value="100" aria-label="{{ _('Board to pitch shape') }}">
-    <button id="football-follow" type="button" class="btn-neutral" disabled>{{ _("Follow ball") }}</button>
-  </div>
-  <p id="football-explore" class="football-explore" aria-live="polite">{{ _("Select a cell to explore its neighbours.") }}</p>
 </section>
