@@ -1,6 +1,6 @@
 import { tr } from "../js/i18n.mjs";
 import { $, api } from "./client.mjs";
-import { CRICKET, WDF_RINGS, boardMarkup, boardPoint, checkout, cricketMarks, funnyName, hitKey, hitRegion, playerStats, seats, targetBeds, targetHints, targetLabel } from "./game.mjs";
+import { CRICKET, WDF_RINGS, boardMarkup, boardPoint, checkout, cricketMarks, funnyName, hitKey, hitRegion, nextStarter, playerStats, seats, targetBeds, targetHints, targetLabel } from "./game.mjs";
 
 import { cellDart } from "./football-pitch.mjs";
 import { dartRegion, regionLabel, renderFootball } from "./football.mjs";
@@ -927,7 +927,8 @@ $("local-new").addEventListener("click", () => action(async () => {
   return result;
 }));
 $("local-rematch").addEventListener("click", () => action(async () => {
-  const options = state.options;
+  // The start alternates: the player who threw second begins the rematch.
+  const options = { ...state.options, players: nextStarter(state.options.players) };
   await post("stop");
   return post("start", options);
 }));

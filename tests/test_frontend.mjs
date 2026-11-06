@@ -10,7 +10,7 @@ import { engineHealth, localEventsHealth, localHealth, manualHealth, syncHealthR
 import { cloudHealth } from "../app/core/integrations/autodarts/static/health.mjs";
 import { CELLS, ORDER as FOOTBALL_ORDER, cellOutline, cellPosition, cellDart, pitchPoint, goalNet } from "../app/static/core/football-pitch.mjs";
 import { dartRegion, pitchPosition } from "../app/static/core/football.mjs";
-import { WDF_RINGS, boardMarkup, boardPoint, checkout, cricketMarks, funnyName, hitKey, hitRegion, playerStats, seats, targetBeds, targetHints, targetLabel } from "../app/static/core/game.mjs";
+import { WDF_RINGS, boardMarkup, boardPoint, checkout, cricketMarks, funnyName, hitKey, hitRegion, nextStarter, playerStats, seats, targetBeds, targetHints, targetLabel } from "../app/static/core/game.mjs";
 
 function appearanceContext(messages = {}, fetcher = async () => ({ ok: true,
   json: async () => ({ theme: "dark", language: "en", profile_id: "default" }) })) {
@@ -784,6 +784,14 @@ test("goal nets stay outside the goal doubles throughout the morph", () => {
     assert.ok(side === "right" ? back > x : back < x);
     assert.ok(back > 0 && back < 1000);
   }
+});
+
+test("a rematch moves the first throw to the next player", () => {
+  const players = [{ name: "Alice" }, { name: "Bob", bot: 5 }, { name: "Cara" }];
+  assert.deepEqual(nextStarter(players).map(player => player.name), ["Bob", "Cara", "Alice"]);
+  assert.deepEqual(nextStarter(nextStarter(players.slice(0, 2))).map(player => player.name), ["Alice", "Bob"]);
+  assert.deepEqual(nextStarter([{ name: "Solo" }]), [{ name: "Solo" }]);
+  assert.equal(players[0].name, "Alice", "the current game keeps its order");
 });
 
 test("target games label targets, suggest the next darts and outline the beds", () => {

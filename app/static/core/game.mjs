@@ -46,6 +46,12 @@ export function checkout(remaining, darts = 3, doubleOut = true) {
   return null;
 }
 
+/** The player order for the next game: whoever threw second now throws first, so the
+    start moves along by one player each game. */
+export function nextStarter(players) {
+  return players.length > 1 ? [...players.slice(1), players[0]] : [...players];
+}
+
 /** Three-dart average, Cricket marks per round and last visit per player, from completed visits the service retains. */
 export function playerStats(frame) {
   return frame.players.map(player => {

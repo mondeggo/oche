@@ -86,7 +86,9 @@ choose a ring, then tap a number, Bull or Miss in the popup. **Undo dart** remov
 visit; select **Next turn** after removing the darts. **Recent visits**, a floating
 button at the bottom right (icon only on phones), opens a dialog listing up to
 100 visits, newest first. **End game** keeps the last result until another local game is
-started. After a win, **Rematch** starts the same game again and **New game**
+started. After a win, **Rematch** starts the same game again, with the next player
+throwing first (the player who threw second starts, so the start moves along by
+one player each game), and **New game**
 returns to setup.
 
 The active game is atomically saved to `data/core/local-game.json` after every
