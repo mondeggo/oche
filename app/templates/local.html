@@ -23,9 +23,11 @@
   <header class="page-head">
     <div><p class="eyebrow">{{ _("Play") }}</p><h1 id="game-modes-title">{{ _("Choose a game") }}</h1>
     <p class="subtitle">{{ _("Games run on this device. Manual darts work without internet.") }}</p></div>
-    <a href="/local/tournament" class="game-back game-tournament-link">{{ _("Tournament") }} <span aria-hidden="true">↗</span></a>
-  </header>
-  {#- Vision engines come from the integrations that register one; manual darts always work. #}
+    <div class="game-head-actions">
+    {#- Vision engines come from the integrations that register one; manual darts always work.
+        The choice folds into an icon whose dot shows the detection state. #}
+    <details id="game-engine" class="game-engine">
+      <summary class="game-back game-engine-open" aria-label="{{ _('Choose vision engine') }}" title="{{ _('Choose vision engine') }}"><svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l1.5-2h7L17 8h3v11H4Z"/><circle cx="12" cy="13" r="3.5"/></svg><span id="game-engine-label" class="game-engine-label"></span><span id="game-engine-dot" class="game-engine-dot" aria-hidden="true"></span></summary>
   <section class="card game-engines" aria-labelledby="game-engine-title">
     <h2 id="game-engine-title" class="game-group">{{ _("Choose vision engine") }}</h2>
     <div class="game-choices game-engine-choices" role="radiogroup" aria-labelledby="game-engine-title">
@@ -52,9 +54,16 @@
       <p class="hint">{{ _("Starting a local game pauses cloud game events. Clear the board before starting detection.") }}</p>
     </div>
   </section>
-  {#- One grid; each card's tag names its category in that category's colour, and the filter shows one. #}
-  <div class="game-choices game-filters" role="radiogroup" aria-label="{{ _('Game categories') }}">
-    {{- choice("category", "all", _("All"), True) }}{{ choice("category", "match", _("Match")) }}{{ choice("category", "practice", _("Practice")) }}{{ choice("category", "party", _("Party")) }}{{ choice("category", "arcade", _("Arcade")) -}}
+    </details>
+    <a href="/local/tournament" class="game-back game-tournament-link">{{ _("Tournament") }} <span aria-hidden="true">↗</span></a>
+    </div>
+  </header>
+  {#- One grid; each card's tag names its category in that category's colour. A category pill, in
+      the same colour, shows only that category; pressing it again shows every game. #}
+  <div class="game-filters" role="group" aria-label="{{ _('Game categories') }}">
+    {%- for key, label in [("match", _("Match")), ("practice", _("Practice")), ("party", _("Party")), ("arcade", _("Arcade"))] %}
+    <button type="button" class="game-filter" data-filter="{{ key }}" aria-pressed="false">{{ label }}</button>
+    {%- endfor %}
   </div>
   <div class="game-modes">
     {{ mode("X01", "match", _("Match"), _("Race from 501 or 301 down to exactly zero"), "x01") }}

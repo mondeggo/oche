@@ -204,7 +204,7 @@ def test_tv_integration_shows_play_without_the_sidebar(application, tmp_path):
         # Only the TV view has the practice board; both keep Play's game list and its filter.
         assert 'id="local-practice"' in client.get("/tv").text
         assert 'id="local-practice"' not in client.get("/tv/remote").text
-        assert 'name="category"' in client.get("/tv/remote").text
+        assert 'data-filter="practice"' in client.get("/tv/remote").text
         manage = client.get("/integrations/tv").text
         assert 'href="/tv"' in manage and 'href="/tv/remote"' in manage
         assert 'href="/integrations/tv"' in manage[manage.index('<aside id="app-sidebar"') :]

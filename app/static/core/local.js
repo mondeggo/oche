@@ -244,6 +244,10 @@ function prefill(value) {
 const engineChoice = () => radio("engine") || "manual";
 function renderInput() {
   $("local-detection").hidden = engineChoice() === "manual";
+  // The folded engine choice names the engine beside its icon; manual has no detection dot.
+  const label = document.querySelector('input[name="engine"]:checked + span')?.textContent || tr("Manual");
+  $("game-engine-label").textContent = label;
+  $("game-engine-dot").hidden = engineChoice() === "manual";
 }
 
 /* Detection */
@@ -260,6 +264,8 @@ function renderDetector(value) {
   $("local-setup-detector").textContent = setup[0];
   $("local-setup-detector").className = `badge ${setup[1] || ""}`.trim();
   $("local-setup-detector").title = setup[2];
+  $("game-engine-dot").className = `game-engine-dot ${setup[1] || ""}`.trim();
+  $("game-engine-dot").parentElement.title = `${tr("Choose vision engine")} · ${setup[0]}`;
   const board = $("local-board");
   board.dataset.halo = manual || !value.active ? "" : HALO[detector.state] || "";
   board.title = manual || !value.active ? "" : tr("Local detection: {0}", { 0: label });
@@ -786,14 +792,25 @@ document.querySelectorAll("[data-mode]").forEach(button => button.addEventListen
   show("setup");
   $("local-players").querySelector("input")?.select();
 }));
-function filterModes() {
-  const category = radio("category") || "all";
-  for (const card of $("game-modes").querySelectorAll(".game-mode")) card.hidden = category !== "all" && card.dataset.category !== category;
+/* A category pill shows only its games; pressing it again shows every game. Remembered in this browser. */
+function filterModes(category) {
+  for (const pill of document.querySelectorAll(".game-filter")) pill.setAttribute("aria-pressed", String(pill.dataset.filter === category));
+  $("game-modes").querySelector(".game-filters").dataset.active = String(Boolean(category));
+  for (const card of $("game-modes").querySelectorAll(".game-mode")) card.hidden = Boolean(category) && card.dataset.category !== category;
   try { localStorage.setItem("oche.play.category", category); } catch (_) { /* Keep it for this visit. */ }
 }
-try { setRadio("category", localStorage.getItem("oche.play.category") || "all"); } catch (_) { /* Show every game. */ }
-filterModes();
-document.querySelectorAll('input[name="category"]').forEach(input => input.addEventListener("change", filterModes));
+let savedCategory = "";
+try { savedCategory = localStorage.getItem("oche.play.category") || ""; } catch (_) { /* Show every game. */ }
+filterModes(document.querySelector(`.game-filter[data-filter="${savedCategory}"]`) ? savedCategory : "");
+for (const pill of document.querySelectorAll(".game-filter")) {
+  pill.addEventListener("click", () => filterModes(pill.getAttribute("aria-pressed") === "true" ? "" : pill.dataset.filter));
+}
+// Folded panels, such as the engine choice and the pitch help, close when you click elsewhere.
+document.addEventListener("click", event => {
+  for (const panel of document.querySelectorAll("details.game-engine[open], details.football-help[open]")) {
+    if (!panel.contains(event.target)) panel.open = false;
+  }
+});
 $("local-back").addEventListener("click", () => { choosing = false; show("modes"); });
 $("local-add-player").addEventListener("click", () => addPlayer()?.select());
 $("local-add-bot").addEventListener("click", () => openBots());

@@ -19,7 +19,6 @@
 .game-page[data-display="remote"] { width: 100%; max-width: 760px; margin-inline: auto; }
 .game-page[data-display="remote"] .game-modes { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
 .game-page[data-display="remote"] .game-mode { padding: 16px; }
-.game-page[data-display="remote"] .game-filters { max-width: none; }
 .game-page[data-display="remote"] :is(.game-bar, .game-foot) { grid-template-columns: minmax(0, 1fr); justify-items: stretch; }
 .game-page[data-display="remote"] .game-bar-visit { width: auto; }
 .game-page[data-display="remote"] .game-foot { padding-right: 64px; }
