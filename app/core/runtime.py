@@ -97,7 +97,34 @@ class Runtime:
                 raise
             for source in self.sources.values():
                 source.pause()
-            return self.local.status()
+            status = self.local.status()
+        # Outside the locks: the engine may take a moment to answer.
+        await self.wake_engine()
+        return status
+
+    async def wake_engine(self) -> bool:
+        """Wake the chosen vision engine while a game reads it, if the engine can sleep.
+
+        Only an engine Oche runs on this machine is woken, never a detector set with
+        OCHE_CORE_LOCAL_AUTODARTS_URL. Best effort: a failure leaves detection as it is.
+        """
+        if not (self.local.active and self.local.saved.options.input == "autodarts"):
+            return False
+        item = registry.get(engines.chosen())
+        wake = item.engine.wake if item and item.engine else None
+        url = self.board_url()
+        if wake is None or not item.port or url != f"http://127.0.0.1:{item.port}":
+            return False
+        try:
+            return await wake(self.http, url)
+        except (httpx.HTTPError, ValueError):
+            return False
+
+    async def keep_engine_awake(self) -> None:
+        # OcheCore may fall into standby during a long pause in a game.
+        while True:
+            await asyncio.sleep(30)
+            await self.wake_engine()
 
     async def stop_local(self) -> dict:
         async with self.lock, self.local.lock:
@@ -131,7 +158,9 @@ class Runtime:
                 raise
             for source in self.sources.values():
                 source.pause()
-            return self.local_status()
+            status = self.local_status()
+        await self.wake_engine()
+        return status
 
     async def cancel_tournament(self) -> dict:
         async with self.lock, self.local.lock:
@@ -156,6 +185,7 @@ class Runtime:
         self.tasks = [
             asyncio.create_task(self.local.run(), name="autodarts-local"),
             asyncio.create_task(self.local.run_bots(), name="local-bots"),
+            asyncio.create_task(self.keep_engine_awake(), name="engine-wake"),
         ]
         self.start_sources()
         self.wled.start()

@@ -86,6 +86,9 @@ class Engine:
     label: str
     scores: bool  # Whether Play can score darts from it yet.
     note: str = ""  # Shown when it cannot score.
+    # async (http, url) -> bool: start an engine that sleeps between games, such as
+    # OcheCore's standby. Play calls it only while a game reads this engine.
+    wake: Callable | None = None
 
 
 @dataclass

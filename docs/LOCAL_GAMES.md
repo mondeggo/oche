@@ -126,9 +126,19 @@ normalized game events. Raw local frames are tagged `source: autodarts-local`,
 Both event views offer **All sources**, **Cloud** and **Local** filters. Pausing
 the display leaves monitoring and recording running while that screen is visible.
 The feed shares Oche's lifecycle, HTTP client, event bus and application port.
-It only reads the detector; it never issues start, stop, reset or calibration
-commands. Transport, endpoint, message counts and last-message time appear in
-`/api/local` under `detector`.
+It only reads the detector; it never issues stop, reset or calibration commands.
+Transport, endpoint, message counts and last-message time appear in `/api/local`
+under `detector`.
+
+The one command Oche sends is OcheCore's start. OcheCore closes its cameras after
+its detection standby time (`standby_seconds`, 900 by default), and its
+Autodarts-compatible `/api/state` still reports a running board while they are
+closed. When OcheCore is the vision engine Play uses, a game with vision input
+reads OcheCore's `/api/v1/status` as it starts and every 30 seconds while it runs,
+and sends `{"command": "start"}` to `/api/v1/command` when the state is `stopped`
+or `standby`. Manual games, games with another engine, and a detector set with
+`OCHE_CORE_LOCAL_AUTODARTS_URL` are never woken. A failed wake leaves detection as
+it is. Engines register this through the `wake` field of their `Engine`.
 
 For a detector on another LAN computer, set the following in this project's `.env`
 and restart Oche (recreate the container when using Compose):

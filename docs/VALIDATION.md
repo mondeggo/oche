@@ -1,5 +1,17 @@
 # Validation
 
+## Waking OcheCore for a game (2026-11-06)
+
+- Live read-only check of the reported board (OcheCore 0.1.8 on 192.168.1.99, Oche
+  0.4.2): `/api/v1/status` reported `"state": "standby"` with all three cameras
+  off, while the Autodarts-compatible `/api/state` reported
+  `"running": true, "status": "throw"`. That is why Play showed the board as
+  ready while nothing was detected. OcheCore's own page sends
+  `POST /api/v1/command {"command": "start"}` to wake it.
+- Automated: the wake sends start only for `stopped` and `standby`, and only for a
+  vision game with OcheCore chosen and running on this machine (mock transport).
+- Not verified: the wake against the live board; no command was sent to it.
+
 ## TV view, remote and football pitch space (2026-11-06)
 
 - Automated: 852 Python tests passed, 2 skipped and 82 subtests passed; both
