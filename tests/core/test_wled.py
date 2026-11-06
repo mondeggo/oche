@@ -1433,6 +1433,19 @@ async def test_panel_preview_restores_segment_without_saving_or_changing_geometr
         assert not service.path.exists()
 
 
+def test_matrix_player_sources_follow_the_thrower_when_everyone_shares_the_board(tmp_path):
+    from app.core.local import LocalDart, LocalGames, LocalOptions
+
+    game = LocalGames(tmp_path, None, EventBus())
+    game.start(LocalOptions(players=["Alice", "Bob"], input="manual"))
+    game.throw(LocalDart(number=20, multiplier=3).segment())
+    mine, opponent = (t.matrix for t in score_panels().targets)
+    # A local game has no single local player: the thrower is "mine", the next player the opponent.
+    assert [wled.matrix_value(m, game.game_state()) for m in (mine, opponent)] == [441, 501]
+    game.next_turn()
+    assert [wled.matrix_value(m, game.game_state()) for m in (mine, opponent)] == [501, 441]
+
+
 def test_matrix_player_sources_stay_assigned_across_turns_corrections_and_disconnects():
     bus = EventBus()
     normalizer = EventNormalizer(BOARD_ID, bus)

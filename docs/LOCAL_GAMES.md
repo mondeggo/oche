@@ -259,6 +259,10 @@ with existing settings. The choices persist with the integration configuration;
 Caller choices follow the active profile. Source selection is independent of
 whether a cloud game's player uses the local physical board.
 
+WLED matrix panels set to **My score** and **Opponent's score** pick one local
+player in cloud play. In a local game every player shares the board, so My score
+shows the player throwing now and Opponent's score the player who throws next.
+
 Disabled sources do not generate caller calls or lighting game effects. Lighting retains its waiting state when the selected source
 is excluded. Queued events from the previous source are ignored after switching.
 Manual integration tests remain available regardless of source selection.

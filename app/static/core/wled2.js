@@ -113,7 +113,7 @@ const events = {
   manual_reset: tr("Manual reset"), calibration_started: tr("Calibration started"), calibration_finished: tr("Calibration finished"),
 };
 const sources = {
-  remaining: tr("Active player's score"), local_remaining: tr("My score (one local player)"),
+  remaining: tr("Active player's score"), local_remaining: tr("My score (the thrower in a local game)"),
   opponent_remaining: tr("Opponent's score"), player_remaining: tr("Specific player's score"),
   turn_score: tr("Active visit total"), last_dart: tr("Last dart"),
 };

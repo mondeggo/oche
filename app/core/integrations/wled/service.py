@@ -479,6 +479,14 @@ def matrix_value(matrix: Matrix, view: dict) -> int | None:
         matches = [p for p in players if p.get("index") == matrix.player_slot - 1]
     else:
         local = [p for p in players if p.get("is_local")]
+        if len(players) > 1 and len(local) == len(players):
+            # Everyone shares this board, as in a local game: "my score" is whoever throws
+            # now and the opponent is the player who throws next.
+            current = next((i for i, p in enumerate(players) if p.get("active")), None)
+            if current is None:
+                return None
+            index = current if matrix.source == "local_remaining" else (current + 1) % len(players)
+            return players[index].get("remaining")
         if len(local) != 1:
             return None
         matches = (
