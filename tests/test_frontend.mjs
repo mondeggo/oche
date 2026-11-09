@@ -177,6 +177,8 @@ test("local engine events work without cloud and intentional pauses do not turn 
   assert.match(localEventsHealth(local)[2], /without a cloud connection/);
   assert.equal(localEventsHealth({ ...local, detector: { connected: false } })[0], "warn");
   assert.equal(localEventsHealth({ ...local, detector: { connected: false, error: "Lost board" } })[0], "bad");
+  // Players must act, but the board is connected.
+  assert.equal(localEventsHealth({ ...local, detector: { connected: true, state: "not_ready", error: "Too dark" } })[0], "warn");
   assert.equal(engineHealth(engine, detector, localEventsHealth({ ...local, input: "manual" }))[0], "good");
 });
 
@@ -649,7 +651,9 @@ test("missing compatible modules stay installable across refreshes and submit in
     'update-installation-notice'].map(id => [id, node()]));
   const item = { name: 'autodarts', present: false, installable: true, has_update: false,
     available: '2.1.1', runtime_compatible: true, installed: [] };
-  const data = { enabled: true, modules: [item], job: { status: 'complete', action: 'check' } };
+  // A recent check: opening the page does not start another.
+  const data = { enabled: true, modules: [item], job: { status: 'complete', action: 'check' },
+    checked_at: Date.now() / 1000 };
   const posts = [];
   let refresh;
   const context = vm.createContext({
@@ -810,4 +814,28 @@ test("target games label targets, suggest the next darts and outline the beds", 
   assert.equal(cricketMarks({ throws: [dart(20, 3), dart(25, 2), dart(1, 3)] }), 5);
   const frame = { players: [{ id: "a" }], turns: [{ playerId: "a", finishedAt: "x", points: 0, throws: [dart(20, 3), dart(19, 1), dart(2, 1)] }] };
   assert.equal(playerStats(frame)[0].marks, 4);
+});
+
+test('opening Updates checks again only when the last check is stale', async () => {
+  for (const [checkedAt, expected] of [[null, ['/updates/check']], [Date.now() / 1000 - 600, ['/updates/check']],
+    [Date.now() / 1000, []]]) {
+    const node = () => ({ dataset: {}, style: {}, append() {}, addEventListener() {}, querySelector: () => null,
+      replaceChildren() {}, contains: () => false, setAttribute() {} });
+    const ids = Object.fromEntries(['update-status', 'update-modules', 'check-updates', 'update-all',
+      'update-installation-notice'].map(id => [id, node()]));
+    const data = { enabled: true, modules: [], job: { status: 'idle' }, checked_at: checkedAt };
+    const posts = [];
+    const context = vm.createContext({
+      document: { getElementById: id => ids[id], createElement: node, activeElement: null,
+        dispatchEvent() {}, querySelectorAll: () => [] },
+      window: {}, tr: text => text, CustomEvent: class {}, setInterval() {},
+      fetch: async (path, options = {}) => {
+        if (options.method === 'POST') posts.push(path);
+        return { ok: true, json: async () => data };
+      },
+    });
+    vm.runInContext(readFileSync(new URL('../app/static/js/updates.js', import.meta.url), 'utf8'), context);
+    await new Promise(resolve => setImmediate(resolve));
+    assert.deepEqual(posts, expected);
+  }
 });
