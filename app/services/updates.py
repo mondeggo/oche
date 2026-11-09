@@ -1,5 +1,6 @@
 """Verified release bundles, serialized background jobs and health rollback."""
 
+import asyncio
 import hashlib
 import json
 import os
@@ -24,6 +25,9 @@ from app.services.release_metadata import is_revision, metadata
 
 FEED = os.environ.get("OCHE_UPDATE_FEED", "")
 OCHE = ("Oche", "Application, caller & lighting")
+# Releases published while Oche runs are found without a manual check.
+RECHECK_AFTER = 30 * 60
+RECHECK_TICK = 5 * 60
 
 
 def releases() -> dict:
@@ -95,6 +99,7 @@ class UpdateManager:
         self.lock = threading.Lock()
         self.available = {}
         self.check_errors = {}
+        self.checked_at = None
         self.job = {"status": "idle", "message": ""}
 
     def status(self):
@@ -171,6 +176,7 @@ class UpdateManager:
             "job": dict(self.job),
             "runtime": store.RUNTIME,
             "check_errors": dict(self.check_errors),
+            "checked_at": self.checked_at,
             "boot_id": os.environ.get("OCHE_BOOT_ID"),
         }
 
@@ -265,8 +271,25 @@ class UpdateManager:
         # status() read never observes a transiently empty "available" dict.
         self.available = discovered
         self.check_errors = errors
+        self.checked_at = time.time()
         if not self.available and self.check_errors:
             raise ValueError("; ".join(dict.fromkeys(self.check_errors.values())))
+
+    def check_when_stale(self, max_age=RECHECK_AFTER):
+        """Start a background check unless a recent one exists."""
+        if self.checked_at and time.time() - self.checked_at < max_age:
+            return False
+        try:
+            self.submit("check")
+        except ValueError:
+            # Another operation holds the lock; the next tick tries again.
+            return False
+        return True
+
+    async def recheck_loop(self):
+        while True:
+            self.check_when_stale()
+            await asyncio.sleep(RECHECK_TICK)
 
     def _check_bundle_feed(self):
         if not FEED:

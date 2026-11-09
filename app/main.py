@@ -1,5 +1,6 @@
 """One Oche application and lifecycle, including the darts runtime."""
 
+import asyncio
 import os
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -62,18 +63,19 @@ def create_app(
             application.state.metrics_history = history
             runtime.start()
             history.start()
+            rechecks = None
             try:
                 if manage_services:
                     await run_in_threadpool(detection_engines.start_on_boot)
                     await application.state.local_https.restore(application)
                     if os.environ.get("OCHE_LAUNCHER") == "1" and os.environ.get("OCHE_UPDATE_FEED"):
-                        try:
-                            update_manager.submit("check")
-                        except ValueError:
-                            pass
+                        rechecks = asyncio.create_task(update_manager.recheck_loop())
                 yield
             finally:
                 try:
+                    if rechecks:
+                        rechecks.cancel()
+                        await asyncio.gather(rechecks, return_exceptions=True)
                     await history.close()
                     await runtime.close()
                 finally:

@@ -153,8 +153,17 @@
       refreshing = false;
     }
   }
+  // Opening the page refreshes results older than a minute without blocking the view.
+  async function checkWhenStale() {
+    await refresh();
+    const checkedAt = latestData?.checked_at;
+    const busy = !latestData || latestData.job.status === 'running' || latestData.modules.some(m => m.pending);
+    if (busy || (checkedAt && Date.now() / 1000 - checkedAt < 60)) return;
+    try { await fetch('/updates/check', {method: 'POST'}); } catch (_) { /* The status poll reports problems. */ }
+    await refresh();
+  }
   check.addEventListener('click', () => action('/updates/check'));
   updateAll.addEventListener('click', () => action('/updates/update-all'));
-  refresh();
+  checkWhenStale();
   setInterval(refresh, 3000);
 })();

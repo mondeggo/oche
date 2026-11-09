@@ -4,13 +4,14 @@ import dataclasses
 import hashlib
 import io
 import tarfile
+import time
 from unittest.mock import patch
 
 import pytest
 
 import oche_runtime as store
 from app.core.integrations import registry
-from app.services.updates import UpdateManager, extract
+from app.services.updates import RECHECK_AFTER, UpdateManager, extract
 
 
 @pytest.fixture
@@ -282,3 +283,24 @@ def test_failed_integration_install_reports_error_and_can_be_retried(manager, mo
         manager.submit("install", "ochecore")
         manager._run("install", "ochecore")
         assert not store.read_state("ochecore").get("active")
+
+
+def test_stale_results_start_a_background_check(manager):
+    with patch.object(manager, "submit") as submit:
+        assert manager.check_when_stale()
+        submit.assert_called_once_with("check")
+        manager.checked_at = time.time()
+        assert not manager.check_when_stale()
+        manager.checked_at = time.time() - RECHECK_AFTER - 1
+        assert manager.check_when_stale()
+
+
+def test_busy_manager_skips_the_background_check(manager):
+    with patch.object(manager, "submit", side_effect=ValueError("Another update operation is running")):
+        assert not manager.check_when_stale()
+
+
+def test_check_records_when_it_ran(manager):
+    with patch.object(manager, "_check_bundle_feed", return_value={}):
+        manager.check()
+    assert manager.status()["checked_at"] == pytest.approx(time.time(), abs=5)
