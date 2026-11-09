@@ -99,26 +99,38 @@ class Runtime:
                 source.pause()
             status = self.local.status()
         # Outside the locks: the engine may take a moment to answer.
-        await self.wake_engine()
+        await self.wake_engine(new_game=True)
         return status
 
-    async def wake_engine(self) -> bool:
+    async def wake_engine(self, *, new_game: bool = False) -> bool:
         """Wake the chosen vision engine while a game reads it, if the engine can sleep.
 
-        Only an engine Oche runs on this machine is woken, never a detector set with
+        A new game also lets the engine drop a visit left from before it. Only an engine
+        Oche runs on this machine is woken, never a detector set with
         OCHE_CORE_LOCAL_AUTODARTS_URL. Best effort: a failure leaves detection as it is.
         """
         if not (self.local.active and self.local.saved.options.input == "autodarts"):
             return False
         item = registry.get(engines.chosen())
-        wake = item.engine.wake if item and item.engine else None
+        engine = item.engine if item else None
         url = self.board_url()
-        if wake is None or not item.port or url != f"http://127.0.0.1:{item.port}":
+        if engine is None or not item.port or url != f"http://127.0.0.1:{item.port}":
             return False
         try:
-            return await wake(self.http, url)
+            woke = bool(engine.wake and await engine.wake(self.http, url))
         except (httpx.HTTPError, ValueError):
-            return False
+            woke = False
+        if new_game and engine.prepare:
+            # The cameras may still be opening; the game starts meanwhile.
+            self.tasks = [task for task in self.tasks if not task.done()]
+            self.tasks.append(asyncio.create_task(self._prepare_engine(engine.prepare, url), name="engine-prepare"))
+        return woke
+
+    async def _prepare_engine(self, prepare, url: str) -> None:
+        try:
+            await prepare(self.http, url)
+        except (httpx.HTTPError, ValueError):
+            pass
 
     async def keep_engine_awake(self) -> None:
         # OcheCore may fall into standby during a long pause in a game.
@@ -159,7 +171,7 @@ class Runtime:
             for source in self.sources.values():
                 source.pause()
             status = self.local_status()
-        await self.wake_engine()
+        await self.wake_engine(new_game=True)
         return status
 
     async def cancel_tournament(self) -> dict:

@@ -89,6 +89,9 @@ class Engine:
     # async (http, url) -> bool: start an engine that sleeps between games, such as
     # OcheCore's standby. Play calls it only while a game reads this engine.
     wake: Callable | None = None
+    # async (http, url) -> bool: when a game starts, drop darts the engine still lists
+    # from before the game but that are not on the board. Runs beside the game.
+    prepare: Callable | None = None
 
 
 @dataclass

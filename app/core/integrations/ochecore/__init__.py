@@ -6,7 +6,7 @@ from app.core.integrations.registry import Engine, Health, Integration, Page, Re
 
 from . import process, release
 from .routes import pages, router
-from .wake import wake
+from .wake import clear_stale_visit, wake
 
 HERE = Path(__file__).parent
 
@@ -25,8 +25,9 @@ integration = register(Integration(
     process=process,
     port=process.PORT,
     # OcheCore serves the Autodarts board API (/api/state, /api/events) on its own port.
-    # OcheCore closes its cameras after a standby time; a game wakes them.
-    engine=Engine(label="OcheCore", scores=True, wake=wake),
+    # OcheCore closes its cameras after a standby time; a game wakes them and
+    # resets a visit left from before the game.
+    engine=Engine(label="OcheCore", scores=True, wake=wake, prepare=clear_stale_visit),
     health=(Health("ochecore", "OcheCore", "/integrations/ochecore", "/static/js/health.mjs", 20),),
     routers=(router, pages),
     templates=HERE / "templates",
