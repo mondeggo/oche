@@ -624,6 +624,24 @@ def test_ochecore_bulls_and_misses_score(detected):
     assert current.throws[0].segment.name == "MISS" and current.throws[0].coords is None
 
 
+def test_ochecore_takeout_before_arming_is_not_the_first_visit_takeout(detected):
+    # OcheCore keeps takeoutFinished in its state until the next dart, so a game that
+    # arms after a takeout keeps reading it; that takeout belongs to no turn of the game.
+    t20 = flat("Triple", 3, "T20", 20, -0.0098, 0.5761)
+    detected.consume_board(flat_board("takeoutStarted", "takeoutInProgress", t20))
+    for _ in range(3):
+        detected.consume_board(flat_board("takeoutFinished", "throw"))
+    assert detected.armed
+    assert detected.game_state()["phase"] == "ready"
+    assert not events(detected, "takeout_finished")
+    detected.consume_board(flat_board("throwDetected", "throw", t20))
+    detected.consume_board(flat_board("takeoutStarted", "takeoutInProgress", t20))
+    detected.consume_board(flat_board("takeoutFinished", "throw"))
+    assert len(detected.saved.frame.turns) == 2
+    assert len(events(detected, "takeout_finished")) == 1
+    assert detected.game_state()["phase"] == "ready"
+
+
 def test_flat_throws_need_a_consistent_count(detected):
     four = [flat("Triple", 3, "T20", 20)] * 4
     with pytest.raises(ConnectionProblem):

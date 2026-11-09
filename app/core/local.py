@@ -191,6 +191,8 @@ class LocalGames:
         self.detector_error: str | None = None
         self.connected = False
         self.armed = False
+        # The board's event when detection armed; the detector may keep repeating it.
+        self.armed_event: str | None = None
         self.board: dict | None = None
         self.detected: list[Segment] = []
         self.taking_out = False
@@ -449,6 +451,7 @@ class LocalGames:
 
     def reset_detector(self) -> None:
         self.connected = self.armed = self.taking_out = False
+        self.armed_event = None
         self.detected = []
         self.board = None
         self.detector_state, self.detector_error = "waiting", None
@@ -699,6 +702,13 @@ class LocalGames:
 
     def consume_board(self, data: object) -> None:
         board, segments, positions = self.parse_board(data)
+        # An event from before arming is not news. OcheCore keeps takeoutFinished until
+        # the next dart, which would read as a takeout of the turn that has just begun.
+        if self.armed and self.armed_event is not None:
+            if board.get("event") == self.armed_event:
+                board["event"] = ""
+            else:
+                self.armed_event = None
         previous_action = str((self.board or {}).get("event", "")).lower()
         self.board, self.connected = board, True
         self.detector_error = None
@@ -721,6 +731,7 @@ class LocalGames:
             self.detector_state = "waiting_for_clear"
             if not segments and ready and not self.saved.frame.turns[0].throws:
                 self.armed, self.detector_state = True, "connected"
+                self.armed_event = board.get("event")
                 self.detected = []
                 self._event("board.state", {**board, "event": ""}, snapshot=True)
             else:
