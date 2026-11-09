@@ -18,6 +18,8 @@ export function localEventsHealth(local, tr = defaultTranslate) {
     tr("Local events connect when an automatic local game starts.")];
   if (local.input === "manual") return ["neutral", tr("Paused for local play"),
     tr("This game uses manual scoring.")];
+  // The board is connected but players must act first, such as turning on the light.
+  if (local.detector?.state === "not_ready") return ["warn", tr("Not ready"), tr(local.detector.error)];
   if (local.detector?.error || local.feed?.error) return ["bad", tr("Connection error"),
     tr(local.detector?.error || local.feed.error)];
   if (local.detector?.connected) return ["good", tr("Connected locally"),

@@ -1585,5 +1585,12 @@
   "Remote": "Télécommande",
   "Play shaped for a phone or tablet: choose a game, add players, enter darts and go to the next turn.": "Jouer adapté au téléphone ou à la tablette : choisissez une partie, ajoutez des joueurs, saisissez les fléchettes et passez au tour suivant.",
   "Open remote ↗": "Ouvrir la télécommande ↗",
-  "A full-screen game view for a TV, and a remote to run games from a phone or tablet.": "Une vue de jeu plein écran pour une TV, et une télécommande pour piloter les parties depuis un téléphone ou une tablette."
+  "A full-screen game view for a TV, and a remote to run games from a phone or tablet.": "Une vue de jeu plein écran pour une TV, et une télécommande pour piloter les parties depuis un téléphone ou une tablette.",
+  "Checking the board…": "Vérification de la cible…",
+  "Waiting for OcheCore's cameras to start.": "En attente du démarrage des caméras d’OcheCore.",
+  "An OcheCore camera has an error. Check OcheCore's page in Integrations.": "Une caméra d’OcheCore est en erreur. Consultez la page OcheCore dans Intégrations.",
+  "Calibrate OcheCore before playing.": "Calibrez OcheCore avant de jouer.",
+  "Too dark. Turn on the light so OcheCore's cameras can see the board.": "Trop sombre. Allumez la lumière pour que les caméras d’OcheCore voient la cible.",
+  "Waiting for OcheCore to see the board.": "En attente qu’OcheCore voie la cible.",
+  "Clear the board. OcheCore sees something on it.": "Videz la cible. OcheCore y voit quelque chose."
 }

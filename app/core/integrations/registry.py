@@ -92,6 +92,10 @@ class Engine:
     # async (http, url) -> bool: when a game starts, drop darts the engine still lists
     # from before the game but that are not on the board. Runs beside the game.
     prepare: Callable | None = None
+    # async (http, url) -> str | None: what players must fix before a game's first dart,
+    # such as a dark board or one that is not empty; None once the engine can score.
+    # Engines whose board API reports a throw regardless need it.
+    hold: Callable | None = None
 
 
 @dataclass

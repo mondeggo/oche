@@ -208,7 +208,9 @@ button.game-mode .game-tag[data-tag="arcade"] { background: var(--coral); }
 .game-board[data-halo="red"] { --halo: var(--danger-bright); }
 .game-board[data-halo="yellow"] { --halo: var(--warning); }
 .game-board[data-halo="green"] { --halo: var(--success-bright); }
-.game-board[data-halo]:not([data-halo=""]) { box-shadow: 0 0 0 2px var(--halo), 0 0 12px var(--halo); }
+/* A wide ring and glow read from the oche; yellow pulses because players must act. */
+.game-board[data-halo]:not([data-halo=""]) { box-shadow: 0 0 0 6px var(--halo), 0 0 36px 8px color-mix(in srgb, var(--halo) 65%, transparent); }
+.game-board[data-halo="yellow"] { animation: game-halo 1.6s ease-in-out infinite; }
 .game-board svg { display: block; width: 100%; height: auto; }
 /* A manual bull-up dart is placed where the player taps. */
 .game-board[data-pick="true"] svg { cursor: crosshair; }
@@ -232,9 +234,10 @@ button.game-mode .game-tag[data-tag="arcade"] { background: var(--coral); }
 .game-dart-mark .game-dart-pulse { fill: none; stroke: var(--dart); stroke-width: 1.2; opacity: 0; transform-box: fill-box; transform-origin: center; }
 .game-dart-mark[data-state="latest"] .game-dart-pulse { animation: game-pulse 1.2s ease-out infinite; }
 @keyframes game-blink { 50% { fill-opacity: .3; } }
+@keyframes game-halo { 50% { box-shadow: 0 0 0 6px var(--halo), 0 0 14px 2px color-mix(in srgb, var(--halo) 40%, transparent); } }
 @keyframes game-pulse { from { opacity: .9; transform: scale(1); } to { opacity: 0; transform: scale(2.8); } }
 @media (prefers-reduced-motion: reduce) {
-  .game-board [data-hit][data-state="latest"], .game-dart-mark[data-state="latest"] .game-dart-pulse, .game-winner-name { animation: none; }
+  .game-board [data-hit][data-state="latest"], .game-dart-mark[data-state="latest"] .game-dart-pulse, .game-winner-name, .game-board[data-halo] { animation: none; }
 }
 
 /* The current visit is a plain line above the board, as on OcheCore: darts, total and actions. */

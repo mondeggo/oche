@@ -678,3 +678,32 @@ def test_autodarts_reset_after_a_takeout_drops_a_quick_dart(detected):
     ]
     assert detected.saved.frame.game_scores == [301 - 6 - 85]
     assert len(events(detected, "throw_removed")) == len(events(detected, "manual_reset")) == 1
+
+
+def test_an_engine_hold_keeps_the_first_dart_waiting_until_it_clears(tmp_path):
+    game = LocalGames(tmp_path, None, EventBus(capacity=500), gated=lambda: True)
+    game.start(LocalOptions(starting_score=301))
+    # OcheCore's board API reports a throw before it has looked at the board.
+    game.consume_board(flat_board("calibrationFinished", "throw"))
+    assert not game.armed and game.detector_state == "not_ready"
+    assert game.detector_error == "Checking the board…"
+    game.engine_checked("Too dark. Turn on the light so OcheCore's cameras can see the board.")
+    assert not game.armed and game.detector_error.startswith("Too dark")
+    # The board API sends nothing new when the light comes on; the engine's answer arms.
+    game.engine_checked(None)
+    assert game.armed and game.detector_state == "connected" and game.detector_error is None
+    game.consume_board(flat_board("throwDetected", "throw", flat("Triple", 3, "T20", 20, 0, 0.6)))
+    assert len(events(game, "throw")) == 1
+
+
+def test_an_engine_hold_never_arms_a_board_with_darts(tmp_path):
+    game = LocalGames(tmp_path, None, EventBus(capacity=500), gated=lambda: True)
+    game.start(LocalOptions(starting_score=301))
+    game.consume_board(flat_board("throwDetected", "throw", flat("Triple", 3, "T20", 20, 0, 0.6)))
+    game.engine_checked(None)
+    assert not game.armed and game.detector_state == "waiting_for_clear"
+
+
+def test_engines_without_a_hold_arm_on_the_board_api_alone(detected):
+    detected.consume_board(flat_board("calibrationFinished", "throw"))
+    assert detected.armed

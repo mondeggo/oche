@@ -4,7 +4,7 @@ import httpx
 import pytest
 from fastapi.testclient import TestClient
 
-from app.core.integrations.ochecore.wake import clear_stale_visit, wake
+from app.core.integrations.ochecore.wake import clear_stale_visit, hold_reason, wake
 from app.main import create_app
 
 
@@ -113,3 +113,40 @@ def test_starting_a_vision_game_resets_a_stale_ochecore_visit_and_keeping_it_awa
         calls.clear()
         assert client.portal.call(app.state.runtime.wake_engine) is False
         assert reset not in calls
+
+
+def live(**changes):
+    """A running OcheCore with two calibrated, streaming cameras and an empty, lit board."""
+    snapshot = {
+        "state": "running",
+        "mode": "live",
+        "config": {"cameras": [{"slot": 1, "device": "/dev/video0"}, {"slot": 2, "device": "/dev/video2"}]},
+        "cameras": [{"slot": 1, "state": "streaming"}, {"slot": 2, "state": "streaming"}],
+        "capabilities": {"vision": True},
+        "blind_cameras": [],
+        "scene": "empty",
+        "physical_darts": 0,
+        "throws": [],
+    }
+    return {**snapshot, **changes}
+
+
+@pytest.mark.parametrize(
+    "snapshot,reason",
+    [
+        (live(), None),
+        # Standby and demo boards are handled elsewhere: the game wakes them.
+        (live(state="standby"), None),
+        (live(mode="demo", scene="unknown"), None),
+        (live(cameras=[{"slot": 1, "state": "streaming"}, {"slot": 2, "state": "starting"}]), "cameras to start"),
+        (live(cameras=[{"slot": 1, "state": "error"}, {"slot": 2, "state": "streaming"}]), "camera has an error"),
+        (live(capabilities={"vision": False}), "Calibrate"),
+        (live(blind_cameras=[2], scene="unknown", physical_darts=None), "Too dark"),
+        (live(scene="unknown", physical_darts=None), "to see the board"),
+        (live(scene="darts_present", physical_darts=None), "Clear the board"),
+        (live(scene="partial_takeout", physical_darts=1), "Clear the board"),
+    ],
+)
+def test_ochecore_holds_the_first_dart_until_the_board_is_lit_and_empty(snapshot, reason):
+    result = hold_reason(snapshot)
+    assert result is None if reason is None else reason in result

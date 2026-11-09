@@ -1585,5 +1585,12 @@
   "Remote": "Remote",
   "Play shaped for a phone or tablet: choose a game, add players, enter darts and go to the next turn.": "Play shaped for a phone or tablet: choose a game, add players, enter darts and go to the next turn.",
   "Open remote ↗": "Open remote ↗",
-  "A full-screen game view for a TV, and a remote to run games from a phone or tablet.": "A full-screen game view for a TV, and a remote to run games from a phone or tablet."
+  "A full-screen game view for a TV, and a remote to run games from a phone or tablet.": "A full-screen game view for a TV, and a remote to run games from a phone or tablet.",
+  "Checking the board…": "Checking the board…",
+  "Waiting for OcheCore's cameras to start.": "Waiting for OcheCore's cameras to start.",
+  "An OcheCore camera has an error. Check OcheCore's page in Integrations.": "An OcheCore camera has an error. Check OcheCore's page in Integrations.",
+  "Calibrate OcheCore before playing.": "Calibrate OcheCore before playing.",
+  "Too dark. Turn on the light so OcheCore's cameras can see the board.": "Too dark. Turn on the light so OcheCore's cameras can see the board.",
+  "Waiting for OcheCore to see the board.": "Waiting for OcheCore to see the board.",
+  "Clear the board. OcheCore sees something on it.": "Clear the board. OcheCore sees something on it."
 }

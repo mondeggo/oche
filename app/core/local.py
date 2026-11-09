@@ -24,6 +24,8 @@ from app.core.events import Coords, Dart, EventBus, EventNormalizer, MatchFrame,
 from app.core.storage import write_private_json
 
 BOARD_ID = "oche-local"
+# Until a gated engine answers, the first dart waits.
+CHECKING = "Checking the board…"
 
 
 class LocalPlayer(BaseModel):
@@ -176,10 +178,15 @@ class LocalGames:
         http: httpx.AsyncClient,
         bus: EventBus,
         board_url: str | Callable[[], str] = BOARD_URL,
+        gated: Callable[[], bool] = lambda: False,
     ):
         self.path = directory / "local-game.json"
         self.http, self.bus = http, bus
         self.connection = LocalBoardConnection(http, board_url)
+        # Whether the engine tells what to fix before the first dart; see Engine.hold.
+        self.gated = gated
+        self.engine_hold: str | None = CHECKING
+        self.raw_board: object | None = None
         self.monitor_until = 0.0
         # The darts on the board outside a game, for a practice board.
         self.live: dict | None = None
@@ -454,7 +461,17 @@ class LocalGames:
         self.armed_event = None
         self.detected = []
         self.board = None
+        self.engine_hold, self.raw_board = CHECKING, None
         self.detector_state, self.detector_error = "waiting", None
+
+    def engine_checked(self, hold: str | None) -> None:
+        """Take the engine's latest answer; a board it reports ready arms the waiting game."""
+        if hold == self.engine_hold:
+            return
+        self.engine_hold = hold
+        # The board API does not report the change, so its last state is read again.
+        if not self.armed and self.raw_board is not None and self.scoring_key() is not None:
+            self.consume_board(self.raw_board)
 
     def _require_game(self) -> SavedLocalGame:
         if not self.active:
@@ -702,6 +719,7 @@ class LocalGames:
 
     def consume_board(self, data: object) -> None:
         board, segments, positions = self.parse_board(data)
+        self.raw_board = data
         # An event from before arming is not news. OcheCore keeps takeoutFinished until
         # the next dart, which would read as a takeout of the turn that has just begun.
         if self.armed and self.armed_event is not None:
@@ -729,10 +747,16 @@ class LocalGames:
         ready = status in {"ready", "throw", "ready for throw"}
         if not self.armed:
             self.detector_state = "waiting_for_clear"
-            if not segments and ready and not self.saved.frame.turns[0].throws:
+            hold = self.engine_hold if self.gated() else None
+            if not segments and ready and not self.saved.frame.turns[0].throws and hold:
+                # The board API is ready for a throw, but the engine is not.
+                self.detector_state, self.detector_error = "not_ready", hold
+            elif not segments and ready and not self.saved.frame.turns[0].throws:
                 self.armed, self.detector_state = True, "connected"
                 self.armed_event = board.get("event")
                 self.detected = []
+                # The next time detection arms, such as after Next turn, it is checked again.
+                self.engine_hold = CHECKING
                 self._event("board.state", {**board, "event": ""}, snapshot=True)
             else:
                 self.detector_error = "Clear the board. If a visit was interrupted, select Next turn."

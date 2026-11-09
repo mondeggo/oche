@@ -1,8 +1,9 @@
-"""Wake OcheCore's cameras for a game.
+"""Wake OcheCore's cameras for a game and tell when the board is ready for it.
 
 OcheCore closes its cameras after its detection standby time (``standby_seconds``)
 and then waits for its start command. Its Autodarts-compatible ``/api/state`` still
-reports a running board, so its own ``/api/v1/status`` tells whether it can score.
+reports a running board ready for a throw, also while the board is too dark or not
+empty, so its own ``/api/v1/status`` tells whether it can score.
 """
 
 import asyncio
@@ -56,3 +57,37 @@ async def clear_stale_visit(http: httpx.AsyncClient, url: str, *, seconds: float
         return False
     await command(http, url, "reset")
     return True
+
+
+def hold_reason(snapshot: dict) -> str | None:
+    """What players must fix before the first dart, or None when OcheCore can score.
+
+    Follows OcheCore's board activity: cameras that cannot see the board read TOO
+    DARK, and a board that was not empty when the cameras started reads CLEAR THE
+    BOARD. Nothing counts until every camera sees an empty board.
+    """
+    # A sleeping board is woken by the game; demo and control modes have no scene.
+    if snapshot.get("state") != "running" or snapshot.get("mode") != "live":
+        return None
+    assigned = [
+        camera.get("slot") for camera in snapshot.get("config", {}).get("cameras", []) if camera.get("device")
+    ]
+    cameras = {camera.get("slot"): camera.get("state") for camera in snapshot.get("cameras", [])}
+    if any(cameras.get(slot) == "error" for slot in assigned):
+        return "An OcheCore camera has an error. Check OcheCore's page in Integrations."
+    if any(cameras.get(slot) != "streaming" for slot in assigned):
+        return "Waiting for OcheCore's cameras to start."
+    if not snapshot.get("capabilities", {}).get("vision"):
+        return "Calibrate OcheCore before playing."
+    if snapshot.get("blind_cameras"):
+        return "Too dark. Turn on the light so OcheCore's cameras can see the board."
+    scene = snapshot.get("scene")
+    if scene == "empty":
+        return None
+    if scene == "unknown":
+        return "Waiting for OcheCore to see the board."
+    return "Clear the board. OcheCore sees something on it."
+
+
+async def hold(http: httpx.AsyncClient, url: str) -> str | None:
+    return hold_reason(await status(http, url))

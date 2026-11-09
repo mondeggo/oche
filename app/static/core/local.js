@@ -11,7 +11,7 @@ let footballBoard = true;
 const maxPlayers = () => selectedMode === "football" ? 2 : 8;
 const SVG = "http://www.w3.org/2000/svg";
 const DETECTOR = { stopped: "Stopped", waiting: "Waiting", waiting_for_clear: "Clear the board",
-  connected: "Connected", unavailable: "Unavailable" };
+  not_ready: "Not ready", connected: "Connected", unavailable: "Unavailable" };
 const AUTO = { easy: "Easy", medium: "Medium", hard: "Hard" };
 // Bots outside X01 play by the game's rules at a fixed difficulty; switching modes keeps them close.
 const DIFFICULTY_LEVEL = { easy: 3, medium: 6, hard: 9 };
@@ -38,14 +38,15 @@ function modeInfo(mode) {
   }[mode];
 }
 const TONE = { connected: "badge-green", waiting: "badge-yellow", waiting_for_clear: "badge-yellow",
-  stopped: "badge-red", unavailable: "badge-red" };
+  not_ready: "badge-yellow", stopped: "badge-red", unavailable: "badge-red" };
 // Before a game: whether the chosen vision engine is detecting.
 const READINESS = { detecting: "Ready", starting: "Starting", calibrating: "Calibrating", waiting: "Waiting",
   stopped: "Stopped", unavailable: "Unavailable" };
 const READY_TONE = { detecting: "badge-green", starting: "badge-yellow", calibrating: "badge-yellow",
   waiting: "badge-yellow", stopped: "badge-red", unavailable: "badge-red" };
 // The board's halo shows detection: red when stopped, yellow while waiting, green when scoring.
-const HALO = { connected: "green", waiting: "yellow", waiting_for_clear: "yellow", stopped: "red", unavailable: "red" };
+const HALO = { connected: "green", waiting: "yellow", waiting_for_clear: "yellow", not_ready: "yellow",
+  stopped: "red", unavailable: "red" };
 
 // An integration can show Play as a TV view (read-only, with a practice board between games)
 // or as a remote for a phone or tablet, both without the sidebar.

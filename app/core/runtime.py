@@ -9,6 +9,7 @@ from app.core.errors import ConnectionProblem
 from app.core.events import EventBus, RawEventRecorder
 from app.core.integrations import registry
 from app.core.integrations.caller.service import Caller
+from app.core.integrations.registry import Engine
 from app.core.integrations.sources import integration_view
 from app.core.integrations.wled.service import WLED
 from app.core.integrations.wled2.service import WLED2
@@ -27,7 +28,9 @@ class Runtime:
         self.bus = EventBus(recorder=self.debug)
         self.tasks: list[asyncio.Task] = []
         self.lock = asyncio.Lock()
-        self.local = LocalGames(settings.data_dir, http, self.bus, self.board_url)
+        self.local = LocalGames(
+            settings.data_dir, http, self.bus, self.board_url, gated=self.engine_gates_first_dart
+        )
         self.tournaments = Tournaments(settings.data_dir, self.local)
         self.detection = LocalDetection(http, self.board_url)
         # Game sources come from switched-on integrations, such as Autodarts Play.
@@ -102,19 +105,32 @@ class Runtime:
         await self.wake_engine(new_game=True)
         return status
 
+    def local_engine(self) -> tuple[Engine | None, str]:
+        """The chosen vision engine and its URL while a game reads it, if Oche runs it.
+
+        Only an engine Oche runs on this machine is driven, never a detector set with
+        OCHE_CORE_LOCAL_AUTODARTS_URL.
+        """
+        if not (self.local.active and self.local.saved.options.input == "autodarts"):
+            return None, ""
+        item = registry.get(engines.chosen())
+        url = self.board_url()
+        if not item or not item.engine or not item.port or url != f"http://127.0.0.1:{item.port}":
+            return None, url
+        return item.engine, url
+
+    def engine_gates_first_dart(self) -> bool:
+        engine = self.local_engine()[0]
+        return bool(engine and engine.hold)
+
     async def wake_engine(self, *, new_game: bool = False) -> bool:
         """Wake the chosen vision engine while a game reads it, if the engine can sleep.
 
-        A new game also lets the engine drop a visit left from before it. Only an engine
-        Oche runs on this machine is woken, never a detector set with
-        OCHE_CORE_LOCAL_AUTODARTS_URL. Best effort: a failure leaves detection as it is.
+        A new game also lets the engine drop a visit left from before it. Best effort:
+        a failure leaves detection as it is.
         """
-        if not (self.local.active and self.local.saved.options.input == "autodarts"):
-            return False
-        item = registry.get(engines.chosen())
-        engine = item.engine if item else None
-        url = self.board_url()
-        if engine is None or not item.port or url != f"http://127.0.0.1:{item.port}":
+        engine, url = self.local_engine()
+        if engine is None:
             return False
         try:
             woke = bool(engine.wake and await engine.wake(self.http, url))
@@ -131,6 +147,25 @@ class Runtime:
             await prepare(self.http, url)
         except (httpx.HTTPError, ValueError):
             pass
+
+    async def watch_engine(self) -> None:
+        """Ask the engine what to fix while a game waits for its first dart."""
+        while True:
+            await asyncio.sleep(0.5)
+            engine, url = self.local_engine()
+            if not (engine and engine.hold) or self.local.armed:
+                continue
+            try:
+                hold = await engine.hold(self.http, url)
+            except (httpx.HTTPError, ValueError):
+                # Without an answer, detection behaves as it did before engines reported one.
+                hold = None
+            async with self.local.lock:
+                if self.local_engine()[0] is engine and not self.local.armed:
+                    try:
+                        self.local.engine_checked(hold)
+                    except ConnectionProblem as exc:
+                        self.local.detector_error = str(exc)
 
     async def keep_engine_awake(self) -> None:
         # OcheCore may fall into standby during a long pause in a game.
@@ -198,6 +233,7 @@ class Runtime:
             asyncio.create_task(self.local.run(), name="autodarts-local"),
             asyncio.create_task(self.local.run_bots(), name="local-bots"),
             asyncio.create_task(self.keep_engine_awake(), name="engine-wake"),
+            asyncio.create_task(self.watch_engine(), name="engine-watch"),
         ]
         self.start_sources()
         self.wled.start()
