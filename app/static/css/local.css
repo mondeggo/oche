@@ -206,7 +206,8 @@ button.game-mode .game-tag[data-tag="arcade"] { background: var(--coral); }
 /* --board-fit is set by the page so the whole game screen fits the window height. */
 .game-board { width: max(300px, min(var(--board-fit, 100dvh - 270px), 100cqw - 404px)); margin: 0; border-radius: 50%; filter: drop-shadow(0 14px 14px var(--shadow)); transition: box-shadow .3s ease; }
 .game-board[data-halo="red"] { --halo: var(--danger-bright); }
-.game-board[data-halo="yellow"] { --halo: var(--warning); }
+/* The pop yellow keeps one bright value in both themes; the light theme's warning reads brown. */
+.game-board[data-halo="yellow"] { --halo: var(--yellow); }
 .game-board[data-halo="green"] { --halo: var(--success-bright); }
 /* A wide ring and glow read from the oche; yellow pulses because players must act. */
 .game-board[data-halo]:not([data-halo=""]) { box-shadow: 0 0 0 6px var(--halo), 0 0 36px 8px color-mix(in srgb, var(--halo) 65%, transparent); }
@@ -245,6 +246,8 @@ button.game-mode .game-tag[data-tag="arcade"] { background: var(--coral); }
 .game-turn-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px 12px; margin: 0; text-align: center; }
 .game-phase { margin: 0; font-family: var(--font-display); font-size: 1.2rem; font-weight: 400; }
 .game-phase[data-bust="true"] { color: var(--danger-bright); }
+/* Detection waits for the player, for example to clear the board or turn on the light. */
+.game-phase[data-hold="true"] { display: inline-block; padding: 2px 12px; border-radius: var(--radius-sm); background: var(--yellow); color: var(--on-pop); }
 /* Dart tiles keep one fixed size, thrown or not, so the visit never shifts. */
 .game-visit { display: grid; grid-template-columns: minmax(0, 1fr) 88px auto; gap: 10px; }
 .game-darts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 0; padding: 0; list-style: none; }

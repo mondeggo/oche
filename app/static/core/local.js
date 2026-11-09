@@ -252,6 +252,15 @@ function renderInput() {
 }
 
 /* Detection */
+/* What the player must do before detection scores their visit, such as turning on the
+   light. It takes the place of "{0} to throw"; bots and finished games do not wait. */
+function detectionHold(value) {
+  const frame = value.frame;
+  if (!value.active || value.options.input === "manual" || value.detector.armed || value.finished
+    || !frame || isBot(value.options.players[frame.player])) return "";
+  return tr(value.detector.error || "Clear the board. Detection connects automatically.");
+}
+
 function renderDetector(value) {
   const detector = value.detector;
   const manual = value.options.input === "manual" && value.active;
@@ -270,9 +279,9 @@ function renderDetector(value) {
   const board = $("local-board");
   board.dataset.halo = manual || !value.active ? "" : HALO[detector.state] || "";
   board.title = manual || !value.active ? "" : tr("Local detection: {0}", { 0: label });
-  const detail = detector.error || value.error;
-  $("local-detector-detail").textContent = detail ? tr(detail)
-    : value.active && !manual ? tr("Clear the board. Detection connects automatically.") : "";
+  // The phase line shows a hold on the player's visit; other problems keep this line.
+  const detail = value.error || (detectionHold(value) ? "" : detector.error);
+  $("local-detector-detail").textContent = detail ? tr(detail) : "";
   $("local-detector-detail").hidden = !$("local-detector-detail").textContent;
 }
 
@@ -604,11 +613,13 @@ function renderMatch(value) {
   if (won) $("local-winner-name").textContent = resultText(value);
   // A manual bull-up dart is placed by tapping the board where it landed.
   $("local-board").dataset.pick = String(bullup && manual && !bot && !turn.finishedAt && !working);
-  $("local-phase").textContent = bullup && (turn.finishedAt || !bot) ? bullupText(value)
+  const hold = detectionHold(value);
+  $("local-phase").textContent = hold || (bullup && (turn.finishedAt || !bot) ? bullupText(value)
     : bot ? tr(turn.busted ? "{0} · Bust" : "{0} is throwing…", { 0: player.name })
     : turn.busted ? tr("{0} · Bust — remove darts", { 0: player.name })
-    : tr("{0} to throw", { 0: player.name });
+    : tr("{0} to throw", { 0: player.name }));
   $("local-phase").dataset.bust = String(Boolean(turn.busted));
+  $("local-phase").dataset.hold = String(Boolean(hold));
   // X01 suggests a checkout; target games show what to aim for next.
   const route = football || turn.finishedAt || won ? null
     : value.targets ? targetHints(mode, value.targets, frame.player, turn.throws, value.options.atc_ring)
